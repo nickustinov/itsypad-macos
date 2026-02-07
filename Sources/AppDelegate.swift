@@ -63,14 +63,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         if let keys = SettingsStore.shared.shortcutKeys {
             if keys.isTripleTap, let mod = keys.tapModifier {
                 let symbol: String
-                switch mod {
-                case "option": symbol = "⌥"
-                case "control": symbol = "⌃"
-                case "shift": symbol = "⇧"
-                case "command": symbol = "⌘"
-                default: symbol = ""
-                }
-                showItem.title = "Show Itsypad  \(symbol)\(symbol)\(symbol)"
+                if mod.contains("option") { symbol = "⌥" }
+                else if mod.contains("control") { symbol = "⌃" }
+                else if mod.contains("shift") { symbol = "⇧" }
+                else if mod.contains("command") { symbol = "⌘" }
+                else { symbol = "" }
+                let side = mod.hasPrefix("left-") ? " L" : mod.hasPrefix("right-") ? " R" : ""
+                showItem.title = "Show Itsypad  \(symbol)\(symbol)\(symbol)\(side)"
             }
         }
         menu.addItem(showItem)
@@ -159,6 +158,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         window.isReleasedWhenClosed = false
 
         let toolbar = NSToolbar(identifier: "SettingsToolbar")
+        toolbar.displayMode = .iconOnly
         window.toolbar = toolbar
 
         window.center()

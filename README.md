@@ -13,10 +13,13 @@ Nothing I tried felt right, so I built Itsypad. It's a native Swift/AppKit app �
 - **Syntax highlighting** — 185+ languages via [Highlightr](https://github.com/raspu/Highlightr) (highlight.js), with automatic language detection
 - **Themes** — 90+ built-in themes including all four Catppuccin flavors (Latte, Frappé, Macchiato, Mocha). The theme controls everything: editor background, tab bar, window chrome, caret color
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts. Never lose your work
-- **Global hotkey** — configurable shortcut including triple-tap modifier keys (e.g. triple-tap Option)
+- **Global hotkey** — configurable shortcut including triple-tap modifier keys (e.g. triple-tap Left Option). Distinguishes left and right modifier keys
 - **Line numbers** — optional, off by default
 - **Current line highlight** — optional, off by default
 - **Auto-indent** — matches indentation of the previous line on Enter
+- **Configurable indentation** — spaces or tabs, tab width 1–8
+- **Block indent/unindent** — select lines and press Tab / Shift+Tab
+- **Duplicate line** — Cmd+D
 - **Auto-close brackets** — `()`, `[]`, `{}`
 - **Tab cycling** — Ctrl+Tab / Shift+Ctrl+Tab
 - **Double-click tab bar** — creates a new tab

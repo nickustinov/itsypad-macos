@@ -3,6 +3,7 @@ import SwiftUI
 
 enum SettingsTab: String, CaseIterable, Identifiable {
     case general
+    case editor
     case appearance
 
     var id: String { rawValue }
@@ -10,6 +11,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var label: String {
         switch self {
         case .general: return "General"
+        case .editor: return "Editor"
         case .appearance: return "Appearance"
         }
     }
@@ -17,6 +19,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: return "gearshape"
+        case .editor: return "square.and.pencil"
         case .appearance: return "paintbrush"
         }
     }
@@ -57,6 +60,8 @@ struct SettingsView: View {
                 switch selectedTab {
                 case .general:
                     GeneralSettingsView(store: store)
+                case .editor:
+                    EditorSettingsView(store: store)
                 case .appearance:
                     AppearanceSettingsView(store: store)
                 }
@@ -108,25 +113,26 @@ struct GeneralSettingsView: View {
     }
 }
 
-struct AppearanceSettingsView: View {
+struct EditorSettingsView: View {
     @ObservedObject var store: SettingsStore
 
     var body: some View {
         Form {
-            Section("Theme") {
-                Picker("Color theme", selection: $store.highlightTheme) {
-                    ForEach(store.availableThemes, id: \.self) { theme in
-                        Text(theme).tag(theme)
-                    }
-                }
-            }
-
-            Section("Editor") {
+            Section {
                 Toggle("Show line numbers", isOn: $store.showLineNumbers)
                 Toggle("Highlight current line", isOn: $store.highlightCurrentLine)
             }
 
-            Section("Editor font") {
+            Section("Indentation") {
+                Toggle("Indent using spaces", isOn: $store.indentUsingSpaces)
+                Picker("Tab width", selection: $store.tabWidth) {
+                    ForEach(1...8, id: \.self) { n in
+                        Text("\(n)").tag(n)
+                    }
+                }
+            }
+
+            Section("Font") {
                 Picker("Font", selection: $store.editorFontName) {
                     ForEach(SettingsStore.availableFonts, id: \.name) { font in
                         Text(font.displayName).tag(font.name)
@@ -148,6 +154,23 @@ struct AppearanceSettingsView: View {
     }
 }
 
+struct AppearanceSettingsView: View {
+    @ObservedObject var store: SettingsStore
+
+    var body: some View {
+        Form {
+            Section("Theme") {
+                Picker("Color theme", selection: $store.highlightTheme) {
+                    ForEach(store.availableThemes, id: \.self) { theme in
+                        Text(theme).tag(theme)
+                    }
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
 // MARK: - Shortcut recorder
 
 struct ShortcutRecorderView: View {
@@ -156,44 +179,50 @@ struct ShortcutRecorderView: View {
     @State private var isRecording = false
 
     var body: some View {
-        HStack {
-            Text("Show Itsypad")
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("Show Itsypad")
 
-            Spacer()
+                Spacer()
 
-            Button {
-                isRecording.toggle()
-            } label: {
-                if isRecording {
-                    Text("Press keys...")
-                        .foregroundStyle(.orange)
-                } else if shortcut.isEmpty {
-                    Text("Click to record")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Text(shortcut)
-                        .font(.system(.body, design: .monospaced))
-                }
-            }
-            .buttonStyle(.bordered)
-            .background(
-                ShortcutRecorderHelper(
-                    isRecording: $isRecording,
-                    shortcut: $shortcut,
-                    shortcutKeys: $shortcutKeys
-                )
-            )
-
-            if !shortcut.isEmpty {
                 Button {
-                    shortcut = ""
-                    shortcutKeys = nil
+                    isRecording.toggle()
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.secondary)
+                    if isRecording {
+                        Text("Press keys...")
+                            .foregroundStyle(.orange)
+                    } else if shortcut.isEmpty {
+                        Text("Click to record")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text(shortcut)
+                            .font(.system(.body, design: .monospaced))
+                    }
                 }
-                .buttonStyle(.borderless)
+                .buttonStyle(.bordered)
+                .background(
+                    ShortcutRecorderHelper(
+                        isRecording: $isRecording,
+                        shortcut: $shortcut,
+                        shortcutKeys: $shortcutKeys
+                    )
+                )
+
+                if !shortcut.isEmpty {
+                    Button {
+                        shortcut = ""
+                        shortcutKeys = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.borderless)
+                }
             }
+
+            Text("Record a key combination (e.g. ⌃⌥Space) or tap a modifier key 3 times for a triple-tap shortcut. Left and right modifier keys are distinguished.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 }
@@ -225,7 +254,7 @@ class ShortcutRecorderNSView: NSView {
     var onShortcutRecorded: ((ShortcutKeys, String) -> Void)?
 
     private var monitor: Any?
-    private var tripleTapTimestamps: [Date] = []
+    private var tripleTapTimestamps: [String: [Date]] = [:]
 
     override var acceptsFirstResponder: Bool { true }
 
@@ -234,36 +263,57 @@ class ShortcutRecorderNSView: NSView {
         setupMonitor()
     }
 
+    private func modifierSymbol(_ mod: String) -> String {
+        if mod.contains("option") { return "⌥" }
+        if mod.contains("control") { return "⌃" }
+        if mod.contains("shift") { return "⇧" }
+        if mod.contains("command") { return "⌘" }
+        return "?"
+    }
+
     private func setupMonitor() {
         monitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .flagsChanged]) { [weak self] event in
             guard let self = self, self.isRecording else { return event }
 
             if event.type == .flagsChanged {
                 let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                let keyCode = event.keyCode
                 var modifier: String?
 
-                if flags == .option { modifier = "option" }
-                else if flags == .control { modifier = "control" }
-                else if flags == .shift { modifier = "shift" }
-                else if flags == .command { modifier = "command" }
+                switch Int(keyCode) {
+                case kVK_Option:
+                    if flags.contains(.option) { modifier = "left-option" }
+                case kVK_RightOption:
+                    if flags.contains(.option) { modifier = "right-option" }
+                case kVK_Command:
+                    if flags.contains(.command) { modifier = "left-command" }
+                case kVK_RightCommand:
+                    if flags.contains(.command) { modifier = "right-command" }
+                case kVK_Control:
+                    if flags.contains(.control) { modifier = "left-control" }
+                case kVK_RightControl:
+                    if flags.contains(.control) { modifier = "right-control" }
+                case kVK_Shift:
+                    if flags.contains(.shift) { modifier = "left-shift" }
+                case kVK_RightShift:
+                    if flags.contains(.shift) { modifier = "right-shift" }
+                default:
+                    break
+                }
 
                 if let mod = modifier {
                     let now = Date()
-                    self.tripleTapTimestamps.append(now)
-                    self.tripleTapTimestamps = self.tripleTapTimestamps.filter { now.timeIntervalSince($0) < 0.5 }
+                    var timestamps = self.tripleTapTimestamps[mod] ?? []
+                    timestamps.append(now)
+                    timestamps = timestamps.filter { now.timeIntervalSince($0) < 0.5 }
+                    self.tripleTapTimestamps[mod] = timestamps
 
-                    if self.tripleTapTimestamps.count >= 3 {
-                        self.tripleTapTimestamps.removeAll()
-                        let symbol: String
-                        switch mod {
-                        case "option": symbol = "⌥"
-                        case "control": symbol = "⌃"
-                        case "shift": symbol = "⇧"
-                        case "command": symbol = "⌘"
-                        default: symbol = "?"
-                        }
+                    if timestamps.count >= 3 {
+                        self.tripleTapTimestamps[mod] = []
+                        let symbol = self.modifierSymbol(mod)
+                        let side = mod.hasPrefix("left-") ? "L" : "R"
                         let keys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: mod)
-                        self.onShortcutRecorded?(keys, "\(symbol)\(symbol)\(symbol)")
+                        self.onShortcutRecorded?(keys, "\(symbol)\(symbol)\(symbol) \(side)")
                         return nil
                     }
                 }

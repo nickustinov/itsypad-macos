@@ -11,7 +11,6 @@ class HotkeyManager {
     private var modifierPressTimestamps: [String: [Date]] = [:]
     private let tripleTapWindow: TimeInterval = 0.5
     private var localEventMonitor: Any?
-    private var previousModifierFlags: NSEvent.ModifierFlags = []
 
     private init() {
         installCarbonHandler()
@@ -124,17 +123,29 @@ class HotkeyManager {
 
     private func handleFlagsChanged(_ event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        defer { previousModifierFlags = flags }
+        let keyCode = event.keyCode
 
         var pressedModifier: String?
-        if flags.contains(.option) && !previousModifierFlags.contains(.option) {
-            pressedModifier = "option"
-        } else if flags.contains(.control) && !previousModifierFlags.contains(.control) {
-            pressedModifier = "control"
-        } else if flags.contains(.shift) && !previousModifierFlags.contains(.shift) {
-            pressedModifier = "shift"
-        } else if flags.contains(.command) && !previousModifierFlags.contains(.command) {
-            pressedModifier = "command"
+
+        switch Int(keyCode) {
+        case kVK_Option:
+            if flags.contains(.option) { pressedModifier = "left-option" }
+        case kVK_RightOption:
+            if flags.contains(.option) { pressedModifier = "right-option" }
+        case kVK_Command:
+            if flags.contains(.command) { pressedModifier = "left-command" }
+        case kVK_RightCommand:
+            if flags.contains(.command) { pressedModifier = "right-command" }
+        case kVK_Control:
+            if flags.contains(.control) { pressedModifier = "left-control" }
+        case kVK_RightControl:
+            if flags.contains(.control) { pressedModifier = "right-control" }
+        case kVK_Shift:
+            if flags.contains(.shift) { pressedModifier = "left-shift" }
+        case kVK_RightShift:
+            if flags.contains(.shift) { pressedModifier = "right-shift" }
+        default:
+            break
         }
 
         guard let modifier = pressedModifier else { return }
@@ -150,7 +161,11 @@ class HotkeyManager {
 
             guard let keys = SettingsStore.shared.shortcutKeys,
                   keys.isTripleTap,
-                  keys.tapModifier == modifier else { return }
+                  let tap = keys.tapModifier else { return }
+
+            // Exact match, or backward-compat with old format (e.g. "option" matches both sides)
+            let baseModifier = modifier.replacingOccurrences(of: "left-", with: "").replacingOccurrences(of: "right-", with: "")
+            guard modifier == tap || baseModifier == tap else { return }
 
             DispatchQueue.main.async {
                 if let delegate = NSApp.delegate as? AppDelegate {

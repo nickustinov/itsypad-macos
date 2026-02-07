@@ -56,7 +56,7 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var highlightTheme: String = "horizon-dark" {
+    @Published var highlightTheme: String = "humanoid-dark" {
         didSet {
             guard !isLoading else { return }
             UserDefaults.standard.set(highlightTheme, forKey: "highlightTheme")
@@ -76,6 +76,22 @@ class SettingsStore: ObservableObject {
         didSet {
             guard !isLoading else { return }
             UserDefaults.standard.set(highlightCurrentLine, forKey: "highlightCurrentLine")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var indentUsingSpaces: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            UserDefaults.standard.set(indentUsingSpaces, forKey: "indentUsingSpaces")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var tabWidth: Int = 4 {
+        didSet {
+            guard !isLoading else { return }
+            UserDefaults.standard.set(tabWidth, forKey: "tabWidth")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -116,17 +132,22 @@ class SettingsStore: ObservableObject {
     }
 
     private func loadSettings() {
-        shortcut = UserDefaults.standard.string(forKey: shortcutKey) ?? ""
+        shortcut = UserDefaults.standard.string(forKey: shortcutKey) ?? "⌥⌥⌥ L"
         editorFontName = UserDefaults.standard.string(forKey: "editorFontName") ?? "System Mono"
         let savedSize = UserDefaults.standard.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
-        highlightTheme = UserDefaults.standard.string(forKey: "highlightTheme") ?? "horizon-dark"
+        highlightTheme = UserDefaults.standard.string(forKey: "highlightTheme") ?? "humanoid-dark"
         showLineNumbers = UserDefaults.standard.bool(forKey: "showLineNumbers")
         highlightCurrentLine = UserDefaults.standard.bool(forKey: "highlightCurrentLine")
+        indentUsingSpaces = UserDefaults.standard.object(forKey: "indentUsingSpaces") as? Bool ?? true
+        let savedTabWidth = UserDefaults.standard.integer(forKey: "tabWidth")
+        tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
 
         if let data = UserDefaults.standard.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             shortcutKeys = keys
+        } else {
+            shortcutKeys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: "left-option")
         }
     }
 }
