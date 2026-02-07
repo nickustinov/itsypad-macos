@@ -1,0 +1,45 @@
+name: itsypad
+options:
+  bundleIdPrefix: com.nickustinov
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "16.0"
+  generateEmptyDirectories: false
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: R892A93W42
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "Apple Development"
+
+packages:
+  Highlightr:
+    url: https://github.com/raspu/Highlightr.git
+    from: "2.2.1"
+
+targets:
+  itsypad:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+        excludes:
+          - Info.plist
+          - itsypad.entitlements
+    dependencies:
+      - package: Highlightr
+    info:
+      path: Sources/Info.plist
+      properties:
+        LSUIElement: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nickustinov.itsypad
+        PRODUCT_NAME: Itsypad
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_ENTITLEMENTS: Sources/itsypad.entitlements
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
+        ENABLE_HARDENED_RUNTIME: true
