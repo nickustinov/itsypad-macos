@@ -23,7 +23,7 @@ private extension NSToolbarItem.Identifier {
 }
 
 @MainActor
-class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSToolbarDelegate {
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSToolbarDelegate, NSMenuDelegate {
     private var statusItem: NSStatusItem!
     private var editorWindow: NSPanel?
     private var editorCoordinator: EditorCoordinator?
@@ -31,6 +31,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var windowWasVisible = false
     private var workspaceObserver: Any?
     private var settingsObserver: Any?
+    private var recentFilesMenu: NSMenu?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -115,6 +116,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     func applicationWillTerminate(_ notification: Notification) {
         ClipboardStore.shared.stopMonitoring()
         TabStore.shared.saveSession()
+    }
+
+    func application(_ sender: NSApplication, openFile filename: String) -> Bool {
+        let url = URL(fileURLWithPath: filename)
+        showWindowAndOpen(url: url)
+        return true
+    }
+
+    func application(_ sender: NSApplication, openFiles filenames: [String]) {
+        for filename in filenames {
+            let url = URL(fileURLWithPath: filename)
+            showWindowAndOpen(url: url)
+        }
+        sender.reply(toOpenOrPrint: .success)
+    }
+
+    private func showWindowAndOpen(url: URL) {
+        guard let window = editorWindow else { return }
+        windowWasVisible = true
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        updateDockVisibility()
+        editorCoordinator?.openFile(url: url)
     }
 
     // MARK: - Status item
@@ -382,6 +406,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "t"))
         menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n"))
         menu.addItem(NSMenuItem(title: "Open...", action: #selector(openFileAction), keyEquivalent: "o"))
+
+        let recentMenu = NSMenu(title: "Open recent")
+        recentMenu.delegate = self
+        recentFilesMenu = recentMenu
+        let recentItem = NSMenuItem(title: "Open recent", action: nil, keyEquivalent: "")
+        recentItem.submenu = recentMenu
+        menu.addItem(recentItem)
+
         menu.addItem(NSMenuItem(title: "Save", action: #selector(saveFileAction), keyEquivalent: "s"))
 
         let saveAsItem = NSMenuItem(title: "Save as...", action: #selector(saveFileAsAction), keyEquivalent: "S")
@@ -557,6 +589,43 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         let item = NSMenuItem()
         item.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
         editorCoordinator?.activeTextView()?.performFindPanelAction(item)
+    }
+
+    // MARK: - NSMenuDelegate (open recent)
+
+    func menuNeedsUpdate(_ menu: NSMenu) {
+        guard menu === recentFilesMenu else { return }
+        menu.removeAllItems()
+
+        let recentURLs = NSDocumentController.shared.recentDocumentURLs
+        if recentURLs.isEmpty {
+            let emptyItem = NSMenuItem(title: "No recent files", action: nil, keyEquivalent: "")
+            emptyItem.isEnabled = false
+            menu.addItem(emptyItem)
+            return
+        }
+
+        for url in recentURLs {
+            let item = NSMenuItem(title: url.lastPathComponent, action: #selector(openRecentFile(_:)), keyEquivalent: "")
+            item.target = self
+            item.toolTip = url.path
+            item.representedObject = url
+            menu.addItem(item)
+        }
+
+        menu.addItem(.separator())
+        let clearItem = NSMenuItem(title: "Clear menu", action: #selector(clearRecentFiles), keyEquivalent: "")
+        clearItem.target = self
+        menu.addItem(clearItem)
+    }
+
+    @objc private func openRecentFile(_ sender: NSMenuItem) {
+        guard let url = sender.representedObject as? URL else { return }
+        showWindowAndOpen(url: url)
+    }
+
+    @objc private func clearRecentFiles() {
+        NSDocumentController.shared.clearRecentDocuments(nil)
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {

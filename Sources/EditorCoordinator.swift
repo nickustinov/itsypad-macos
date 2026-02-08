@@ -22,6 +22,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     private var previousBonsplitTabID: TabID?
     private var settingsObserver: Any?
+    private var fileDropObserver: Any?
 
     @MainActor
     init() {
@@ -54,10 +55,26 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 self?.applySettings()
             }
         }
+
+        fileDropObserver = NotificationCenter.default.addObserver(
+            forName: EditorTextView.fileDropNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let urls = notification.userInfo?["urls"] as? [URL] else { return }
+                for url in urls {
+                    self?.openFile(url: url)
+                }
+            }
+        }
     }
 
     deinit {
         if let observer = settingsObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = fileDropObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -275,6 +292,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             if let bonsplitID = tabIDMap[existing.id] {
                 controller.selectTab(bonsplitID)
             }
+            NSDocumentController.shared.noteNewRecentDocumentURL(url)
             return
         }
 
@@ -290,6 +308,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             editorStates[bonsplitTabID] = createEditorState(for: newTab)
             controller.selectTab(bonsplitTabID)
         }
+        NSDocumentController.shared.noteNewRecentDocumentURL(url)
     }
 
     @MainActor

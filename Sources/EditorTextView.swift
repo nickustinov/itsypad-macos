@@ -1,11 +1,18 @@
 import AppKit
 
 final class EditorTextView: NSTextView {
+    static let fileDropNotification = Notification.Name("editorTextViewFileDrop")
+
     override var acceptsFirstResponder: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
     override var isOpaque: Bool { false }
 
     var onTextChange: ((String) -> Void)?
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        registerForDraggedTypes([.fileURL])
+    }
 
     // MARK: - Word wrap (CotEditor approach)
 
@@ -55,17 +62,33 @@ final class EditorTextView: NSTextView {
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
         if isTabTransferDrag(sender) { return [] }
+        if isFileURLDrag(sender) { return .copy }
         return super.draggingEntered(sender)
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         if isTabTransferDrag(sender) { return false }
+        if isFileURLDrag(sender) {
+            let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [
+                .urlReadingFileURLsOnly: true
+            ]) as? [URL] ?? []
+            if !urls.isEmpty {
+                NotificationCenter.default.post(name: Self.fileDropNotification, object: nil, userInfo: ["urls": urls])
+            }
+            return !urls.isEmpty
+        }
         return super.performDragOperation(sender)
     }
 
     private func isTabTransferDrag(_ sender: any NSDraggingInfo) -> Bool {
         guard let str = sender.draggingPasteboard.string(forType: .string) else { return false }
         return str.contains("\"sourcePaneId\"")
+    }
+
+    private func isFileURLDrag(_ sender: any NSDraggingInfo) -> Bool {
+        sender.draggingPasteboard.canReadObject(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true
+        ])
     }
 
     // MARK: - Typing helpers
