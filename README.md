@@ -12,6 +12,7 @@ A tiny, native macOS text editor + clipboard manager. Free forever.
 - **Clipboard manager** — 500-item history, searchable, click to copy
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
+- **No AI, no telemetry** — your data stays on your machine
 - **Menu bar app** — show or hide in menu bar
 - **Dock app** — show or hide in Dock, as you prefer
 - **Open at login** — optional auto-start
