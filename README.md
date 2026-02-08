@@ -123,23 +123,15 @@ Tests/
 ## Building
 
 ```bash
-# with Swift Package Manager
-swift build
-
-# or generate an Xcode project (requires xcodegen)
 xcodegen generate
 open itsypad.xcodeproj
 ```
 
-## Testing
-
-```bash
-swift test
-```
+Then build and run with ⌘R in Xcode. Tests run with ⌘U.
 
 ## Releasing
 
-1. Bump `CFBundleShortVersionString` and `CFBundleVersion` in `Sources/Info.plist`
+1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`
 2. Build, sign, and package the DMG:
 
 ```bash
