@@ -13,6 +13,8 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
     private let parser = Parser()
     private var currentQuery: Query?
+    private var injectionQuery: Query?
+    private static let skipCapturePrefixes: Set<String> = ["fold", "indent", "local", "injection", "none"]
     private(set) var theme: EditorTheme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
 
     private let highlightQueue = DispatchQueue(label: "Itsypad.SyntaxHighlight", qos: .userInitiated)
@@ -37,16 +39,32 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
     private func setLanguage(_ lang: String) {
         let codeLang = LanguageDetector.shared.codeLanguage(for: lang)
+        NSLog("[SyntaxHL] setLanguage(\"%@\") → codeLang.id=%@ tsLanguage=%@ queryURL=%@",
+              lang, String(describing: codeLang.id), codeLang.language == nil ? "nil" : "present",
+              codeLang.queryURL?.absoluteString ?? "nil")
         if let tsLanguage = codeLang.language {
             try? parser.setLanguage(tsLanguage)
             currentQuery = TreeSitterModel.shared.query(for: codeLang.id)
-            // Fall back to loading highlights.scm directly if the model fails
             if currentQuery == nil, let url = codeLang.queryURL {
                 currentQuery = try? Query(language: tsLanguage, url: url)
             }
         } else {
             currentQuery = nil
         }
+
+        // Prepare injection parser for markdown inline
+        injectionQuery = nil
+        if codeLang.id == .markdown {
+            let inlineLang = CodeLanguage.markdownInline
+            if let tsInline = inlineLang.language {
+                injectionQuery = TreeSitterModel.shared.query(for: inlineLang.id)
+                if injectionQuery == nil, let url = inlineLang.queryURL {
+                    injectionQuery = try? Query(language: tsInline, url: url)
+                }
+            }
+        }
+        NSLog("[SyntaxHL] setLanguage(\"%@\") → query=%@, injectionQuery=%@",
+              lang, currentQuery == nil ? "nil" : "present", injectionQuery == nil ? "nil" : "present")
         scheduleHighlightIfNeeded()
     }
 
@@ -112,27 +130,76 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let generation = highlightGeneration
         pendingHighlight?.cancel()
 
-        let parser = Parser()
-        if let lang = LanguageDetector.shared.codeLanguage(for: language).language {
-            try? parser.setLanguage(lang)
+        let blockParser = Parser()
+        let codeLang = LanguageDetector.shared.codeLanguage(for: language)
+        if let lang = codeLang.language {
+            try? blockParser.setLanguage(lang)
         }
         let query = currentQuery!
+        let inlineQuery = injectionQuery
 
         let work = DispatchWorkItem { [weak self] in
-            guard let tree = parser.parse(textSnapshot) else { return }
+            guard let tree = blockParser.parse(textSnapshot) else { return }
 
-            // Use SwiftTreeSitter's built-in highlights() — sorted less-specific first
             let cursor = query.execute(in: tree)
-            let namedRanges = cursor.highlights().filter { nr in
-                // Skip non-highlight captures from folds/indents/locals .scm files
+            let allCaptures = cursor.highlights()
+
+            // Separate highlight captures from injection captures
+            var namedRanges: [NamedRange] = []
+            var injectionRanges: [NSRange] = []
+            for nr in allCaptures {
                 let first = nr.nameComponents.first ?? ""
-                return first != "fold" && first != "indent" && first != "local"
+                if Self.skipCapturePrefixes.contains(first) {
+                    if nr.name == "injection.content" {
+                        injectionRanges.append(nr.range)
+                    }
+                    continue
+                }
+                namedRanges.append(nr)
             }
 
+            // Run inline parser on injection regions (e.g. markdown inline)
+            if let inlineQuery, let inlineLang = CodeLanguage.markdownInline.language {
+                let inlineParser = Parser()
+                try? inlineParser.setLanguage(inlineLang)
+                let nsText = textSnapshot as NSString
+
+                for region in injectionRanges {
+                    guard region.location + region.length <= nsText.length else { continue }
+                    let snippet = nsText.substring(with: region)
+                    guard let inlineTree = inlineParser.parse(snippet) else { continue }
+                    let inlineCursor = inlineQuery.execute(in: inlineTree)
+                    for nr in inlineCursor.highlights() {
+                        let first = nr.nameComponents.first ?? ""
+                        if Self.skipCapturePrefixes.contains(first) { continue }
+                        // Offset range back to document coordinates
+                        let adjusted = NSRange(location: nr.range.location + region.location, length: nr.range.length)
+                        namedRanges.append(NamedRange(name: nr.name, range: adjusted))
+                    }
+                }
+            }
+
+            NSLog("[SyntaxHL] rehighlight: captures=%d, injectionRegions=%d, names=%@",
+                  namedRanges.count, injectionRanges.count,
+                  Array(Set(namedRanges.map(\.name))).sorted().joined(separator: ", "))
+
             DispatchQueue.main.async { [weak self] in
-                guard let self, let tv = self.textView else { return }
-                guard self.highlightGeneration == generation else { return }
-                guard tv.string == textSnapshot else { return }
+                guard let self, let tv = self.textView else {
+                    NSLog("[SyntaxHL] main: self or textView nil, skipping")
+                    return
+                }
+                guard self.highlightGeneration == generation else {
+                    NSLog("[SyntaxHL] main: generation mismatch (current=%d, expected=%d), skipping",
+                          self.highlightGeneration, generation)
+                    return
+                }
+                guard tv.string == textSnapshot else {
+                    NSLog("[SyntaxHL] main: text changed since parse, skipping")
+                    return
+                }
+
+                NSLog("[SyntaxHL] main: applying %d captures to text of length %d",
+                      namedRanges.count, (tv.string as NSString).length)
 
                 let fullRange = NSRange(location: 0, length: (tv.string as NSString).length)
                 let sel = tv.selectedRange()

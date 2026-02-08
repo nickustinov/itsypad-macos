@@ -1,3 +1,4 @@
+import Bonsplit
 import Cocoa
 import SwiftUI
 
@@ -19,7 +20,7 @@ private extension NSToolbarItem.Identifier {
     static let openFile = NSToolbarItem.Identifier("openFile")
     static let saveFile = NSToolbarItem.Identifier("saveFile")
     static let findReplace = NSToolbarItem.Identifier("findReplace")
-    static let wordWrap = NSToolbarItem.Identifier("wordWrap")
+    static let tabSwitcher = NSToolbarItem.Identifier("tabSwitcher")
 }
 
 @MainActor
@@ -294,14 +295,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .wordWrap, .findReplace]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .findReplace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .space, .wordWrap, .findReplace]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .space, .tabSwitcher, .findReplace]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        switch itemIdentifier {
+        case .tabSwitcher:
+            let menuItem = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
+            menuItem.image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Tabs")
+            menuItem.label = "Tabs"
+            menuItem.toolTip = "Switch tab"
+            menuItem.showsIndicator = true
+            menuItem.menu = buildTabSwitcherMenu()
+            return menuItem
+        default:
+            break
+        }
+
         let item = NSToolbarItem(itemIdentifier: itemIdentifier)
 
         switch itemIdentifier {
@@ -329,12 +343,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             item.toolTip = "Find and replace (⌘F)"
             item.target = self
             item.action = #selector(toggleFindAction)
-        case .wordWrap:
-            item.image = NSImage(systemSymbolName: "text.word.spacing", accessibilityDescription: "Word wrap")
-            item.label = "Word wrap"
-            item.toolTip = "Toggle word wrap"
-            item.target = self
-            item.action = #selector(toggleWordWrap)
         default:
             return nil
         }
@@ -585,15 +593,45 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         SettingsStore.shared.wordWrap.toggle()
     }
 
+    private func buildTabSwitcherMenu() -> NSMenu {
+        let menu = NSMenu()
+        menu.delegate = self
+        return menu
+    }
+
+    private func updateTabSwitcherMenu(_ menu: NSMenu) {
+        menu.removeAllItems()
+        guard let coordinator = editorCoordinator else { return }
+        for entry in coordinator.tabListForMenu() {
+            let item = NSMenuItem(title: entry.title, action: #selector(switchToTab(_:)), keyEquivalent: "")
+            item.target = self
+            item.representedObject = entry.tabID
+            item.state = entry.isSelected ? .on : .off
+            menu.addItem(item)
+        }
+    }
+
+    @objc private func switchToTab(_ sender: NSMenuItem) {
+        guard let tabID = sender.representedObject as? TabID else { return }
+        editorCoordinator?.controller.selectTab(tabID)
+    }
+
     @objc private func toggleFindAction() {
         let item = NSMenuItem()
         item.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
         editorCoordinator?.activeTextView()?.performFindPanelAction(item)
     }
 
-    // MARK: - NSMenuDelegate (open recent)
+    // MARK: - NSMenuDelegate
 
     func menuNeedsUpdate(_ menu: NSMenu) {
+        // Tab switcher menu — rebuild dynamically each time it opens
+        if let toolbarItem = editorWindow?.toolbar?.items.first(where: { $0.itemIdentifier == .tabSwitcher }) as? NSMenuToolbarItem,
+           menu === toolbarItem.menu {
+            updateTabSwitcherMenu(menu)
+            return
+        }
+
         guard menu === recentFilesMenu else { return }
         menu.removeAllItems()
 
@@ -606,7 +644,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         }
 
         for url in recentURLs {
-            let item = NSMenuItem(title: url.lastPathComponent, action: #selector(openRecentFile(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: url.path, action: #selector(openRecentFile(_:)), keyEquivalent: "")
             item.target = self
             item.toolTip = url.path
             item.representedObject = url

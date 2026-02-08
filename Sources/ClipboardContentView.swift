@@ -12,11 +12,13 @@ private class ClipboardCardView: NSView {
     private let previewLabel = NSTextField(wrappingLabelWithString: "")
     private let imageView = NSImageView()
     private let timestampLabel = NSTextField(labelWithString: "")
+    private let deleteButton = NSButton()
     private let copiedBadge = NSTextField(labelWithString: "Copied")
     private var trackingArea: NSTrackingArea?
-    private var isHovered = false { didSet { updateBackground() } }
+    private var isHovered = false { didSet { updateBackground(); deleteButton.isHidden = !isHovered } }
     private var entry: ClipboardEntry?
     private var copiedFlashWork: DispatchWorkItem?
+    var onDelete: ((UUID) -> Void)?
 
     var themeBackground: NSColor = .windowBackgroundColor { didSet { updateBackground() } }
     var isDark: Bool = false { didSet { updateAppearance() } }
@@ -51,6 +53,17 @@ private class ClipboardCardView: NSView {
         timestampLabel.font = NSFont.systemFont(ofSize: 10)
         timestampLabel.textColor = .secondaryLabelColor
         timestampLabel.isSelectable = false
+        timestampLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+        deleteButton.bezelStyle = .inline
+        deleteButton.isBordered = false
+        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
+        deleteButton.imagePosition = .imageOnly
+        deleteButton.target = self
+        deleteButton.action = #selector(deleteClicked)
+        deleteButton.isHidden = true
+        deleteButton.contentTintColor = .secondaryLabelColor
 
         copiedBadge.translatesAutoresizingMaskIntoConstraints = false
         copiedBadge.font = NSFont.systemFont(ofSize: 10, weight: .medium)
@@ -61,12 +74,14 @@ private class ClipboardCardView: NSView {
         addSubview(imageView)
         addSubview(previewLabel)
         addSubview(timestampLabel)
+        addSubview(deleteButton)
         addSubview(copiedBadge)
 
         NSLayoutConstraint.activate([
             previewLabel.topAnchor.constraint(equalTo: topAnchor, constant: 8),
             previewLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             previewLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            previewLabel.bottomAnchor.constraint(lessThanOrEqualTo: timestampLabel.topAnchor, constant: -4),
 
             imageView.topAnchor.constraint(equalTo: topAnchor, constant: 4),
             imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
@@ -74,12 +89,22 @@ private class ClipboardCardView: NSView {
             imageView.bottomAnchor.constraint(equalTo: timestampLabel.topAnchor, constant: -2),
 
             timestampLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
-            timestampLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
             timestampLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+
+            deleteButton.leadingAnchor.constraint(greaterThanOrEqualTo: timestampLabel.trailingAnchor, constant: 4),
+            deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            deleteButton.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
+            deleteButton.widthAnchor.constraint(equalToConstant: 16),
+            deleteButton.heightAnchor.constraint(equalToConstant: 16),
 
             copiedBadge.topAnchor.constraint(equalTo: topAnchor, constant: 6),
             copiedBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
         ])
+    }
+
+    @objc private func deleteClicked() {
+        guard let entry else { return }
+        onDelete?(entry.id)
     }
 
     func configure(with entry: ClipboardEntry, searchQuery: String = "") {
@@ -164,6 +189,7 @@ private class ClipboardCardView: NSView {
     func resetState() {
         copiedFlashWork?.cancel()
         copiedBadge.isHidden = true
+        deleteButton.isHidden = true
         isHovered = false
         imageView.image = nil
         imageView.isHidden = true
@@ -400,6 +426,10 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         if let cardItem = item as? ClipboardCardItem {
             cardItem.cardView?.themeBackground = themeBackground
             cardItem.cardView?.isDark = isDark
+            cardItem.cardView?.onDelete = { [weak self] id in
+                ClipboardStore.shared.deleteEntry(id: id)
+                self?.reloadEntries()
+            }
             cardItem.cardView?.configure(with: filteredEntries[indexPath.item], searchQuery: currentSearchQuery)
         }
         return item

@@ -11,11 +11,11 @@ Itsypad is a native Swift/AppKit app — no Electron, no web views, no bloat. If
 ## Features
 
 - **Menu bar app** — toggle with a hotkey
-- **Clipboard manager** — pinned to the right side of the tab bar, always accessible via global hotkey
+- **Clipboard manager** — supports textual content only, always accessible via global hotkey
 - **Monokai-inspired theme** — dark and light variants, controls editor background, tab bar, and window chrome
 - **Global hotkeys** — configurable shortcuts including triple-tap modifier keys (e.g. triple-tap Left Option). Distinguishes left and right modifier keys
 
-### Editor
+## Editor
 - **Multi-tab** — work on multiple files/notes at once, drag to reorder
 - **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts. Never lose your work

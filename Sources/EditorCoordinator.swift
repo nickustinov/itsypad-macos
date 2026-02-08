@@ -19,6 +19,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var editorStates: [TabID: EditorState] = [:]
     private(set) var clipboardTabID: TabID?
     private var isRemovingClipboardTab = false
+    private var isClosingConfirmedTab = false
 
     private var previousBonsplitTabID: TabID?
     private var settingsObserver: Any?
@@ -345,7 +346,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         if !confirmCloseTab(tab) { return }
 
         saveCursorForSelectedTab()
+        isClosingConfirmedTab = true
         _ = controller.closeTab(selectedTab.id)
+        isClosingConfirmedTab = false
     }
 
     @MainActor
@@ -373,6 +376,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     ) -> Bool {
         // Never close clipboard tab (unless programmatically removing it)
         if tab.id == clipboardTabID { return isRemovingClipboardTab }
+
+        if isClosingConfirmedTab { return true }
 
         guard let tabStoreID = reverseMap[tab.id],
               let tabData = tabStore.tabs.first(where: { $0.id == tabStoreID }) else {
@@ -470,6 +475,20 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         })
 
         return items
+    }
+
+    // MARK: - Tab list for menu
+
+    @MainActor
+    func tabListForMenu() -> [(tabID: TabID, title: String, isSelected: Bool)] {
+        guard let focusedPaneId = controller.focusedPaneId else { return [] }
+        let selectedTab = controller.selectedTab(inPane: focusedPaneId)
+
+        return controller.allTabIds.compactMap { tabID in
+            guard let tab = controller.tab(tabID) else { return nil }
+            let title = tabID == clipboardTabID ? "Clipboard" : tab.title
+            return (tabID: tabID, title: title, isSelected: tabID == selectedTab?.id)
+        }
     }
 
     // MARK: - Private helpers
