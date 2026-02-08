@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml/badge.svg)](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml)
 
-A tiny, native macOS text editor + clipboard manager.
+A tiny, native macOS text editor + clipboard manager. Free forever.
 
 ![Itsypad screenshot](itsypad-screenshot-v2.png)
 
