@@ -6,6 +6,10 @@ private class EditorPanel: NSPanel {
         get { false }
         set { }
     }
+    override var canHide: Bool {
+        get { false }
+        set { }
+    }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
@@ -13,6 +17,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var editorWindow: NSPanel?
     private var editorViewController: EditorViewController?
     private var settingsWindow: NSWindow?
+    private var windowWasVisible = false
+    private var workspaceObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Prevent dock icon
@@ -27,6 +33,44 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         // Start clipboard monitoring
         ClipboardStore.shared.startMonitoring()
+
+        // Track window visibility and re-show after other apps quit
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidBecomeVisible),
+            name: NSWindow.didBecomeKeyNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(windowDidOrderOut),
+            name: NSWindow.didResignKeyNotification,
+            object: nil
+        )
+        workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didTerminateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.restoreWindowIfNeeded()
+        }
+    }
+
+    @objc private func windowDidBecomeVisible(_ note: Notification) {
+        if (note.object as? NSWindow) === editorWindow {
+            windowWasVisible = true
+        }
+    }
+
+    @objc private func windowDidOrderOut(_ note: Notification) {
+        // Only clear the flag if WE intentionally hid it (via toggleWindow)
+        // Don't clear on resign-key — that happens when another app activates
+    }
+
+    private func restoreWindowIfNeeded() {
+        guard windowWasVisible, let window = editorWindow else { return }
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -138,8 +182,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         guard let window = editorWindow else { return }
 
         if window.isKeyWindow {
+            windowWasVisible = false
             window.orderOut(nil)
         } else {
+            windowWasVisible = true
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
