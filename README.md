@@ -13,8 +13,8 @@ A tiny, native macOS text editor + clipboard manager. Free forever.
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **No AI, no telemetry** — your data stays on your machine
-- **Menu bar app** — show or hide in menu bar
-- **Dock app** — show or hide in Dock, as you prefer
+- **Menu bar icon** — show or hide in menu bar
+- **Dock icon** — show or hide in Dock, as you prefer
 - **Open at login** — optional auto-start
 - **iCloud sync** — sync scratch tabs across Macs via iCloud
 
