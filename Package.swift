@@ -5,12 +5,14 @@ let package = Package(
     name: "itsypad",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/raspu/Highlightr.git", from: "2.2.1")
+        .package(url: "https://github.com/CodeEditApp/CodeEditLanguages", from: "0.1.20"),
     ],
     targets: [
         .executableTarget(
             name: "itsypad",
-            dependencies: ["Highlightr"],
+            dependencies: [
+                .product(name: "CodeEditLanguages", package: "CodeEditLanguages"),
+            ],
             path: "Sources",
             exclude: ["Info.plist", "itsypad.entitlements"],
             resources: [.process("Resources")],

@@ -13,9 +13,9 @@ settings:
     CODE_SIGN_IDENTITY: "Apple Development"
 
 packages:
-  Highlightr:
-    url: https://github.com/raspu/Highlightr.git
-    from: "2.2.1"
+  CodeEditLanguages:
+    url: https://github.com/CodeEditApp/CodeEditLanguages
+    from: "0.1.20"
 
 targets:
   itsypad:
@@ -27,7 +27,8 @@ targets:
           - Info.plist
           - itsypad.entitlements
     dependencies:
-      - package: Highlightr
+      - package: CodeEditLanguages
+        product: CodeEditLanguages
     info:
       path: Sources/Info.plist
       properties:

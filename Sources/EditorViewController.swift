@@ -471,7 +471,6 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
         }
 
         highlightCoordinator.language = tab.language
-        highlightCoordinator.setTheme(to: SettingsStore.shared.highlightTheme)
         highlightCoordinator.font = SettingsStore.shared.editorFont
         highlightCoordinator.scheduleHighlightIfNeeded()
         applyThemeColors()
@@ -506,8 +505,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
         highlightCoordinator.font = settings.editorFont
 
         // Theme
-        highlightCoordinator.setTheme(to: settings.highlightTheme)
-        highlightCoordinator.rehighlight()
+        highlightCoordinator.updateTheme()
         applyThemeColors()
 
         // Line numbers
@@ -515,13 +513,9 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
     }
 
     private func applyThemeColors() {
-        guard let bg = highlightCoordinator.themeBackgroundColor else { return }
-
-        // Compute luminance first — used for all theme-dependent styling
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0
-        (bg.usingColorSpace(.sRGB) ?? bg).getRed(&r, green: &g, blue: &b, alpha: nil)
-        let luminance = 0.299 * r + 0.587 * g + 0.114 * b
-        let isDark = luminance < 0.5
+        let theme = highlightCoordinator.theme
+        let bg = theme.background
+        let isDark = theme.isDark
 
         // Editor background
         editorTextView.backgroundColor = bg

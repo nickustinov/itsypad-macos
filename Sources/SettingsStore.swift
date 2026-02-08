@@ -56,10 +56,10 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var highlightTheme: String = "humanoid-dark" {
+    @Published var appearanceOverride: String = "system" {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(highlightTheme, forKey: "highlightTheme")
+            UserDefaults.standard.set(appearanceOverride, forKey: "appearanceOverride")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -104,8 +104,6 @@ class SettingsStore: ObservableObject {
             ?? NSFont.monospacedSystemFont(ofSize: CGFloat(editorFontSize), weight: .regular)
     }
 
-    @Published var availableThemes: [String] = []
-
     static let availableFonts: [(name: String, displayName: String)] = {
         var fonts: [(String, String)] = [("System Mono", "System mono")]
         let monoFamilies = NSFontManager.shared.availableFontFamilies.filter { family in
@@ -136,7 +134,7 @@ class SettingsStore: ObservableObject {
         editorFontName = UserDefaults.standard.string(forKey: "editorFontName") ?? "System Mono"
         let savedSize = UserDefaults.standard.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
-        highlightTheme = UserDefaults.standard.string(forKey: "highlightTheme") ?? "humanoid-dark"
+        appearanceOverride = UserDefaults.standard.string(forKey: "appearanceOverride") ?? "system"
         showLineNumbers = UserDefaults.standard.bool(forKey: "showLineNumbers")
         highlightCurrentLine = UserDefaults.standard.bool(forKey: "highlightCurrentLine")
         indentUsingSpaces = UserDefaults.standard.object(forKey: "indentUsingSpaces") as? Bool ?? true

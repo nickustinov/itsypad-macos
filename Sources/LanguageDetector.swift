@@ -1,3 +1,4 @@
+import CodeEditLanguages
 import Foundation
 
 struct LanguageDetector {
@@ -40,6 +41,7 @@ struct LanguageDetector {
         "m": "objective-c",
         "mm": "objective-c",
         "ps1": "powershell",
+        "txt": "plain",
     ]
 
     static let allLanguages: [String] = [
@@ -135,6 +137,9 @@ struct LanguageDetector {
 
         // Go
         if t.contains("package ") && t.contains("func ") { bump("go", 15) }
+        if t.contains(":=") { bump("go", 10) }
+        if t.contains("fmt.") { bump("go", 8) }
+        if t.contains("make(") { bump("go", 5) }
 
         // Ruby
         if t.contains("\ndef ") && t.contains("\nend") { bump("ruby", 12) }
@@ -152,5 +157,23 @@ struct LanguageDetector {
         let parts = name.split(separator: ".")
         guard parts.count > 1, let ext = parts.last else { return nil }
         return extensionMap[String(ext).lowercased()]
+    }
+
+    // MARK: - Tree-sitter language mapping
+
+    private static let codeLanguageMap: [String: CodeLanguage] = [
+        "swift": .swift, "python": .python, "javascript": .javascript,
+        "typescript": .typescript, "html": .html, "css": .css,
+        "c": .c, "cpp": .cpp, "csharp": .cSharp,
+        "json": .json, "markdown": .markdown, "bash": .bash,
+        "zsh": .bash, "java": .java, "kotlin": .kotlin,
+        "go": .go, "ruby": .ruby, "rust": .rust,
+        "sql": .sql, "xml": .html, "yaml": .yaml,
+        "toml": .toml, "objective-c": .objc, "powershell": .default,
+        "plain": .markdown,
+    ]
+
+    func codeLanguage(for lang: String) -> CodeLanguage {
+        Self.codeLanguageMap[lang] ?? .default
     }
 }

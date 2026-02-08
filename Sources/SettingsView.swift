@@ -143,10 +143,10 @@ struct AppearanceSettingsView: View {
     var body: some View {
         Form {
             Section("Theme") {
-                Picker("Color theme", selection: $store.highlightTheme) {
-                    ForEach(store.availableThemes, id: \.self) { theme in
-                        Text(theme).tag(theme)
-                    }
+                Picker("Appearance", selection: $store.appearanceOverride) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
                 }
             }
 
