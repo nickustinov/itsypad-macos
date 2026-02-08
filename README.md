@@ -8,10 +8,11 @@ A tiny, native macOS text editor + clipboard manager.
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace
 - **Clipboard manager** — text history, searchable, click to copy
-- **Menu bar app** — show or hide in menu bar, toggle via global hotkey
+- **Global hotkeys** — tap left ⌥ three times to show/hide, or define own hotkey
+- **Lightweight** — nearly zero CPU and memory usage
+- **Menu bar app** — show or hide in menu bar
 - **Dock app** — show or hide in Dock, as you prefer
 - **Open at login** — optional auto-start
-- **Lightweight** — nearly zero CPU and memory usage
 
 ### Editor
 - **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder
