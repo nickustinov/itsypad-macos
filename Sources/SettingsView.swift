@@ -132,23 +132,6 @@ struct EditorSettingsView: View {
                 }
             }
 
-            Section("Font") {
-                Picker("Font", selection: $store.editorFontName) {
-                    ForEach(SettingsStore.availableFonts, id: \.name) { font in
-                        Text(font.displayName).tag(font.name)
-                    }
-                }
-
-                HStack {
-                    Text("Size")
-                    Spacer()
-                    TextField("", value: $store.editorFontSize, format: .number)
-                        .frame(width: 50)
-                        .textFieldStyle(.roundedBorder)
-                    Stepper("", value: $store.editorFontSize, in: 8...36, step: 1)
-                        .labelsHidden()
-                }
-            }
         }
         .formStyle(.grouped)
     }
@@ -164,6 +147,24 @@ struct AppearanceSettingsView: View {
                     ForEach(store.availableThemes, id: \.self) { theme in
                         Text(theme).tag(theme)
                     }
+                }
+            }
+
+            Section("Font") {
+                Picker("Font", selection: $store.editorFontName) {
+                    ForEach(SettingsStore.availableFonts, id: \.name) { font in
+                        Text(font.displayName).tag(font.name)
+                    }
+                }
+
+                HStack {
+                    Text("Size")
+                    Spacer()
+                    TextField("", value: $store.editorFontSize, format: .number)
+                        .frame(width: 50)
+                        .textFieldStyle(.roundedBorder)
+                    Stepper("", value: $store.editorFontSize, in: 8...36, step: 1)
+                        .labelsHidden()
                 }
             }
         }

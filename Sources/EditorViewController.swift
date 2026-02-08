@@ -52,6 +52,11 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
     private var lineNumberGutter: LineNumberGutterView!
     private var gutterWidthConstraint: NSLayoutConstraint!
 
+    private var clipboardContentView: ClipboardContentView!
+    private var clipboardTabContainer: HoverView!
+    private var tabBarSeparator: NSBox!
+    private var isClipboardTabActive = false
+
     private var tabStoreObserver: Any?
     private var settingsObserver: Any?
 
@@ -178,10 +183,65 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
         doubleClick.numberOfClicksRequired = 2
         tabBarView.addGestureRecognizer(doubleClick)
 
-        tabBarView.addSubview(tabBarScrollView)
+        // Separator between document tabs and clipboard tab
+        tabBarSeparator = NSBox()
+        tabBarSeparator.boxType = .separator
+        tabBarSeparator.translatesAutoresizingMaskIntoConstraints = false
+
+        // Clipboard tab (pinned, right-aligned)
+        clipboardTabContainer = HoverView()
+        clipboardTabContainer.translatesAutoresizingMaskIntoConstraints = false
+        clipboardTabContainer.wantsLayer = true
+        clipboardTabContainer.layer?.cornerRadius = 4
+
+        let clipboardIcon = NSImageView()
+        clipboardIcon.translatesAutoresizingMaskIntoConstraints = false
+        clipboardIcon.image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Clipboard")
+        clipboardIcon.contentTintColor = .secondaryLabelColor
+        clipboardIcon.imageScaling = .scaleProportionallyUpOrDown
+
+        let clipboardLabel = NSButton(title: "Clipboard", target: self, action: #selector(clipboardTabClicked))
+        clipboardLabel.translatesAutoresizingMaskIntoConstraints = false
+        clipboardLabel.bezelStyle = .accessoryBarAction
+        clipboardLabel.isBordered = false
+        clipboardLabel.font = NSFont.systemFont(ofSize: 11)
+        clipboardLabel.contentTintColor = .secondaryLabelColor
+        clipboardLabel.identifier = NSUserInterfaceItemIdentifier("clipboardTab")
+
+        clipboardTabContainer.addSubview(clipboardIcon)
+        clipboardTabContainer.addSubview(clipboardLabel)
+
         NSLayoutConstraint.activate([
+            clipboardIcon.leadingAnchor.constraint(equalTo: clipboardTabContainer.leadingAnchor, constant: 6),
+            clipboardIcon.centerYAnchor.constraint(equalTo: clipboardTabContainer.centerYAnchor),
+            clipboardIcon.widthAnchor.constraint(equalToConstant: 14),
+            clipboardIcon.heightAnchor.constraint(equalToConstant: 14),
+
+            clipboardLabel.leadingAnchor.constraint(equalTo: clipboardIcon.trailingAnchor, constant: 2),
+            clipboardLabel.centerYAnchor.constraint(equalTo: clipboardTabContainer.centerYAnchor),
+            clipboardLabel.trailingAnchor.constraint(equalTo: clipboardTabContainer.trailingAnchor, constant: -6),
+
+            clipboardTabContainer.heightAnchor.constraint(equalToConstant: 24),
+        ])
+
+        tabBarView.addSubview(tabBarScrollView)
+        tabBarView.addSubview(tabBarSeparator)
+        tabBarView.addSubview(clipboardTabContainer)
+
+        NSLayoutConstraint.activate([
+            // Clipboard tab (trailing)
+            clipboardTabContainer.trailingAnchor.constraint(equalTo: tabBarView.trailingAnchor, constant: -6),
+            clipboardTabContainer.centerYAnchor.constraint(equalTo: tabBarView.centerYAnchor),
+
+            // Separator
+            tabBarSeparator.trailingAnchor.constraint(equalTo: clipboardTabContainer.leadingAnchor, constant: -4),
+            tabBarSeparator.topAnchor.constraint(equalTo: tabBarView.topAnchor, constant: 4),
+            tabBarSeparator.bottomAnchor.constraint(equalTo: tabBarView.bottomAnchor, constant: -4),
+            tabBarSeparator.widthAnchor.constraint(equalToConstant: 1),
+
+            // Scroll view (leading → separator)
             tabBarScrollView.leadingAnchor.constraint(equalTo: tabBarView.leadingAnchor),
-            tabBarScrollView.trailingAnchor.constraint(equalTo: tabBarView.trailingAnchor),
+            tabBarScrollView.trailingAnchor.constraint(equalTo: tabBarSeparator.leadingAnchor, constant: -2),
             tabBarScrollView.topAnchor.constraint(equalTo: tabBarView.topAnchor),
             tabBarScrollView.bottomAnchor.constraint(equalTo: tabBarView.bottomAnchor),
         ])
@@ -250,8 +310,14 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
     }
 
     private func layoutViews() {
+        // Clipboard content view (same position as editor, toggled via isHidden)
+        clipboardContentView = ClipboardContentView(frame: .zero)
+        clipboardContentView.translatesAutoresizingMaskIntoConstraints = false
+        clipboardContentView.isHidden = true
+
         view.addSubview(editorScrollView)
         view.addSubview(lineNumberGutter)
+        view.addSubview(clipboardContentView)
         view.addSubview(tabBarView) // On top
 
         let tabBarHeight: CGFloat = 28
@@ -276,6 +342,12 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             editorScrollView.leadingAnchor.constraint(equalTo: lineNumberGutter.trailingAnchor),
             editorScrollView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             editorScrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+
+            // Clipboard content view (same area as editor)
+            clipboardContentView.topAnchor.constraint(equalTo: tabBarView.bottomAnchor),
+            clipboardContentView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            clipboardContentView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            clipboardContentView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
 
         lineNumberGutter.isHidden = !showGutter
@@ -309,6 +381,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             tabBarStackView.addArrangedSubview(tabButton)
         }
 
+        updateClipboardTabAppearance()
         refreshTabSwitcher()
     }
 
@@ -318,7 +391,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             guard index < subviews.count else { break }
             let container = subviews[index]
             guard let button = container.subviews.first(where: { $0 is NSButton && $0.identifier?.rawValue == tab.id.uuidString }) as? NSButton else { continue }
-            let isSelected = tab.id == tabStore.selectedTabID
+            let isSelected = tab.id == tabStore.selectedTabID && !isClipboardTabActive
             button.title = tab.name
             button.contentTintColor = isSelected ? .labelColor : .secondaryLabelColor
             if let dot = container.subviews.first(where: { $0.tag == Self.dirtyIndicatorTag }) {
@@ -329,6 +402,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             }
         }
 
+        updateClipboardTabAppearance()
         refreshTabSwitcher()
     }
 
@@ -470,12 +544,17 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
         lineNumberGutter.lineColor = isDark ? NSColor.white.withAlphaComponent(0.3) : NSColor.black.withAlphaComponent(0.3)
         lineNumberGutter.lineFont = NSFont.monospacedSystemFont(ofSize: SettingsStore.shared.editorFont.pointSize * 0.85, weight: .regular)
         lineNumberGutter.needsDisplay = true
+
+        // Clipboard content view
+        clipboardContentView.themeBackground = bg
+        clipboardContentView.isDark = isDark
     }
 
     // MARK: - Actions
 
     @objc func newTab() {
         saveCursorPosition()
+        if isClipboardTabActive { showEditor() }
         tabStore.addNewTab()
         refreshTabs()
         loadSelectedTab()
@@ -483,27 +562,59 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
     }
 
     @objc func selectNextTab() {
-        guard tabStore.tabs.count > 1, let idx = tabStore.selectedTabIndex else { return }
         saveCursorPosition()
-        let next = (idx + 1) % tabStore.tabs.count
-        tabStore.selectedTabID = tabStore.tabs[next].id
-        refreshTabs()
-        loadSelectedTab()
-        editorTextView.window?.makeFirstResponder(editorTextView)
+        // Cycle: doc tabs → clipboard → back to first doc tab
+        let count = tabStore.tabs.count
+        if isClipboardTabActive {
+            // Clipboard is last; wrap to first doc tab
+            if count > 0 {
+                showEditor()
+                tabStore.selectedTabID = tabStore.tabs[0].id
+                refreshTabs()
+                loadSelectedTab()
+                editorTextView.window?.makeFirstResponder(editorTextView)
+            }
+        } else if let idx = tabStore.selectedTabIndex {
+            if idx + 1 < count {
+                tabStore.selectedTabID = tabStore.tabs[idx + 1].id
+                refreshTabs()
+                loadSelectedTab()
+                editorTextView.window?.makeFirstResponder(editorTextView)
+            } else {
+                // Past last doc tab → clipboard
+                showClipboard()
+            }
+        }
     }
 
     @objc func selectPreviousTab() {
-        guard tabStore.tabs.count > 1, let idx = tabStore.selectedTabIndex else { return }
         saveCursorPosition()
-        let prev = (idx - 1 + tabStore.tabs.count) % tabStore.tabs.count
-        tabStore.selectedTabID = tabStore.tabs[prev].id
-        refreshTabs()
-        loadSelectedTab()
-        editorTextView.window?.makeFirstResponder(editorTextView)
+        let count = tabStore.tabs.count
+        if isClipboardTabActive {
+            // Go to last doc tab
+            if count > 0 {
+                showEditor()
+                tabStore.selectedTabID = tabStore.tabs[count - 1].id
+                refreshTabs()
+                loadSelectedTab()
+                editorTextView.window?.makeFirstResponder(editorTextView)
+            }
+        } else if let idx = tabStore.selectedTabIndex {
+            if idx > 0 {
+                tabStore.selectedTabID = tabStore.tabs[idx - 1].id
+                refreshTabs()
+                loadSelectedTab()
+                editorTextView.window?.makeFirstResponder(editorTextView)
+            } else {
+                // Before first doc tab → clipboard
+                showClipboard()
+            }
+        }
     }
 
     @objc func openFile() {
         saveCursorPosition()
+        if isClipboardTabActive { showEditor() }
         tabStore.openFile()
         refreshTabs()
         loadSelectedTab()
@@ -534,6 +645,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
     @objc private func tabSwitcherChanged() {
         guard let id = tabSwitcherPopUp?.selectedItem?.representedObject as? UUID else { return }
         saveCursorPosition()
+        if isClipboardTabActive { showEditor() }
         tabStore.selectedTabID = id
         refreshTabs()
         loadSelectedTab()
@@ -544,6 +656,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
         guard let idString = sender.identifier?.rawValue,
               let id = UUID(uuidString: idString) else { return }
         saveCursorPosition()
+        if isClipboardTabActive { showEditor() }
         tabStore.selectedTabID = id
         refreshTabs()
         loadSelectedTab()
@@ -567,6 +680,39 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             if subview.frame.contains(location) { return }
         }
         newTab()
+    }
+
+    @objc private func clipboardTabClicked() {
+        if isClipboardTabActive { return }
+        saveCursorPosition()
+        showClipboard()
+    }
+
+    private func showClipboard() {
+        isClipboardTabActive = true
+        editorScrollView.isHidden = true
+        lineNumberGutter.isHidden = true
+        clipboardContentView.isHidden = false
+        clipboardContentView.reloadEntries()
+        refreshTabTitles()
+    }
+
+    private func showEditor() {
+        isClipboardTabActive = false
+        clipboardContentView.isHidden = true
+        editorScrollView.isHidden = false
+        lineNumberGutter.isHidden = !SettingsStore.shared.showLineNumbers
+        refreshTabTitles()
+    }
+
+    private func updateClipboardTabAppearance() {
+        clipboardTabContainer.isSelected = isClipboardTabActive
+        if let icon = clipboardTabContainer.subviews.first(where: { $0 is NSImageView }) as? NSImageView {
+            icon.contentTintColor = isClipboardTabActive ? .labelColor : .secondaryLabelColor
+        }
+        if let label = clipboardTabContainer.subviews.first(where: { $0.identifier?.rawValue == "clipboardTab" }) as? NSButton {
+            label.contentTintColor = isClipboardTabActive ? .labelColor : .secondaryLabelColor
+        }
     }
 
     /// Returns true if safe to close, false if cancelled.

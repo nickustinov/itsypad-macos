@@ -99,10 +99,11 @@ final class EditorTextView: NSTextView {
     // MARK: - Block indent / unindent
 
     override func insertBacktab(_ sender: Any?) {
-        if selectedRange().length > 0 {
+        let sel = selectedRange()
+        if sel.length > 0 {
             unindentSelectedLines()
         } else {
-            unindentSelectedLines()
+            unindentCurrentLine()
         }
     }
 
@@ -129,6 +130,31 @@ final class EditorTextView: NSTextView {
             textStorage?.replaceCharacters(in: lineRange, with: newText)
             didChangeText()
             setSelectedRange(NSRange(location: lineRange.location, length: newText.count))
+        }
+    }
+
+    private func unindentCurrentLine() {
+        let store = SettingsStore.shared
+        let width = store.tabWidth
+        let ns = string as NSString
+        let sel = selectedRange()
+        let lineRange = ns.lineRange(for: NSRange(location: sel.location, length: 0))
+        let line = ns.substring(with: lineRange)
+
+        let toRemove: Int
+        if line.hasPrefix("\t") {
+            toRemove = 1
+        } else {
+            let spaces = line.prefix { $0 == " " }
+            toRemove = min(spaces.count, width)
+        }
+        guard toRemove > 0 else { return }
+
+        let removeRange = NSRange(location: lineRange.location, length: toRemove)
+        if shouldChangeText(in: removeRange, replacementString: "") {
+            textStorage?.replaceCharacters(in: removeRange, with: "")
+            didChangeText()
+            setSelectedRange(NSRange(location: max(lineRange.location, sel.location - toRemove), length: 0))
         }
     }
 

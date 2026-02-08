@@ -1,6 +1,13 @@
 import Cocoa
 import SwiftUI
 
+private class EditorPanel: NSPanel {
+    override var hidesOnDeactivate: Bool {
+        get { false }
+        set { }
+    }
+}
+
 class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var statusItem: NSStatusItem!
     private var editorWindow: NSPanel?
@@ -17,9 +24,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
 
         // Register hotkey
         HotkeyManager.shared.register()
+
+        // Start clipboard monitoring
+        ClipboardStore.shared.startMonitoring()
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        ClipboardStore.shared.stopMonitoring()
         TabStore.shared.saveSession()
     }
 
@@ -98,7 +109,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             editorViewController = EditorViewController()
         }
 
-        let panel = NSPanel(
+        let panel = EditorPanel(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
@@ -107,7 +118,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         panel.title = ""
         panel.titleVisibility = .hidden
         panel.isFloatingPanel = false
-        panel.hidesOnDeactivate = false
         panel.level = .normal
         panel.collectionBehavior = [.fullScreenAuxiliary]
         panel.minSize = NSSize(width: 320, height: 400)
