@@ -115,6 +115,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         NSApp.activate(ignoringOtherApps: true)
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        guard let window = editorWindow else { return false }
+        windowWasVisible = true
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        updateDockVisibility()
+        return false
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         ClipboardStore.shared.stopMonitoring()
         editorCoordinator?.saveActiveTabCursor()

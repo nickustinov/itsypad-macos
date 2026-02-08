@@ -48,6 +48,7 @@ targets:
         MARKETING_VERSION: "1.0.0"
         CURRENT_PROJECT_VERSION: "100"
         CODE_SIGN_ENTITLEMENTS: Sources/itsypad.entitlements
+        CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: true
         SWIFT_VERSION: "5.9"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
