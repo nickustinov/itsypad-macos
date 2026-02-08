@@ -13,6 +13,7 @@ struct EditorState {
 final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     let controller: BonsplitController
     private let tabStore = TabStore.shared
+    private let fileWatcher = FileWatcher()
 
     private var tabIDMap: [UUID: TabID] = [:]
     private var reverseMap: [TabID: UUID] = [:]
@@ -73,6 +74,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     deinit {
+        fileWatcher.stopAll()
         if let observer = settingsObserver {
             NotificationCenter.default.removeObserver(observer)
         }
@@ -148,6 +150,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         applyThemeToEditor(textView: textView, gutter: gutter, theme: highlighter.theme)
         highlighter.applyWrapIndent(to: textView, font: settings.editorFont)
         highlighter.scheduleHighlightIfNeeded()
+
+        if let fileURL = tab.fileURL {
+            startWatching(url: fileURL, tabID: tab.id)
+        }
 
         return EditorState(
             textView: textView,
@@ -331,10 +337,14 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     @MainActor
     func saveFileAs() {
         guard let selectedTabStoreID = selectedTabStoreID() else { return }
+        let hadFile = tabStore.tabs.first(where: { $0.id == selectedTabStoreID })?.fileURL != nil
         tabStore.saveFileAs(id: selectedTabStoreID)
         if let bonsplitID = tabIDMap[selectedTabStoreID],
            let tab = tabStore.tabs.first(where: { $0.id == selectedTabStoreID }) {
             controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
+            if !hadFile, let fileURL = tab.fileURL {
+                startWatching(url: fileURL, tabID: selectedTabStoreID)
+            }
         }
     }
 
@@ -429,6 +439,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         fromPane pane: PaneID
     ) {
         guard let tabStoreID = reverseMap[tabId] else { return }
+        if let fileURL = tabStore.tabs.first(where: { $0.id == tabStoreID })?.fileURL {
+            fileWatcher.stop(url: fileURL)
+        }
         editorStates.removeValue(forKey: tabId)
         tabIDMap.removeValue(forKey: tabStoreID)
         reverseMap.removeValue(forKey: tabId)
@@ -566,6 +579,53 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         default:
             return false
         }
+    }
+
+    // MARK: - File watching
+
+    @MainActor
+    private func startWatching(url: URL, tabID: UUID) {
+        fileWatcher.watch(url: url) { [weak self] in
+            self?.handleFileChanged(tabID: tabID)
+        }
+    }
+
+    @MainActor
+    private func handleFileChanged(tabID: UUID) {
+        guard let index = tabStore.tabs.firstIndex(where: { $0.id == tabID }),
+              let fileURL = tabStore.tabs[index].fileURL,
+              let bonsplitID = tabIDMap[tabID],
+              let state = editorStates[bonsplitID] else { return }
+
+        guard let newContent = try? String(contentsOf: fileURL, encoding: .utf8) else { return }
+
+        // Skip if content matches (e.g. user just saved from itsypad)
+        if tabStore.tabs[index].content == newContent { return }
+
+        if tabStore.tabs[index].isDirty {
+            let alert = NSAlert()
+            alert.messageText = "\"\(tabStore.tabs[index].name)\" has been modified externally."
+            alert.informativeText = "Do you want to reload it from disk or keep your changes?"
+            alert.addButton(withTitle: "Reload")
+            alert.addButton(withTitle: "Keep my changes")
+            alert.alertStyle = .informational
+
+            let response = alert.runModal()
+            guard response == .alertFirstButtonReturn else { return }
+        }
+
+        let cursorPos = state.textView.selectedRange().location
+        _ = tabStore.reloadFromDisk(id: tabID)
+        let tab = tabStore.tabs[index]
+
+        state.textView.string = tab.content
+        let clampedPos = min(cursorPos, (tab.content as NSString).length)
+        state.textView.setSelectedRange(NSRange(location: clampedPos, length: 0))
+        state.highlightCoordinator.scheduleHighlightIfNeeded()
+        controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
+
+        // Re-watch since delete/rename events invalidate the source
+        startWatching(url: fileURL, tabID: tabID)
     }
 
     // MARK: - Settings

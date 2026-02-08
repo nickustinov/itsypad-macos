@@ -4,7 +4,7 @@
 
 A tiny, native macOS text editor + clipboard manager.
 
-## Features
+## Features!!
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace
 - **Clipboard manager** — text history, searchable, click to copy
@@ -27,7 +27,6 @@ A tiny, native macOS text editor + clipboard manager.
 - **Searchable** — filter history with highlighted search matches
 - **Click to copy** — click any entry to copy it back to clipboard
 - **Delete entries** — remove individual items on hover
-- **Configurable history** — up to 1000 entries, adjustable in settings
 - **Separate hotkey** — assign a dedicated global hotkey to show/hide
 
 ## Install

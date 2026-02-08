@@ -207,4 +207,45 @@ final class TabStoreTests: XCTestCase {
         XCTAssertFalse(tab.isDirty)
         XCTAssertEqual(tab.cursorPosition, 0)
     }
+
+    // MARK: - reloadFromDisk
+
+    func testReloadFromDiskUpdatesContent() throws {
+        let fileURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("txt")
+        try "original".write(to: fileURL, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: fileURL) }
+
+        let tabID = store.tabs.first!.id
+        store.tabs[0].fileURL = fileURL
+        store.tabs[0].content = "original"
+        store.tabs[0].isDirty = true
+
+        try "updated from disk".write(to: fileURL, atomically: true, encoding: .utf8)
+        let result = store.reloadFromDisk(id: tabID)
+
+        XCTAssertTrue(result)
+        XCTAssertEqual(store.tabs.first?.content, "updated from disk")
+        XCTAssertFalse(store.tabs.first!.isDirty)
+    }
+
+    func testReloadFromDiskReturnsFalseWithoutFileURL() {
+        let tabID = store.tabs.first!.id
+        XCTAssertNil(store.tabs.first?.fileURL)
+        let result = store.reloadFromDisk(id: tabID)
+        XCTAssertFalse(result)
+    }
+
+    func testReloadFromDiskReturnsFalseForMissingFile() {
+        let tabID = store.tabs.first!.id
+        store.tabs[0].fileURL = URL(fileURLWithPath: "/tmp/\(UUID().uuidString)-nonexistent.txt")
+        let result = store.reloadFromDisk(id: tabID)
+        XCTAssertFalse(result)
+    }
+
+    func testReloadFromDiskReturnsFalseForInvalidID() {
+        let result = store.reloadFromDisk(id: UUID())
+        XCTAssertFalse(result)
+    }
 }

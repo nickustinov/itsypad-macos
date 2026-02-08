@@ -213,6 +213,22 @@ class TabStore: ObservableObject {
         }
     }
 
+    func reloadFromDisk(id: UUID) -> Bool {
+        guard let index = tabs.firstIndex(where: { $0.id == id }),
+              let fileURL = tabs[index].fileURL else { return false }
+
+        do {
+            let content = try String(contentsOf: fileURL, encoding: .utf8)
+            tabs[index].content = content
+            tabs[index].isDirty = false
+            scheduleSave()
+            return true
+        } catch {
+            NSLog("Failed to reload file from disk: \(error)")
+            return false
+        }
+    }
+
     func moveTab(from sourceIndex: Int, to destinationIndex: Int) {
         guard sourceIndex != destinationIndex,
               tabs.indices.contains(sourceIndex),

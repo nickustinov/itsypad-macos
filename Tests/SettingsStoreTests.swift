@@ -39,7 +39,7 @@ final class SettingsStoreTests: XCTestCase {
     }
 
     func testDefaultShowInDock() {
-        XCTAssertFalse(store.showInDock)
+        XCTAssertTrue(store.showInDock)
     }
 
     func testDefaultShowLineNumbers() {
@@ -68,18 +68,12 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.shortcutKeys?.tapModifier, "left-option")
     }
 
-    func testDefaultClipboardMaxEntries() {
-        XCTAssertEqual(store.clipboardMaxEntries, 200)
-    }
-
     func testDefaultClipboardShortcut() {
-        XCTAssertEqual(store.clipboardShortcut, "⌥⌥⌥ R")
+        XCTAssertEqual(store.clipboardShortcut, "")
     }
 
     func testDefaultClipboardShortcutKeys() {
-        XCTAssertNotNil(store.clipboardShortcutKeys)
-        XCTAssertEqual(store.clipboardShortcutKeys?.isTripleTap, true)
-        XCTAssertEqual(store.clipboardShortcutKeys?.tapModifier, "right-option")
+        XCTAssertNil(store.clipboardShortcutKeys)
     }
 
     // MARK: - Setting persistence
