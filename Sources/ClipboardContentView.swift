@@ -6,107 +6,14 @@ private let tileHeight: CGFloat = 110
 private let tileSpacing: CGFloat = 8
 private let sectionInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
-private class ArrowCursorSearchField: NSSearchField {
-    private var trackingAreaRef: NSTrackingArea?
-
-    override func resetCursorRects() {
-        discardCursorRects()
-        addCursorRect(bounds, cursor: .arrow)
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let trackingAreaRef {
-            removeTrackingArea(trackingAreaRef)
-        }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
-            owner: self
-        )
-        addTrackingArea(area)
-        trackingAreaRef = area
-    }
-
-    override func cursorUpdate(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-}
-
-private class ArrowCursorCollectionView: NSCollectionView {
-    private var trackingAreaRef: NSTrackingArea?
-
-    override func resetCursorRects() {
-        discardCursorRects()
-        addCursorRect(bounds, cursor: .arrow)
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let trackingAreaRef {
-            removeTrackingArea(trackingAreaRef)
-        }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
-            owner: self
-        )
-        addTrackingArea(area)
-        trackingAreaRef = area
-    }
-
-    override func cursorUpdate(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-}
-
-private class ArrowCursorLabel: NSTextField {
-    private var trackingAreaRef: NSTrackingArea?
-
-    override func resetCursorRects() {
-        discardCursorRects()
-        addCursorRect(bounds, cursor: .arrow)
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let trackingAreaRef {
-            removeTrackingArea(trackingAreaRef)
-        }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
-            owner: self
-        )
-        addTrackingArea(area)
-        trackingAreaRef = area
-    }
-
-    override func cursorUpdate(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-}
-
 // MARK: - Clipboard card view
 
 private class ClipboardCardView: NSView {
-    private let previewLabel = ArrowCursorLabel(wrappingLabelWithString: "")
+    private let previewLabel = NSTextField(wrappingLabelWithString: "")
     private let imageView = NSImageView()
-    private let timestampLabel = ArrowCursorLabel(labelWithString: "")
+    private let timestampLabel = NSTextField(labelWithString: "")
     private let deleteButton = NSButton()
-    private let copiedBadge = ArrowCursorLabel(labelWithString: "Copied")
+    private let copiedBadge = NSTextField(labelWithString: "Copied")
     private var trackingArea: NSTrackingArea?
     private var isHovered = false { didSet { updateBackground(); updateHoverControls() } }
     private var entry: ClipboardEntry?
@@ -336,7 +243,7 @@ private class ClipboardCardView: NSView {
         if let ta = trackingArea { removeTrackingArea(ta) }
         let ta = NSTrackingArea(
             rect: bounds,
-            options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
             owner: self
         )
         addTrackingArea(ta)
@@ -351,19 +258,6 @@ private class ClipboardCardView: NSView {
                 isHovered = mouseInside
             }
         }
-    }
-
-    override func resetCursorRects() {
-        discardCursorRects()
-        addCursorRect(bounds, cursor: .arrow)
-    }
-
-    override func cursorUpdate(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
     }
 
     override func mouseEntered(with event: NSEvent) { isHovered = true }
@@ -402,10 +296,10 @@ private class ClipboardCardItem: NSCollectionViewItem {
 // MARK: - Clipboard content view
 
 class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout {
-    private let searchField = ArrowCursorSearchField()
+    private let searchField = NSSearchField()
     private let scrollView = NSScrollView()
-    private let collectionView = ArrowCursorCollectionView()
-    private let emptyLabel = ArrowCursorLabel(labelWithString: "")
+    private let collectionView = NSCollectionView()
+    private let emptyLabel = NSTextField(labelWithString: "")
     private var filteredEntries: [ClipboardEntry] = []
     private var clipboardObserver: Any?
     private var tabSelectedObserver: Any?
@@ -517,31 +411,6 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     func focusSearchField() {
         // Use afterDelay to ensure SwiftUI has finished its layout pass
         window?.perform(#selector(NSWindow.makeFirstResponder(_:)), with: searchField, afterDelay: 0.1)
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        for area in trackingAreas where area.owner === self {
-            removeTrackingArea(area)
-        }
-        addTrackingArea(NSTrackingArea(
-            rect: bounds,
-            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
-            owner: self
-        ))
-    }
-
-    override func cursorUpdate(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        NSCursor.arrow.set()
-    }
-
-    override func resetCursorRects() {
-        discardCursorRects()
-        addCursorRect(bounds, cursor: .arrow)
     }
 
     override func layout() {
