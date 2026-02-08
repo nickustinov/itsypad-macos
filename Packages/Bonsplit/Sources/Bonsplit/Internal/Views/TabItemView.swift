@@ -15,8 +15,7 @@ struct TabItemView: View {
         HStack(spacing: TabBarMetrics.contentSpacing) {
             // Icon
             if let iconName = tab.icon {
-                Image(systemName: iconName)
-                    .font(.system(size: TabBarMetrics.iconSize))
+                TabIconView(name: iconName, size: TabBarMetrics.iconSize)
                     .foregroundStyle(isSelected ? TabBarColors.activeText : TabBarColors.inactiveText)
             }
 

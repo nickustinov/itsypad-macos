@@ -58,31 +58,22 @@ final class EditorTextView: NSTextView {
         return layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
     }
 
-    // MARK: - Reject Bonsplit tab drags
+    // MARK: - File drop from Finder
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
-        if isTabTransferDrag(sender) { return [] }
-        if isFileURLDrag(sender) { return .copy }
-        return super.draggingEntered(sender)
+        guard isFileURLDrag(sender) else { return [] }
+        return .copy
     }
 
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
-        if isTabTransferDrag(sender) { return false }
-        if isFileURLDrag(sender) {
-            let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [
-                .urlReadingFileURLsOnly: true
-            ]) as? [URL] ?? []
-            if !urls.isEmpty {
-                NotificationCenter.default.post(name: Self.fileDropNotification, object: nil, userInfo: ["urls": urls])
-            }
-            return !urls.isEmpty
+        guard isFileURLDrag(sender) else { return false }
+        let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true
+        ]) as? [URL] ?? []
+        if !urls.isEmpty {
+            NotificationCenter.default.post(name: Self.fileDropNotification, object: nil, userInfo: ["urls": urls])
         }
-        return super.performDragOperation(sender)
-    }
-
-    private func isTabTransferDrag(_ sender: any NSDraggingInfo) -> Bool {
-        guard let str = sender.draggingPasteboard.string(forType: .string) else { return false }
-        return str.contains("\"sourcePaneId\"")
+        return !urls.isEmpty
     }
 
     private func isFileURLDrag(_ sender: any NSDraggingInfo) -> Bool {

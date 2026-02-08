@@ -28,8 +28,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     @MainActor
     init() {
         var config = BonsplitConfiguration.default
-        config.allowSplits = false
-        config.allowTabReordering = true
+        config.allowSplits = true
+        config.allowTabReordering = false
+        config.allowCrossPaneTabMove = false
         config.contentViewLifecycle = .keepAllAlive
         config.allowCloseLastPane = false
         config.newTabPosition = .end
@@ -99,7 +100,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         // Create clipboard tab last — pinned to the right (if enabled)
         if SettingsStore.shared.clipboardEnabled {
-            if let clipTabID = controller.createTab(title: "Clipboard", icon: "doc.on.clipboard", isClosable: false, isPinned: true) {
+            if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false) {
                 clipboardTabID = clipTabID
             }
         }
@@ -431,6 +432,30 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     func splitTabBar(
         _ controller: BonsplitController,
+        didSplitPane originalPane: PaneID,
+        newPane: PaneID,
+        orientation: SplitOrientation
+    ) {
+        MainActor.assumeIsolated {
+            // New panes must never be empty — create an untitled tab
+            tabStore.addNewTab()
+            guard let newTab = tabStore.tabs.last else { return }
+            if let bonsplitTabID = controller.createTab(
+                title: newTab.name,
+                icon: nil,
+                isDirty: newTab.isDirty,
+                inPane: newPane
+            ) {
+                tabIDMap[newTab.id] = bonsplitTabID
+                reverseMap[bonsplitTabID] = newTab.id
+                editorStates[bonsplitTabID] = createEditorState(for: newTab)
+                controller.selectTab(bonsplitTabID)
+            }
+        }
+    }
+
+    func splitTabBar(
+        _ controller: BonsplitController,
         didMoveTab tab: Bonsplit.Tab,
         fromPane source: PaneID,
         toPane destination: PaneID
@@ -562,7 +587,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         if enabled {
             ClipboardStore.shared.startMonitoring()
             if clipboardTabID == nil {
-                if let clipTabID = controller.createTab(title: "Clipboard", icon: "doc.on.clipboard", isClosable: false, isPinned: true) {
+                if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false) {
                     clipboardTabID = clipTabID
                 }
             }

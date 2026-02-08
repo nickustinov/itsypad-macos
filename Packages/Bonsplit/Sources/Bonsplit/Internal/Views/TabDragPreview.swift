@@ -7,8 +7,7 @@ struct TabDragPreview: View {
     var body: some View {
         HStack(spacing: TabBarMetrics.contentSpacing) {
             if let iconName = tab.icon {
-                Image(systemName: iconName)
-                    .font(.system(size: TabBarMetrics.iconSize))
+                TabIconView(name: iconName, size: TabBarMetrics.iconSize)
             }
 
             Text(tab.title)

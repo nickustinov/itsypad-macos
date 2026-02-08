@@ -601,6 +601,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     private func updateTabSwitcherMenu(_ menu: NSMenu) {
         menu.removeAllItems()
+        // NSMenuToolbarItem hides the first item; add a dummy so all tabs show
+        let dummy = NSMenuItem(title: "Tabs", action: nil, keyEquivalent: "")
+        dummy.isHidden = true
+        menu.addItem(dummy)
         guard let coordinator = editorCoordinator else { return }
         for entry in coordinator.tabListForMenu() {
             let item = NSMenuItem(title: entry.title, action: #selector(switchToTab(_:)), keyEquivalent: "")

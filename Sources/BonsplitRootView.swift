@@ -7,7 +7,8 @@ struct BonsplitRootView: View {
     var body: some View {
         BonsplitView(controller: coordinator.controller) { tab, paneId in
             if tab.id == coordinator.clipboardTabID {
-                ClipboardTabView(theme: clipboardTheme)
+                let isSelected = coordinator.controller.selectedTab(inPane: paneId)?.id == tab.id
+                ClipboardTabView(theme: clipboardTheme, isSelected: isSelected)
             } else if let state = coordinator.editorState(for: tab.id) {
                 let isSelected = coordinator.controller.selectedTab(inPane: paneId)?.id == tab.id
                 EditorContentView(editorState: state, isSelected: isSelected)
