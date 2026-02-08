@@ -86,6 +86,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             MainActor.assumeIsolated {
                 self?.applyWindowAppearance()
                 self?.updateDockVisibility()
+                self?.updateMenuBarVisibility()
             }
         }
     }
@@ -116,6 +117,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     func applicationWillTerminate(_ notification: Notification) {
         ClipboardStore.shared.stopMonitoring()
+        editorCoordinator?.saveActiveTabCursor()
         TabStore.shared.saveSession()
     }
 
@@ -188,7 +190,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
                 else if mod.contains("command") { symbol = "⌘" }
                 else { symbol = "" }
                 let side = mod.hasPrefix("left-") ? " L" : mod.hasPrefix("right-") ? " R" : ""
-                showItem.title = "Show Itsypad  \(symbol)\(symbol)\(symbol)\(side)"
+                let hint = "  \(symbol)\(symbol)\(symbol)\(side)"
+                let attributed = NSMutableAttributedString(string: "Show Itsypad")
+                attributed.append(NSAttributedString(string: hint, attributes: [
+                    .foregroundColor: NSColor.tertiaryLabelColor,
+                ]))
+                showItem.attributedTitle = attributed
+            } else if let char = Self.characterForKeyCode(keys.keyCode) {
+                showItem.keyEquivalent = char
+                showItem.keyEquivalentModifierMask = NSEvent.ModifierFlags(rawValue: UInt(keys.modifiers))
             }
         }
         menu.addItem(showItem)
@@ -245,6 +255,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         editorWindow = panel
 
         applyWindowAppearance()
+
+        // Show window on launch
+        windowWasVisible = true
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     private func applyWindowAppearance() {
@@ -292,14 +307,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         NSApp.setActivationPolicy((alwaysShow || windowVisible) ? .regular : .accessory)
     }
 
+    private func updateMenuBarVisibility() {
+        statusItem.isVisible = SettingsStore.shared.showInMenuBar
+    }
+
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .findReplace]
+        [.newTab, .openFile, .saveFile, .space, .findReplace, .flexibleSpace, .tabSwitcher]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .space, .tabSwitcher, .findReplace]
+        [.newTab, .openFile, .saveFile, .space, .findReplace, .flexibleSpace, .tabSwitcher]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -621,9 +640,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     @objc private func toggleFindAction() {
+        guard let textView = editorCoordinator?.activeTextView() else { return }
+        let isVisible = textView.enclosingScrollView?.isFindBarVisible ?? false
         let item = NSMenuItem()
-        item.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
-        editorCoordinator?.activeTextView()?.performFindPanelAction(item)
+        item.tag = Int((isVisible ? NSTextFinder.Action.hideFindInterface : NSTextFinder.Action.showFindInterface).rawValue)
+        textView.performFindPanelAction(item)
     }
 
     // MARK: - NSMenuDelegate
@@ -668,6 +689,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc private func clearRecentFiles() {
         NSDocumentController.shared.clearRecentDocuments(nil)
+    }
+
+    private static func characterForKeyCode(_ keyCode: UInt16) -> String? {
+        let map: [UInt16: String] = [
+            0: "a", 1: "s", 2: "d", 3: "f", 4: "h", 5: "g", 6: "z", 7: "x",
+            8: "c", 9: "v", 11: "b", 12: "q", 13: "w", 14: "e", 15: "r",
+            16: "y", 17: "t", 18: "1", 19: "2", 20: "3", 21: "4", 22: "6",
+            23: "5", 24: "=", 25: "9", 26: "7", 27: "-", 28: "8", 29: "0",
+            30: "]", 31: "o", 32: "u", 33: "[", 34: "i", 35: "p", 37: "l",
+            38: "j", 39: "'", 40: "k", 41: ";", 42: "\\", 43: ",", 44: "/",
+            45: "n", 46: "m", 47: ".",
+        ]
+        return map[keyCode]
     }
 
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {

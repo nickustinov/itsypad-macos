@@ -83,6 +83,14 @@ final class EditorTextView: NSTextView {
         ])
     }
 
+    // MARK: - Cut fix for word-wrapped lines
+
+    override func cut(_ sender: Any?) {
+        super.cut(sender)
+        layoutManager?.ensureLayout(forCharacterRange: NSRange(location: 0, length: (string as NSString).length))
+        needsDisplay = true
+    }
+
     // MARK: - Typing helpers
 
     override func insertText(_ insertString: Any, replacementRange: NSRange) {

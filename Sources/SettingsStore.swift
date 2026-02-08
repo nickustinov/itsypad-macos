@@ -65,10 +65,18 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var showInDock: Bool = false {
+    @Published var showInDock: Bool = true {
         didSet {
             guard !isLoading else { return }
             defaults.set(showInDock, forKey: "showInDock")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var showInMenuBar: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(showInMenuBar, forKey: "showInMenuBar")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -117,14 +125,6 @@ class SettingsStore: ObservableObject {
         didSet {
             guard !isLoading else { return }
             defaults.set(clipboardEnabled, forKey: "clipboardEnabled")
-            NotificationCenter.default.post(name: .settingsChanged, object: nil)
-        }
-    }
-
-    @Published var clipboardMaxEntries: Int = 500 {
-        didSet {
-            guard !isLoading else { return }
-            defaults.set(clipboardMaxEntries, forKey: "clipboardMaxEntries")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -189,7 +189,8 @@ class SettingsStore: ObservableObject {
         let savedSize = defaults.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
         appearanceOverride = defaults.string(forKey: "appearanceOverride") ?? "system"
-        showInDock = defaults.object(forKey: "showInDock") as? Bool ?? false
+        showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
+        showInMenuBar = defaults.object(forKey: "showInMenuBar") as? Bool ?? true
         showLineNumbers = defaults.object(forKey: "showLineNumbers") as? Bool ?? true
         highlightCurrentLine = defaults.bool(forKey: "highlightCurrentLine")
         indentUsingSpaces = defaults.object(forKey: "indentUsingSpaces") as? Bool ?? true
@@ -197,9 +198,6 @@ class SettingsStore: ObservableObject {
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
         wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
-        let savedMaxEntries = defaults.integer(forKey: "clipboardMaxEntries")
-        clipboardMaxEntries = savedMaxEntries > 0 ? savedMaxEntries : 500
-
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             shortcutKeys = keys

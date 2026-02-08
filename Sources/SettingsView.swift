@@ -89,11 +89,14 @@ struct GeneralSettingsView: View {
                         set: { store.shortcutKeys = $0 }
                     )
                 )
-                Toggle("Always show in dock", isOn: $store.showInDock)
+                Toggle("Show in dock", isOn: $store.showInDock)
+                    .disabled(!store.showInMenuBar)
+                Toggle("Show in menu bar", isOn: $store.showInMenuBar)
+                    .disabled(!store.showInDock)
             }
 
-            Section("Clipboard") {
-                Toggle("Enable clipboard history", isOn: $store.clipboardEnabled)
+            Section("Clipboard manager") {
+                Toggle("Enable clipboard manager", isOn: $store.clipboardEnabled)
                 if store.clipboardEnabled {
                     ShortcutRecorderView(
                         label: "Show clipboard",
@@ -103,7 +106,7 @@ struct GeneralSettingsView: View {
                             set: { store.clipboardShortcutKeys = $0 }
                         )
                     )
-                    Stepper("Max entries: \(store.clipboardMaxEntries)", value: $store.clipboardMaxEntries, in: 50...1000, step: 50)
+
                 }
             }
 

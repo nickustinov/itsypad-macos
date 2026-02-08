@@ -85,6 +85,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     @MainActor
     private func restoreSession() {
+        // Save the selected tab ID before creating tabs, because didSelectTab
+        // overwrites tabStore.selectedTabID on each createTab call
+        let savedSelectedID = tabStore.selectedTabID
+
         // Restore document tabs from TabStore
         for tab in tabStore.tabs {
             if let bonsplitTabID = controller.createTab(
@@ -105,8 +109,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         }
 
-        // Select the previously selected tab, or first document tab
-        if let selectedID = tabStore.selectedTabID,
+        // Restore the original selection
+        tabStore.selectedTabID = savedSelectedID
+        if let selectedID = savedSelectedID,
            let bonsplitID = tabIDMap[selectedID] {
             controller.selectTab(bonsplitID)
             previousBonsplitTabID = bonsplitID
@@ -514,6 +519,11 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             let title = tabID == clipboardTabID ? "Clipboard" : tab.title
             return (tabID: tabID, title: title, isSelected: tabID == selectedTab?.id)
         }
+    }
+
+    @MainActor
+    func saveActiveTabCursor() {
+        saveCursorForSelectedTab()
     }
 
     // MARK: - Private helpers
