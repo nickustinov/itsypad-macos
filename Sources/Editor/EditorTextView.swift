@@ -15,7 +15,7 @@ final class EditorTextView: NSTextView {
         registerForDraggedTypes([.fileURL])
     }
 
-    // MARK: - Word wrap (CotEditor approach)
+    // MARK: - Word wrap
 
     var wrapsLines: Bool {
         get { textContainer?.widthTracksTextView ?? false }
