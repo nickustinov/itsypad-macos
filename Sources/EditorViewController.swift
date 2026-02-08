@@ -369,6 +369,8 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
 
     // MARK: - Tab management
 
+    private static let tabSeparatorID = NSUserInterfaceItemIdentifier("tabSeparator")
+
     private func refreshTabs() {
         // Remove old tab buttons
         for view in tabBarStackView.arrangedSubviews {
@@ -376,11 +378,25 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             view.removeFromSuperview()
         }
 
-        for tab in tabStore.tabs {
+        for (i, tab) in tabStore.tabs.enumerated() {
+            if i > 0 {
+                let sep = NSBox()
+                sep.boxType = .custom
+                sep.fillColor = .separatorColor
+                sep.borderWidth = 0
+                sep.translatesAutoresizingMaskIntoConstraints = false
+                sep.identifier = Self.tabSeparatorID
+                tabBarStackView.addArrangedSubview(sep)
+                NSLayoutConstraint.activate([
+                    sep.widthAnchor.constraint(equalToConstant: 1),
+                    sep.heightAnchor.constraint(equalToConstant: 14),
+                ])
+            }
             let tabButton = makeTabButton(for: tab)
             tabBarStackView.addArrangedSubview(tabButton)
         }
 
+        updateTabSeparatorVisibility()
         updateClipboardTabAppearance()
         refreshTabSwitcher()
     }
@@ -402,8 +418,31 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
             }
         }
 
+        updateTabSeparatorVisibility()
         updateClipboardTabAppearance()
         refreshTabSwitcher()
+    }
+
+    private func updateTabSeparatorVisibility() {
+        let arranged = tabBarStackView.arrangedSubviews
+        let selectedID = tabStore.selectedTabID
+        let tabs = tabStore.tabs
+
+        for (i, view) in arranged.enumerated() where view.identifier == Self.tabSeparatorID {
+            // Find the tab containers before and after this separator
+            let before = i > 0 ? arranged[i - 1] : nil
+            let after = i + 1 < arranged.count ? arranged[i + 1] : nil
+
+            let beforeSelected = before?.subviews.contains(where: {
+                $0.identifier?.rawValue == selectedID?.uuidString
+            }) == true && !isClipboardTabActive
+
+            let afterSelected = after?.subviews.contains(where: {
+                $0.identifier?.rawValue == selectedID?.uuidString
+            }) == true && !isClipboardTabActive
+
+            view.isHidden = beforeSelected || afterSelected
+        }
     }
 
     private static let dirtyIndicatorTag = 9999
@@ -472,6 +511,7 @@ class EditorViewController: NSViewController, NSToolbarDelegate {
 
         highlightCoordinator.language = tab.language
         highlightCoordinator.font = SettingsStore.shared.editorFont
+        highlightCoordinator.applyWrapIndent(to: editorTextView, font: SettingsStore.shared.editorFont)
         highlightCoordinator.scheduleHighlightIfNeeded()
         applyThemeColors()
 

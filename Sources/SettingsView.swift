@@ -150,6 +150,10 @@ struct AppearanceSettingsView: View {
                 }
             }
 
+            Section("Dock") {
+                Toggle("Show in dock", isOn: $store.showInDock)
+            }
+
             Section("Font") {
                 Picker("Font", selection: $store.editorFontName) {
                     ForEach(SettingsStore.availableFonts, id: \.name) { font in

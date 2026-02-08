@@ -170,7 +170,7 @@ struct LanguageDetector {
         "go": .go, "ruby": .ruby, "rust": .rust,
         "sql": .sql, "xml": .html, "yaml": .yaml,
         "toml": .toml, "objective-c": .objc, "powershell": .default,
-        "plain": .markdown,
+        "plain": .default,
     ]
 
     func codeLanguage(for lang: String) -> CodeLanguage {

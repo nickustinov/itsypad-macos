@@ -97,14 +97,6 @@ struct EditorTheme {
             // Embedded / interpolation
             "embedded": hex(0xfc9867),
             "spell": hex(0x727072),
-
-            // Markdown / plain text
-            "text.title": hex(0xff6188),
-            "text.literal": hex(0xffd866),
-            "text.emphasis": hex(0xfcfcfa),
-            "text.strong": hex(0xfcfcfa),
-            "text.uri": hex(0x78dce8),
-            "text.reference": hex(0xa9dc76),
         ]
     )
 
@@ -166,14 +158,6 @@ struct EditorTheme {
 
             "embedded": hex(0xc55715),
             "spell": hex(0x9a9a9a),
-
-            // Markdown / plain text
-            "text.title": hex(0xd3284e),
-            "text.literal": hex(0xb68800),
-            "text.emphasis": hex(0x2d2a2e),
-            "text.strong": hex(0x2d2a2e),
-            "text.uri": hex(0x2990a4),
-            "text.reference": hex(0x5a9e2f),
         ]
     )
 

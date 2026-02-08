@@ -31,8 +31,6 @@ targets:
         product: CodeEditLanguages
     info:
       path: Sources/Info.plist
-      properties:
-        LSUIElement: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nickustinov.itsypad

@@ -64,6 +64,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var showInDock: Bool = false {
+        didSet {
+            guard !isLoading else { return }
+            UserDefaults.standard.set(showInDock, forKey: "showInDock")
+            NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+        }
+    }
+
     @Published var showLineNumbers: Bool = false {
         didSet {
             guard !isLoading else { return }
@@ -135,6 +143,7 @@ class SettingsStore: ObservableObject {
         let savedSize = UserDefaults.standard.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
         appearanceOverride = UserDefaults.standard.string(forKey: "appearanceOverride") ?? "system"
+        showInDock = UserDefaults.standard.object(forKey: "showInDock") as? Bool ?? false
         showLineNumbers = UserDefaults.standard.bool(forKey: "showLineNumbers")
         highlightCurrentLine = UserDefaults.standard.bool(forKey: "highlightCurrentLine")
         indentUsingSpaces = UserDefaults.standard.object(forKey: "indentUsingSpaces") as? Bool ?? true

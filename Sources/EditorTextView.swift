@@ -241,6 +241,11 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private(set) var theme: EditorTheme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
 
     private let highlightQueue = DispatchQueue(label: "Itsypad.SyntaxHighlight", qos: .userInitiated)
+
+    override init() {
+        super.init()
+        setLanguage(language)
+    }
     private var pendingHighlight: DispatchWorkItem?
     private var highlightGeneration: Int = 0
     private var lastHighlightedText: String = ""
@@ -296,18 +301,31 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let userFont = font
         let currentTheme = theme
 
-        // No query available — uniform color, no syntax highlighting
+        // No query available — plain text with bullet dash highlighting only
         if currentQuery == nil {
-            let fullRange = NSRange(location: 0, length: (tv.string as NSString).length)
+            let ns = textSnapshot as NSString
+            let fullRange = NSRange(location: 0, length: ns.length)
             let sel = tv.selectedRange()
             tv.textStorage?.beginEditing()
             tv.textStorage?.setAttributes([
                 .font: userFont,
                 .foregroundColor: currentTheme.foreground,
             ], range: fullRange)
+
+            // Highlight bullet dashes at any indent level
+            let dashColor = currentTheme.color(for: "punctuation.special")
+            if let regex = try? NSRegularExpression(pattern: "^[ \\t]*-(?= )", options: .anchorsMatchLines) {
+                for match in regex.matches(in: textSnapshot, range: fullRange) {
+                    let r = match.range
+                    let dashRange = NSRange(location: r.location + r.length - 1, length: 1)
+                    tv.textStorage?.addAttribute(.foregroundColor, value: dashColor, range: dashRange)
+                }
+            }
+
             tv.textStorage?.endEditing()
-            let safeLocation = min(sel.location, (tv.string as NSString).length)
-            let safeLength = min(sel.length, (tv.string as NSString).length - safeLocation)
+            applyWrapIndent(to: tv, font: userFont)
+            let safeLocation = min(sel.location, ns.length)
+            let safeLength = min(sel.length, ns.length - safeLocation)
             tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
             lastHighlightedText = textSnapshot
             lastLanguage = language
@@ -325,8 +343,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         }
         let query = currentQuery!
 
-        let isPlain = language == "plain"
-
         let work = DispatchWorkItem { [weak self] in
             guard let tree = parser.parse(textSnapshot) else { return }
 
@@ -336,20 +352,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 // Skip non-highlight captures from folds/indents/locals .scm files
                 let first = nr.nameComponents.first ?? ""
                 return first != "fold" && first != "indent" && first != "local"
-            }
-
-            // For plain text, find leading dashes at any indent level (regex on background queue)
-            var dashRanges: [NSRange] = []
-            if isPlain {
-                let ns = textSnapshot as NSString
-                if let regex = try? NSRegularExpression(pattern: "^[ \\t]+-(?= )", options: .anchorsMatchLines) {
-                    let matches = regex.matches(in: textSnapshot, range: NSRange(location: 0, length: ns.length))
-                    for match in matches {
-                        let r = match.range
-                        // Color just the dash: last character before the space
-                        dashRanges.append(NSRange(location: r.location + r.length - 1, length: 1))
-                    }
-                }
             }
 
             DispatchQueue.main.async { [weak self] in
@@ -376,14 +378,8 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                     tv.textStorage?.addAttribute(.foregroundColor, value: color, range: range)
                 }
 
-                // Apply indented dash colors for plain text
-                let dashColor = currentTheme.color(for: "punctuation.special")
-                for range in dashRanges {
-                    guard range.location + range.length <= fullRange.length else { continue }
-                    tv.textStorage?.addAttribute(.foregroundColor, value: dashColor, range: range)
-                }
-
                 tv.textStorage?.endEditing()
+                self.applyWrapIndent(to: tv, font: userFont)
 
                 // Restore selection
                 let safeLocation = min(sel.location, (tv.string as NSString).length)
@@ -398,6 +394,42 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
         pendingHighlight = work
         highlightQueue.asyncAfter(deadline: .now() + 0.05, execute: work)
+    }
+
+    func applyWrapIndent(to textView: EditorTextView, font: NSFont) {
+        guard let storage = textView.textStorage else { return }
+        let ns = storage.string as NSString
+        let totalLength = ns.length
+        guard totalLength > 0 else { return }
+
+        let tabWidth = SettingsStore.shared.tabWidth
+        let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
+        let tabPixelWidth = spaceWidth * CGFloat(tabWidth)
+
+        storage.beginEditing()
+        var pos = 0
+        while pos < totalLength {
+            let lineRange = ns.lineRange(for: NSRange(location: pos, length: 0))
+
+            // Measure leading whitespace
+            var indent: CGFloat = 0
+            var i = lineRange.location
+            let lineEnd = lineRange.location + lineRange.length
+            while i < lineEnd {
+                let ch = ns.character(at: i)
+                if ch == 0x20 { indent += spaceWidth }
+                else if ch == 0x09 { indent += tabPixelWidth }
+                else { break }
+                i += 1
+            }
+
+            let para = NSMutableParagraphStyle()
+            para.headIndent = indent
+            storage.addAttribute(.paragraphStyle, value: para, range: lineRange)
+
+            pos = lineRange.location + lineRange.length
+        }
+        storage.endEditing()
     }
 
     // MARK: - NSTextViewDelegate

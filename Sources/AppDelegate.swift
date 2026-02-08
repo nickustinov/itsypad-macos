@@ -21,8 +21,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     private var workspaceObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Prevent dock icon
-        NSApp.setActivationPolicy(.accessory)
+        // Dock icon / Cmd-Tab visibility
+        NSApp.setActivationPolicy(SettingsStore.shared.showInDock ? .regular : .accessory)
 
         setupStatusItem()
         setupEditorWindow()
@@ -161,6 +161,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         )
         panel.title = ""
         panel.titleVisibility = .hidden
+        panel.tabbingMode = .disallowed
         panel.isFloatingPanel = false
         panel.level = .normal
         panel.collectionBehavior = [.fullScreenAuxiliary]
