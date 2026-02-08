@@ -5,3 +5,6 @@
 xcuserdata/
 DerivedData/
 Package.resolved
+dist/
+build/
+Packages/Bonsplit/build/
