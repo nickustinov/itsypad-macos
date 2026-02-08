@@ -119,6 +119,7 @@ struct EditorSettingsView: View {
     var body: some View {
         Form {
             Section {
+                Toggle("Word wrap", isOn: $store.wordWrap)
                 Toggle("Show line numbers", isOn: $store.showLineNumbers)
                 Toggle("Highlight current line", isOn: $store.highlightCurrentLine)
             }

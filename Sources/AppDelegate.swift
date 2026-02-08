@@ -18,6 +18,8 @@ private extension NSToolbarItem.Identifier {
     static let newTab = NSToolbarItem.Identifier("newTab")
     static let openFile = NSToolbarItem.Identifier("openFile")
     static let saveFile = NSToolbarItem.Identifier("saveFile")
+    static let findReplace = NSToolbarItem.Identifier("findReplace")
+    static let wordWrap = NSToolbarItem.Identifier("wordWrap")
 }
 
 @MainActor
@@ -232,11 +234,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .wordWrap, .findReplace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .space]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .space, .wordWrap, .findReplace]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -261,6 +263,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             item.toolTip = "Save file"
             item.target = self
             item.action = #selector(saveFileAction)
+        case .findReplace:
+            item.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Find")
+            item.label = "Find"
+            item.toolTip = "Find and replace (⌘F)"
+            item.target = self
+            item.action = #selector(toggleFindAction)
+        case .wordWrap:
+            item.image = NSImage(systemSymbolName: "text.word.spacing", accessibilityDescription: "Word wrap")
+            item.label = "Word wrap"
+            item.toolTip = "Toggle word wrap"
+            item.target = self
+            item.action = #selector(toggleWordWrap)
         default:
             return nil
         }
@@ -409,6 +423,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         viewMenu.addItem(.separator())
 
+        let wordWrapItem = NSMenuItem(title: "Word wrap", action: #selector(toggleWordWrap), keyEquivalent: "")
+        wordWrapItem.target = self
+        viewMenu.addItem(wordWrapItem)
+
         let lineNumbersItem = NSMenuItem(title: "Show line numbers", action: #selector(toggleLineNumbers), keyEquivalent: "l")
         lineNumbersItem.keyEquivalentModifierMask = [.command, .shift]
         lineNumbersItem.target = self
@@ -492,9 +510,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         SettingsStore.shared.showLineNumbers.toggle()
     }
 
+    @objc private func toggleWordWrap() {
+        SettingsStore.shared.wordWrap.toggle()
+    }
+
+    @objc private func toggleFindAction() {
+        let item = NSMenuItem()
+        item.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
+        editorCoordinator?.activeTextView()?.performFindPanelAction(item)
+    }
+
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(toggleLineNumbers) {
             menuItem.state = SettingsStore.shared.showLineNumbers ? .on : .off
+        }
+        if menuItem.action == #selector(toggleWordWrap) {
+            menuItem.state = SettingsStore.shared.wordWrap ? .on : .off
         }
         return true
     }

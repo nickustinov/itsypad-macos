@@ -132,11 +132,16 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         textView.isContinuousSpellCheckingEnabled = false
         textView.smartInsertDeleteEnabled = false
 
-        textView.textContainer?.widthTracksTextView = true
-        textView.textContainer?.containerSize = NSSize(
-            width: 0,
-            height: CGFloat.greatestFiniteMagnitude
-        )
+        textView.autoresizingMask = [.width, .height]
+        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+
+        // Word wrap initial state (no-wrap needs explicit setup)
+        if !settings.wordWrap {
+            textView.isHorizontallyResizable = true
+            scrollView.hasHorizontalScroller = true
+            textView.textContainer?.widthTracksTextView = false
+            textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        }
 
         scrollView.documentView = textView
 
@@ -438,6 +443,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         for (_, state) in editorStates {
             state.textView.font = font
+            state.textView.wrapsLines = settings.wordWrap
+            applyGutterVisibility(state: state, showGutter: showGutter)
             state.textView.textContainerInset = NSSize(width: showGutter ? 4 : 12, height: 12)
             state.highlightCoordinator.font = font
             state.highlightCoordinator.updateTheme()
@@ -459,6 +466,22 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         // Separator blends into the bar
         BonsplitTheme.shared.separator = theme.background.blended(withFraction: 0.12, of: blendTarget) ?? theme.background
+    }
+
+    private func applyGutterVisibility(state: EditorState, showGutter: Bool) {
+        let gutter = state.gutterView
+        gutter.showLineNumbers = showGutter
+
+        if let constraint = gutter.constraints.first(where: { $0.identifier == "gutterWidth" }) {
+            if showGutter {
+                let lineCount = state.textView.string.components(separatedBy: "\n").count
+                let digits = max(3, "\(lineCount)".count)
+                let digitWidth = ("8" as NSString).size(withAttributes: [.font: gutter.lineFont]).width
+                constraint.constant = CGFloat(digits) * digitWidth + 16
+            } else {
+                constraint.constant = 1
+            }
+        }
     }
 
     private func applyThemeToEditor(textView: EditorTextView, gutter: LineNumberGutterView, theme: EditorTheme) {

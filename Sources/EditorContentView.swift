@@ -21,12 +21,12 @@ struct EditorContentView: NSViewRepresentable {
         // Attach gutter to the scroll view and text view
         gutter.attach(to: scrollView, textView: textView)
 
-        let settings = SettingsStore.shared
-        let showGutter = settings.showLineNumbers
-        let gutterWidth = calculateGutterWidth(for: editorState)
+        let showGutter = SettingsStore.shared.showLineNumbers
 
-        let gutterWidthConstraint = gutter.widthAnchor.constraint(equalToConstant: showGutter ? gutterWidth : 0)
+        // Gutter is always present (1pt spacer when line numbers off) to stabilise layout
+        let gutterWidthConstraint = gutter.widthAnchor.constraint(equalToConstant: showGutter ? gutterWidth(for: gutter, textView: textView) : 1)
         gutterWidthConstraint.identifier = "gutterWidth"
+        gutter.showLineNumbers = showGutter
 
         NSLayoutConstraint.activate([
             gutter.topAnchor.constraint(equalTo: container.topAnchor),
@@ -40,22 +40,10 @@ struct EditorContentView: NSViewRepresentable {
             scrollView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
         ])
 
-        gutter.isHidden = !showGutter
-
         return container
     }
 
     func updateNSView(_ container: NSView, context: Context) {
-        let settings = SettingsStore.shared
-        let showGutter = settings.showLineNumbers
-        let gutter = editorState.gutterView
-
-        gutter.isHidden = !showGutter
-
-        if let gutterWidthConstraint = container.constraints.first(where: { $0.identifier == "gutterWidth" }) {
-            gutterWidthConstraint.constant = showGutter ? calculateGutterWidth(for: editorState) : 0
-        }
-
         // Apply theme
         let theme = editorState.highlightCoordinator.theme
         container.window?.appearance = NSAppearance(named: theme.isDark ? .darkAqua : .aqua)
@@ -69,10 +57,10 @@ struct EditorContentView: NSViewRepresentable {
         }
     }
 
-    private func calculateGutterWidth(for state: EditorState) -> CGFloat {
-        let lineCount = state.textView.string.components(separatedBy: "\n").count
+    private func gutterWidth(for gutter: LineNumberGutterView, textView: EditorTextView) -> CGFloat {
+        let lineCount = textView.string.components(separatedBy: "\n").count
         let digits = max(3, "\(lineCount)".count)
-        let digitWidth = ("8" as NSString).size(withAttributes: [.font: state.gutterView.lineFont]).width
+        let digitWidth = ("8" as NSString).size(withAttributes: [.font: gutter.lineFont]).width
         return CGFloat(digits) * digitWidth + 16
     }
 }

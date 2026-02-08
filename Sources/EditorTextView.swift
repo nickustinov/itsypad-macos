@@ -12,6 +12,50 @@ final class EditorTextView: NSTextView {
 
     var onTextChange: ((String) -> Void)?
 
+    // MARK: - Word wrap (CotEditor approach)
+
+    var wrapsLines: Bool {
+        get { textContainer?.widthTracksTextView ?? false }
+        set {
+            guard newValue != wrapsLines,
+                  let textContainer,
+                  let scrollView = enclosingScrollView else { return }
+
+            let visibleRange = self.visibleRange
+
+            scrollView.hasHorizontalScroller = !newValue
+            isHorizontallyResizable = !newValue
+
+            if newValue {
+                let clipWidth = scrollView.contentView.bounds.width
+                frame.size.width = clipWidth
+                textContainer.size.width = clipWidth
+                textContainer.widthTracksTextView = true
+            } else {
+                textContainer.widthTracksTextView = false
+                textContainer.size = CGSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+            }
+
+            // Reset horizontal scroll and force layout recalculation
+            let clipOrigin = scrollView.contentView.bounds.origin
+            scrollView.contentView.scroll(to: NSPoint(x: 0, y: clipOrigin.y))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+            needsLayout = true
+            needsDisplay = true
+
+            if let visibleRange {
+                scrollRangeToVisible(visibleRange)
+            }
+        }
+    }
+
+    private var visibleRange: NSRange? {
+        guard let layoutManager, let textContainer else { return nil }
+        let visibleRect = self.visibleRect.offsetBy(dx: -textContainerOrigin.x, dy: -textContainerOrigin.y)
+        let glyphRange = layoutManager.glyphRange(forBoundingRectWithoutAdditionalLayout: visibleRect, in: textContainer)
+        return layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+    }
+
     // MARK: - Reject Bonsplit tab drags
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
@@ -491,6 +535,7 @@ final class LineNumberGutterView: NSView {
     weak var textView: NSTextView?
     weak var scrollView: NSScrollView?
 
+    var showLineNumbers = true { didSet { needsDisplay = true } }
     var lineFont: NSFont = .monospacedSystemFont(ofSize: 11, weight: .regular) { didSet { needsDisplay = true } }
     var lineColor: NSColor = .secondaryLabelColor { didSet { needsDisplay = true } }
     var bgColor: NSColor = .textBackgroundColor { didSet { needsDisplay = true } }
@@ -520,7 +565,8 @@ final class LineNumberGutterView: NSView {
         bgColor.setFill()
         dirtyRect.fill()
 
-        guard let textView, let scrollView,
+        guard showLineNumbers,
+              let textView, let scrollView,
               let layoutManager = textView.layoutManager,
               let textContainer = textView.textContainer else { return }
 

@@ -104,6 +104,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var wordWrap: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            UserDefaults.standard.set(wordWrap, forKey: "wordWrap")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     var editorFont: NSFont {
         if editorFontName == "System Mono" {
             return NSFont.monospacedSystemFont(ofSize: CGFloat(editorFontSize), weight: .regular)
@@ -149,6 +157,7 @@ class SettingsStore: ObservableObject {
         indentUsingSpaces = UserDefaults.standard.object(forKey: "indentUsingSpaces") as? Bool ?? true
         let savedTabWidth = UserDefaults.standard.integer(forKey: "tabWidth")
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
+        wordWrap = UserDefaults.standard.object(forKey: "wordWrap") as? Bool ?? true
 
         if let data = UserDefaults.standard.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
