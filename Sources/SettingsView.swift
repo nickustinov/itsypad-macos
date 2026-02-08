@@ -103,6 +103,7 @@ struct GeneralSettingsView: View {
                             set: { store.clipboardShortcutKeys = $0 }
                         )
                     )
+                    Stepper("Max entries: \(store.clipboardMaxEntries)", value: $store.clipboardMaxEntries, in: 50...1000, step: 50)
                 }
             }
 

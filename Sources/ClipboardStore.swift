@@ -1,13 +1,28 @@
 import Cocoa
 
+enum ClipboardContentKind: String, Codable {
+    case text
+    case image
+}
+
 struct ClipboardEntry: Identifiable, Codable, Equatable {
     let id: UUID
-    let content: String
+    let kind: ClipboardContentKind
+    let text: String?
+    let imageFileName: String?
     let timestamp: Date
 
-    init(id: UUID = UUID(), content: String, timestamp: Date = Date()) {
+    init(
+        id: UUID = UUID(),
+        kind: ClipboardContentKind = .text,
+        text: String? = nil,
+        imageFileName: String? = nil,
+        timestamp: Date = Date()
+    ) {
         self.id = id
-        self.content = content
+        self.kind = kind
+        self.text = text
+        self.imageFileName = imageFileName
         self.timestamp = timestamp
     }
 }
@@ -21,19 +36,33 @@ class ClipboardStore {
     private var lastChangeCount: Int
     private var saveDebounceWork: DispatchWorkItem?
     private let storageURL: URL
-    private let maxEntries = 500
+    let imagesDirectory: URL
 
     static let didChangeNotification = Notification.Name("clipboardStoreDidChange")
+    static let clipboardTabSelectedNotification = Notification.Name("clipboardTabSelected")
 
-    init(storageURL: URL? = nil) {
+    private var maxEntries: Int {
+        SettingsStore.shared.clipboardMaxEntries
+    }
+
+    init(storageURL: URL? = nil, imagesDirectory: URL? = nil) {
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let itsypadDir = appSupport.appendingPathComponent("Itsypad")
+        try? FileManager.default.createDirectory(at: itsypadDir, withIntermediateDirectories: true)
+
         if let storageURL {
             self.storageURL = storageURL
         } else {
-            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-            let itsypadDir = appSupport.appendingPathComponent("Itsypad")
-            try? FileManager.default.createDirectory(at: itsypadDir, withIntermediateDirectories: true)
             self.storageURL = itsypadDir.appendingPathComponent("clipboard.json")
         }
+
+        if let imagesDirectory {
+            self.imagesDirectory = imagesDirectory
+        } else {
+            self.imagesDirectory = itsypadDir.appendingPathComponent("clipboard-images")
+        }
+
+        try? FileManager.default.createDirectory(at: self.imagesDirectory, withIntermediateDirectories: true)
 
         lastChangeCount = NSPasteboard.general.changeCount
         restoreEntries()
@@ -60,18 +89,41 @@ class ClipboardStore {
         guard currentCount != lastChangeCount else { return }
         lastChangeCount = currentCount
 
+        // Priority 1: image
+        if let image = NSImage(pasteboard: pasteboard), image.isValid,
+           let tiffData = image.tiffRepresentation,
+           let bitmap = NSBitmapImageRep(data: tiffData),
+           let pngData = bitmap.representation(using: .png, properties: [:]) {
+            let fileName = "\(UUID().uuidString).png"
+            let fileURL = imagesDirectory.appendingPathComponent(fileName)
+            do {
+                try pngData.write(to: fileURL, options: .atomic)
+                let entry = ClipboardEntry(kind: .image, imageFileName: fileName)
+                insertEntry(entry)
+            } catch {
+                NSLog("Failed to save clipboard image: \(error)")
+            }
+            return
+        }
+
+        // Priority 2: text
         guard let text = pasteboard.string(forType: .string),
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
 
-        // Deduplicate consecutive identical entries
-        if let last = entries.first, last.content == text { return }
+        // Deduplicate consecutive identical text
+        if let last = entries.first, last.kind == .text, last.text == text { return }
 
-        let entry = ClipboardEntry(content: text)
+        let entry = ClipboardEntry(kind: .text, text: text)
+        insertEntry(entry)
+    }
+
+    private func insertEntry(_ entry: ClipboardEntry) {
         entries.insert(entry, at: 0)
 
         // FIFO eviction
-        if entries.count > maxEntries {
-            entries = Array(entries.prefix(maxEntries))
+        while entries.count > maxEntries {
+            let evicted = entries.removeLast()
+            cleanupImageFile(for: evicted)
         }
 
         scheduleSave()
@@ -83,19 +135,51 @@ class ClipboardStore {
     func copyToClipboard(_ entry: ClipboardEntry) {
         let pasteboard = NSPasteboard.general
         pasteboard.clearContents()
-        pasteboard.setString(entry.content, forType: .string)
+
+        switch entry.kind {
+        case .text:
+            if let text = entry.text {
+                pasteboard.setString(text, forType: .string)
+            }
+        case .image:
+            if let fileName = entry.imageFileName {
+                let fileURL = imagesDirectory.appendingPathComponent(fileName)
+                if let data = try? Data(contentsOf: fileURL) {
+                    pasteboard.setData(data, forType: .png)
+                }
+            }
+        }
+
         lastChangeCount = pasteboard.changeCount
     }
 
     func deleteEntry(id: UUID) {
-        entries.removeAll { $0.id == id }
+        if let index = entries.firstIndex(where: { $0.id == id }) {
+            let entry = entries.remove(at: index)
+            cleanupImageFile(for: entry)
+        }
         scheduleSave()
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
 
     func search(query: String) -> [ClipboardEntry] {
         guard !query.isEmpty else { return entries }
-        return entries.filter { $0.content.localizedCaseInsensitiveContains(query) }
+        return entries.filter { entry in
+            switch entry.kind {
+            case .text:
+                return entry.text?.localizedCaseInsensitiveContains(query) ?? false
+            case .image:
+                return "image".localizedCaseInsensitiveContains(query)
+            }
+        }
+    }
+
+    // MARK: - Image cleanup
+
+    func cleanupImageFile(for entry: ClipboardEntry) {
+        guard entry.kind == .image, let fileName = entry.imageFileName else { return }
+        let fileURL = imagesDirectory.appendingPathComponent(fileName)
+        try? FileManager.default.removeItem(at: fileURL)
     }
 
     // MARK: - Persistence

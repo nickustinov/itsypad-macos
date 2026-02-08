@@ -384,6 +384,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 tabStore.selectedTabID = tabStoreID
             }
 
+            if tab.id == clipboardTabID {
+                NotificationCenter.default.post(name: ClipboardStore.clipboardTabSelectedNotification, object: nil)
+            }
+
             // First responder is handled by EditorContentView.updateNSView
             // when isSelected changes, ensuring correct SwiftUI timing
         }
@@ -429,16 +433,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
               let tabData = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return [] }
 
         var items: [TabContextMenuItem] = []
-
-        items.append(TabContextMenuItem(title: "Save as...", icon: "square.and.arrow.down") {
-            MainActor.assumeIsolated {
-                self.tabStore.saveFileAs(id: tabStoreID)
-                if let bonsplitID = self.tabIDMap[tabStoreID],
-                   let updated = self.tabStore.tabs.first(where: { $0.id == tabStoreID }) {
-                    self.controller.updateTab(bonsplitID, title: updated.name, isDirty: updated.isDirty)
-                }
-            }
-        })
 
         let hasFile = tabData.fileURL != nil
 

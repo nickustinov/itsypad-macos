@@ -2,21 +2,23 @@
 
 [![Tests](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml/badge.svg)](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml)
 
-A tiny, native macOS text editor that lives in your menu bar.
+A tiny, native macOS text editor + clipboard manager that lives in your menu bar.
 
-I made this for myself. I write all my ideas and thoughts as plain text and needed something super lightweight — not an IDE, not VS Code, not even a full-blown editor. Just a fast scratchpad that's always one hotkey away. But I also paste code snippets regularly, so syntax highlighting was a must.
+I write all my ideas and thoughts as plain text and needed something super lightweight — not an IDE, not VS Code, not even a full-blown editor. Just a fast scratchpad that's always one hotkey away. 
 
-Nothing I tried felt right, so I built Itsypad. It's a native Swift/AppKit app — no Electron, no web views, no bloat. If you like it, use it. It's free.
+Itsypad is a native Swift/AppKit app — no Electron, no web views, no bloat. If you like it, use it. It's free.
 
 ## Features
 
-- **Menu bar app** — lives in the system tray, toggle with a global hotkey
+- **Menu bar app** — toggle with a hotkey
+- **Clipboard manager** — pinned to the right side of the tab bar, always accessible via global hotkey
+- **Monokai-inspired theme** — dark and light variants, controls editor background, tab bar, and window chrome
+- **Global hotkeys** — configurable shortcuts including triple-tap modifier keys (e.g. triple-tap Left Option). Distinguishes left and right modifier keys
+
+### Editor
 - **Multi-tab** — work on multiple files/notes at once, drag to reorder
 - **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
-- **Monokai-inspired theme** — dark and light variants, controls editor background, tab bar, and window chrome
-- **Clipboard tab** — pinned to the right side of the tab bar, always accessible
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts. Never lose your work
-- **Global hotkey** — configurable shortcut including triple-tap modifier keys (e.g. triple-tap Left Option). Distinguishes left and right modifier keys
 - **Find and replace** — Cmd+F to find, Cmd+Option+F for find and replace
 - **Line numbers** — optional, off by default
 - **Current line highlight** — optional, off by default

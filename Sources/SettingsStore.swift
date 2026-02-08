@@ -121,6 +121,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var clipboardMaxEntries: Int = 200 {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardMaxEntries, forKey: "clipboardMaxEntries")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     @Published var clipboardShortcut: String = "" {
         didSet {
             guard !isLoading else { return }
@@ -189,6 +197,8 @@ class SettingsStore: ObservableObject {
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
         wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
+        let savedMaxEntries = defaults.integer(forKey: "clipboardMaxEntries")
+        clipboardMaxEntries = savedMaxEntries > 0 ? savedMaxEntries : 200
 
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {

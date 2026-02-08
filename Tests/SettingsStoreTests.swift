@@ -68,6 +68,10 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.shortcutKeys?.tapModifier, "left-option")
     }
 
+    func testDefaultClipboardMaxEntries() {
+        XCTAssertEqual(store.clipboardMaxEntries, 200)
+    }
+
     func testDefaultClipboardShortcut() {
         XCTAssertEqual(store.clipboardShortcut, "⌥⌥⌥ R")
     }

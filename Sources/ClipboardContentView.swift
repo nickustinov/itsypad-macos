@@ -1,10 +1,18 @@
 import Cocoa
 
+private let cardCellID = NSUserInterfaceItemIdentifier("ClipboardCard")
+private let tileMinWidth: CGFloat = 200
+private let tileHeight: CGFloat = 110
+private let tileSpacing: CGFloat = 8
+private let sectionInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+
 // MARK: - Clipboard card view
 
 private class ClipboardCardView: NSView {
     private let previewLabel = NSTextField(wrappingLabelWithString: "")
+    private let imageView = NSImageView()
     private let timestampLabel = NSTextField(labelWithString: "")
+    private let copiedBadge = NSTextField(labelWithString: "Copied")
     private var trackingArea: NSTrackingArea?
     private var isHovered = false { didSet { updateBackground() } }
     private var entry: ClipboardEntry?
@@ -28,40 +36,138 @@ private class ClipboardCardView: NSView {
         layer?.cornerRadius = 6
 
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
-        previewLabel.maximumNumberOfLines = 3
+        previewLabel.maximumNumberOfLines = 5
         previewLabel.lineBreakMode = .byTruncatingTail
-        previewLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+        previewLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
         previewLabel.isSelectable = false
+        previewLabel.cell?.truncatesLastVisibleLine = true
+
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.imageAlignment = .alignCenter
+        imageView.isHidden = true
 
         timestampLabel.translatesAutoresizingMaskIntoConstraints = false
         timestampLabel.font = NSFont.systemFont(ofSize: 10)
         timestampLabel.textColor = .secondaryLabelColor
         timestampLabel.isSelectable = false
 
+        copiedBadge.translatesAutoresizingMaskIntoConstraints = false
+        copiedBadge.font = NSFont.systemFont(ofSize: 10, weight: .medium)
+        copiedBadge.textColor = .controlAccentColor
+        copiedBadge.isSelectable = false
+        copiedBadge.isHidden = true
+
+        addSubview(imageView)
         addSubview(previewLabel)
         addSubview(timestampLabel)
+        addSubview(copiedBadge)
 
         NSLayoutConstraint.activate([
             previewLabel.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-            previewLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
-            previewLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            previewLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            previewLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
 
-            timestampLabel.topAnchor.constraint(equalTo: previewLabel.bottomAnchor, constant: 4),
-            timestampLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
-            timestampLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
-            timestampLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            imageView.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            imageView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+            imageView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
+            imageView.bottomAnchor.constraint(equalTo: timestampLabel.topAnchor, constant: -2),
+
+            timestampLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            timestampLabel.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            timestampLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+
+            copiedBadge.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+            copiedBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
         ])
-
-        let click = NSClickGestureRecognizer(target: self, action: #selector(cardClicked))
-        addGestureRecognizer(click)
     }
 
-    func configure(with entry: ClipboardEntry) {
+    func configure(with entry: ClipboardEntry, searchQuery: String = "") {
         self.entry = entry
-        let preview = String(entry.content.prefix(500))
-        previewLabel.stringValue = preview
+
+        switch entry.kind {
+        case .text:
+            imageView.isHidden = true
+            previewLabel.isHidden = false
+            configureTextPreview(text: entry.text ?? "", searchQuery: searchQuery)
+
+        case .image:
+            previewLabel.isHidden = true
+            imageView.isHidden = false
+            imageView.image = nil
+            if let fileName = entry.imageFileName {
+                let fileURL = ClipboardStore.shared.imagesDirectory.appendingPathComponent(fileName)
+                imageView.image = NSImage(contentsOf: fileURL)
+            }
+        }
+
         timestampLabel.stringValue = relativeTime(from: entry.timestamp)
         updateBackground()
+    }
+
+    private func configureTextPreview(text: String, searchQuery: String) {
+        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        let textColor: NSColor = isDark ? .white : .black
+
+        let lines = text.prefix(2000).components(separatedBy: .newlines)
+        let trimmed = lines.map { String($0.drop(while: { $0 == " " || $0 == "\t" })) }
+
+        if searchQuery.isEmpty {
+            previewLabel.font = font
+            previewLabel.attributedStringValue = NSAttributedString(
+                string: trimmed.joined(separator: "\n"),
+                attributes: [.font: font, .foregroundColor: textColor]
+            )
+            return
+        }
+
+        // Find the first match line to decide which portion to show
+        let fullText = trimmed.joined(separator: "\n")
+        let nsText = fullText as NSString
+        let matchRange = nsText.range(of: searchQuery, options: .caseInsensitive)
+
+        var displayText = fullText
+        if matchRange.location != NSNotFound {
+            // Find which line the match starts on
+            let beforeMatch = nsText.substring(to: matchRange.location)
+            let matchLine = beforeMatch.components(separatedBy: "\n").count - 1
+
+            // If match is beyond line 2, offset the preview to show it
+            if matchLine > 2, trimmed.count > 5 {
+                let startLine = max(0, matchLine - 1)
+                displayText = trimmed[startLine...].joined(separator: "\n")
+            }
+        }
+
+        // Build attributed string with highlights
+        let attributed = NSMutableAttributedString(
+            string: displayText,
+            attributes: [.font: font, .foregroundColor: textColor]
+        )
+        let highlightColor = NSColor.selectedTextBackgroundColor
+        let nsDisplay = displayText as NSString
+        var searchStart = 0
+        while searchStart < nsDisplay.length {
+            let range = nsDisplay.range(
+                of: searchQuery,
+                options: .caseInsensitive,
+                range: NSRange(location: searchStart, length: nsDisplay.length - searchStart)
+            )
+            if range.location == NSNotFound { break }
+            attributed.addAttribute(.backgroundColor, value: highlightColor, range: range)
+            searchStart = range.location + range.length
+        }
+
+        previewLabel.attributedStringValue = attributed
+    }
+
+    func resetState() {
+        copiedFlashWork?.cancel()
+        copiedBadge.isHidden = true
+        isHovered = false
+        imageView.image = nil
+        imageView.isHidden = true
+        previewLabel.isHidden = false
     }
 
     private func updateAppearance() {
@@ -74,7 +180,7 @@ private class ClipboardCardView: NSView {
 
     private func updateBackground() {
         let blend: NSColor = isDark ? .white : .black
-        let fraction: CGFloat = isHovered ? 0.15 : 0.10
+        let fraction: CGFloat = isDark ? (isHovered ? 0.12 : 0.07) : (isHovered ? 0.20 : 0.15)
         let cardBg = themeBackground.blended(withFraction: fraction, of: blend) ?? themeBackground
         layer?.backgroundColor = cardBg.cgColor
     }
@@ -88,17 +194,13 @@ private class ClipboardCardView: NSView {
     private func showCopiedFlash() {
         copiedFlashWork?.cancel()
 
-        let savedText = previewLabel.stringValue
-        previewLabel.stringValue = "Copied!"
-        previewLabel.textColor = .controlAccentColor
+        copiedBadge.isHidden = false
 
         let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
-            self.previewLabel.stringValue = savedText
-            self.updateAppearance()
+            self?.copiedBadge.isHidden = true
         }
         copiedFlashWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6, execute: work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
     }
 
     override func updateTrackingAreas() {
@@ -112,6 +214,10 @@ private class ClipboardCardView: NSView {
     override func mouseEntered(with event: NSEvent) { isHovered = true }
     override func mouseExited(with event: NSEvent) { isHovered = false }
 
+    override func mouseDown(with event: NSEvent) {
+        cardClicked()
+    }
+
     private func relativeTime(from date: Date) -> String {
         let interval = -date.timeIntervalSinceNow
         if interval < 60 { return "just now" }
@@ -123,19 +229,33 @@ private class ClipboardCardView: NSView {
     }
 }
 
-// MARK: - Flipped clip view (anchors content to top)
+// MARK: - Collection view item
 
-private class FlippedClipView: NSClipView {
-    override var isFlipped: Bool { true }
+private class ClipboardCardItem: NSCollectionViewItem {
+    override func loadView() {
+        view = ClipboardCardView(frame: .zero)
+    }
+
+    var cardView: ClipboardCardView? { view as? ClipboardCardView }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        cardView?.resetState()
+    }
 }
 
 // MARK: - Clipboard content view
 
-class ClipboardContentView: NSView {
+class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout {
     private let searchField = NSSearchField()
     private let scrollView = NSScrollView()
-    private let stackView = NSStackView()
+    private let collectionView = NSCollectionView()
+    private let emptyLabel = NSTextField(labelWithString: "")
+    private var filteredEntries: [ClipboardEntry] = []
     private var clipboardObserver: Any?
+    private var tabSelectedObserver: Any?
+    private var lastLayoutWidth: CGFloat = 0
+    private var currentSearchQuery: String = ""
 
     var themeBackground: NSColor = .windowBackgroundColor {
         didSet { applyTheme() }
@@ -165,27 +285,36 @@ class ClipboardContentView: NSView {
         searchField.sendsSearchStringImmediately = true
         searchField.font = NSFont.systemFont(ofSize: 12)
 
+        // Flow layout
+        let layout = NSCollectionViewFlowLayout()
+        layout.minimumInteritemSpacing = tileSpacing
+        layout.minimumLineSpacing = tileSpacing
+        layout.sectionInset = sectionInsets
+
+        // Collection view
+        collectionView.collectionViewLayout = layout
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.register(ClipboardCardItem.self, forItemWithIdentifier: cardCellID)
+        collectionView.backgroundColors = [.clear]
+        collectionView.isSelectable = false
+
         // Scroll view
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        scrollView.documentView = collectionView
         scrollView.drawsBackground = false
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = true
 
-        // Stack view
-        stackView.orientation = .vertical
-        stackView.spacing = 8
-        stackView.translatesAutoresizingMaskIntoConstraints = false
-        stackView.edgeInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        stackView.alignment = .leading
-        stackView.setHuggingPriority(.defaultHigh, for: .vertical)
-
-        let clipView = FlippedClipView()
-        clipView.documentView = stackView
-        clipView.drawsBackground = false
-        scrollView.contentView = clipView
+        // Empty label
+        emptyLabel.translatesAutoresizingMaskIntoConstraints = false
+        emptyLabel.font = NSFont.systemFont(ofSize: 12)
+        emptyLabel.textColor = .secondaryLabelColor
+        emptyLabel.isHidden = true
 
         addSubview(searchField)
         addSubview(scrollView)
+        addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
             searchField.topAnchor.constraint(equalTo: topAnchor, constant: 8),
@@ -198,15 +327,9 @@ class ClipboardContentView: NSView {
             scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
             scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
 
-            stackView.leadingAnchor.constraint(equalTo: clipView.leadingAnchor),
-            stackView.trailingAnchor.constraint(equalTo: clipView.trailingAnchor),
-            stackView.topAnchor.constraint(equalTo: clipView.topAnchor),
+            emptyLabel.centerXAnchor.constraint(equalTo: scrollView.centerXAnchor),
+            emptyLabel.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 24),
         ])
-
-        // Pin bottom with low priority so content anchors to top when shorter than scroll area
-        let bottomPin = stackView.bottomAnchor.constraint(lessThanOrEqualTo: clipView.bottomAnchor)
-        bottomPin.priority = .defaultLow
-        bottomPin.isActive = true
 
         clipboardObserver = NotificationCenter.default.addObserver(
             forName: ClipboardStore.didChangeNotification,
@@ -216,12 +339,37 @@ class ClipboardContentView: NSView {
             self?.reloadEntries()
         }
 
+        tabSelectedObserver = NotificationCenter.default.addObserver(
+            forName: ClipboardStore.clipboardTabSelectedNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.focusSearchField()
+        }
+
         reloadEntries()
     }
 
     deinit {
         if let observer = clipboardObserver {
             NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = tabSelectedObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+
+    func focusSearchField() {
+        // Use afterDelay to ensure SwiftUI has finished its layout pass
+        window?.perform(#selector(NSWindow.makeFirstResponder(_:)), with: searchField, afterDelay: 0.1)
+    }
+
+    override func layout() {
+        super.layout()
+        let width = scrollView.bounds.width
+        if width != lastLayoutWidth {
+            lastLayoutWidth = width
+            collectionView.collectionViewLayout?.invalidateLayout()
         }
     }
 
@@ -230,40 +378,51 @@ class ClipboardContentView: NSView {
     }
 
     func reloadEntries() {
-        for view in stackView.arrangedSubviews {
-            stackView.removeArrangedSubview(view)
-            view.removeFromSuperview()
-        }
-
         let query = searchField.stringValue
-        let entries = ClipboardStore.shared.search(query: query)
+        currentSearchQuery = query
+        filteredEntries = ClipboardStore.shared.search(query: query)
 
-        if entries.isEmpty {
-            let emptyLabel = NSTextField(labelWithString: query.isEmpty ? "Clipboard history is empty" : "No matches")
-            emptyLabel.font = NSFont.systemFont(ofSize: 12)
-            emptyLabel.textColor = .secondaryLabelColor
-            emptyLabel.translatesAutoresizingMaskIntoConstraints = false
-            stackView.addArrangedSubview(emptyLabel)
-            return
-        }
+        let isEmpty = filteredEntries.isEmpty
+        emptyLabel.isHidden = !isEmpty
+        emptyLabel.stringValue = query.isEmpty ? "Clipboard history is empty" : "No matches"
 
-        for entry in entries {
-            let card = ClipboardCardView(frame: .zero)
-            card.translatesAutoresizingMaskIntoConstraints = false
-            card.themeBackground = themeBackground
-            card.isDark = isDark
-            card.configure(with: entry)
-            stackView.addArrangedSubview(card)
-
-            card.widthAnchor.constraint(equalTo: stackView.widthAnchor, constant: -24).isActive = true
-        }
+        collectionView.reloadData()
     }
+
+    // MARK: - NSCollectionViewDataSource
+
+    func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
+        filteredEntries.count
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, itemForRepresentedObjectAt indexPath: IndexPath) -> NSCollectionViewItem {
+        let item = collectionView.makeItem(withIdentifier: cardCellID, for: indexPath)
+        if let cardItem = item as? ClipboardCardItem {
+            cardItem.cardView?.themeBackground = themeBackground
+            cardItem.cardView?.isDark = isDark
+            cardItem.cardView?.configure(with: filteredEntries[indexPath.item], searchQuery: currentSearchQuery)
+        }
+        return item
+    }
+
+    // MARK: - NSCollectionViewDelegateFlowLayout
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        layout collectionViewLayout: NSCollectionViewLayout,
+        sizeForItemAt indexPath: IndexPath
+    ) -> NSSize {
+        let availableWidth = collectionView.bounds.width - sectionInsets.left - sectionInsets.right
+        let columns = max(1, floor((availableWidth + tileSpacing) / (tileMinWidth + tileSpacing)))
+        let tileWidth = floor((availableWidth - tileSpacing * (columns - 1)) / columns)
+        return NSSize(width: tileWidth, height: tileHeight)
+    }
+
+    // MARK: - Theme
 
     private func applyTheme() {
         layer?.backgroundColor = themeBackground.cgColor
-        let blend: NSColor = isDark ? .white : .black
         searchField.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
-        _ = themeBackground.blended(withFraction: 0.05, of: blend)
         reloadEntries()
     }
 }
