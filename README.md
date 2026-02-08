@@ -19,7 +19,7 @@ A tiny, native macOS text editor + clipboard manager. Free forever.
 - **iCloud sync** — sync scratch tabs across Macs via iCloud
 
 ## Editor
-- **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder
+- **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder, powered by [Bonsplit](https://github.com/nickustinov/bonsplit)
 - **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
 - **Find and replace** — built-in find bar with next/previous match and use selection for find
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts
