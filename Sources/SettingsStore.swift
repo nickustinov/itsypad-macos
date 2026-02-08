@@ -121,6 +121,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var icloudSync: Bool = false {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(icloudSync, forKey: "icloudSync")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     @Published var clipboardEnabled: Bool = true {
         didSet {
             guard !isLoading else { return }
@@ -197,6 +205,7 @@ class SettingsStore: ObservableObject {
         let savedTabWidth = defaults.integer(forKey: "tabWidth")
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
         wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
+        icloudSync = defaults.bool(forKey: "icloudSync")
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {

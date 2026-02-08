@@ -76,6 +76,10 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertNil(store.clipboardShortcutKeys)
     }
 
+    func testDefaultIcloudSync() {
+        XCTAssertFalse(store.icloudSync)
+    }
+
     // MARK: - Setting persistence
 
     func testShortcutPersistsToDefaults() {
@@ -91,6 +95,11 @@ final class SettingsStoreTests: XCTestCase {
     func testEditorFontSizePersistsToDefaults() {
         store.editorFontSize = 16
         XCTAssertEqual(defaults.double(forKey: "editorFontSize"), 16)
+    }
+
+    func testIcloudSyncPersistsToDefaults() {
+        store.icloudSync = true
+        XCTAssertTrue(defaults.bool(forKey: "icloudSync"))
     }
 
     // MARK: - editorFont computed property

@@ -1,5 +1,18 @@
 import Cocoa
 
+protocol KeyValueStoreProtocol: AnyObject {
+    func data(forKey key: String) -> Data?
+    func setData(_ data: Data?, forKey key: String)
+    func removeObject(forKey key: String)
+    @discardableResult func synchronize() -> Bool
+}
+
+extension NSUbiquitousKeyValueStore: KeyValueStoreProtocol {
+    func setData(_ data: Data?, forKey key: String) {
+        set(data, forKey: key)
+    }
+}
+
 struct TabData: Identifiable, Codable, Equatable {
     let id: UUID
     var name: String
@@ -39,6 +52,10 @@ class TabStore: ObservableObject {
 
     private var saveDebounceWork: DispatchWorkItem?
     private let sessionURL: URL
+    private let cloudStore: KeyValueStoreProtocol
+    private var icloudObserver: NSObjectProtocol?
+    private var settingsObserver: NSObjectProtocol?
+    private static let cloudTabsKey = "tabs"
 
     var selectedTab: TabData? {
         tabs.first { $0.id == selectedTabID }
@@ -48,7 +65,9 @@ class TabStore: ObservableObject {
         tabs.firstIndex { $0.id == selectedTabID }
     }
 
-    init(sessionURL: URL? = nil) {
+    init(sessionURL: URL? = nil, cloudStore: KeyValueStoreProtocol = NSUbiquitousKeyValueStore.default) {
+        self.cloudStore = cloudStore
+
         if let sessionURL {
             self.sessionURL = sessionURL
         } else {
@@ -62,6 +81,21 @@ class TabStore: ObservableObject {
 
         if tabs.isEmpty {
             addNewTab()
+        }
+
+        if SettingsStore.shared.icloudSync {
+            startICloudSync()
+        }
+
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .settingsChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            if SettingsStore.shared.icloudSync {
+                self.startICloudSync()
+            } else {
+                self.stopICloudSync()
+            }
         }
     }
 
@@ -239,6 +273,64 @@ class TabStore: ObservableObject {
         scheduleSave()
     }
 
+    // MARK: - iCloud sync
+
+    func startICloudSync() {
+        guard icloudObserver == nil else { return }
+        cloudStore.synchronize()
+        icloudObserver = NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: cloudStore, queue: .main
+        ) { [weak self] _ in
+            self?.mergeCloudTabs()
+        }
+    }
+
+    func stopICloudSync() {
+        if let observer = icloudObserver {
+            NotificationCenter.default.removeObserver(observer)
+            icloudObserver = nil
+        }
+        cloudStore.removeObject(forKey: Self.cloudTabsKey)
+        cloudStore.synchronize()
+    }
+
+    private func saveToICloud() {
+        guard SettingsStore.shared.icloudSync else { return }
+        let scratchTabs = tabs.filter { $0.fileURL == nil }
+        guard let data = try? JSONEncoder().encode(scratchTabs) else { return }
+        cloudStore.setData(data, forKey: Self.cloudTabsKey)
+        cloudStore.synchronize()
+    }
+
+    private func mergeCloudTabs() {
+        guard SettingsStore.shared.icloudSync,
+              let data = cloudStore.data(forKey: Self.cloudTabsKey),
+              let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data)
+        else { return }
+
+        var changed = false
+        for cloudTab in cloudTabs {
+            if let localIndex = tabs.firstIndex(where: { $0.id == cloudTab.id }) {
+                if tabs[localIndex].content != cloudTab.content
+                    || tabs[localIndex].name != cloudTab.name
+                    || tabs[localIndex].language != cloudTab.language {
+                    tabs[localIndex].content = cloudTab.content
+                    tabs[localIndex].name = cloudTab.name
+                    tabs[localIndex].language = cloudTab.language
+                    changed = true
+                }
+            } else {
+                tabs.append(cloudTab)
+                changed = true
+            }
+        }
+
+        if changed {
+            scheduleSave()
+        }
+    }
+
     // MARK: - Session persistence
 
     func scheduleSave() {
@@ -257,6 +349,7 @@ class TabStore: ObservableObject {
         } catch {
             NSLog("Failed to save session: \(error)")
         }
+        saveToICloud()
     }
 
     private func restoreSession() {

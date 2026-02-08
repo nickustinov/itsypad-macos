@@ -4,15 +4,16 @@
 
 A tiny, native macOS text editor + clipboard manager.
 
-## Features!!
+## Features
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace
-- **Clipboard manager** — text history, searchable, click to copy
+- **Clipboard manager** — 500 item history, searchable, click to copy
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **Menu bar app** — show or hide in menu bar
 - **Dock app** — show or hide in Dock, as you prefer
 - **Open at login** — optional auto-start
+- **iCloud sync** — sync scratch tabs across Macs via iCloud
 
 ### Editor
 - **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder
@@ -23,7 +24,7 @@ A tiny, native macOS text editor + clipboard manager.
 - **Monokai-inspired theme** — dark and light variants with system appearance support
 
 ### Clipboard manager
-- **Text only** — stores textual clipboard content
+- **Text and images** — stores clipboard content
 - **Searchable** — filter history with highlighted search matches
 - **Click to copy** — click any entry to copy it back to clipboard
 - **Delete entries** — remove individual items on hover
