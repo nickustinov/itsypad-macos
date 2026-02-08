@@ -15,7 +15,7 @@ struct ClipboardEntry: Identifiable, Codable, Equatable {
 class ClipboardStore {
     static let shared = ClipboardStore()
 
-    private(set) var entries: [ClipboardEntry] = []
+    var entries: [ClipboardEntry] = []
 
     private var timer: Timer?
     private var lastChangeCount: Int
@@ -25,11 +25,15 @@ class ClipboardStore {
 
     static let didChangeNotification = Notification.Name("clipboardStoreDidChange")
 
-    private init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let itsypadDir = appSupport.appendingPathComponent("Itsypad")
-        try? FileManager.default.createDirectory(at: itsypadDir, withIntermediateDirectories: true)
-        storageURL = itsypadDir.appendingPathComponent("clipboard.json")
+    init(storageURL: URL? = nil) {
+        if let storageURL {
+            self.storageURL = storageURL
+        } else {
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let itsypadDir = appSupport.appendingPathComponent("Itsypad")
+            try? FileManager.default.createDirectory(at: itsypadDir, withIntermediateDirectories: true)
+            self.storageURL = itsypadDir.appendingPathComponent("clipboard.json")
+        }
 
         lastChangeCount = NSPasteboard.general.changeCount
         restoreEntries()

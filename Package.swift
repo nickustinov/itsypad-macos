@@ -9,8 +9,8 @@ let package = Package(
         .package(path: "Packages/Bonsplit"),
     ],
     targets: [
-        .executableTarget(
-            name: "itsypad",
+        .target(
+            name: "ItsypadCore",
             dependencies: [
                 .product(name: "CodeEditLanguages", package: "CodeEditLanguages"),
                 .product(name: "Bonsplit", package: "Bonsplit"),
@@ -21,6 +21,16 @@ let package = Package(
             linkerSettings: [
                 .unsafeFlags(["-Xlinker", "-sectcreate", "-Xlinker", "__TEXT", "-Xlinker", "__info_plist", "-Xlinker", "Sources/Info.plist"])
             ]
-        )
+        ),
+        .executableTarget(
+            name: "itsypad",
+            dependencies: ["ItsypadCore"],
+            path: "Executable"
+        ),
+        .testTarget(
+            name: "ItsypadTests",
+            dependencies: ["ItsypadCore"],
+            path: "Tests"
+        ),
     ]
 )

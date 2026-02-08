@@ -9,6 +9,7 @@ class SettingsStore: ObservableObject {
     static let shared = SettingsStore()
 
     private var isLoading = true
+    let defaults: UserDefaults
 
     @Published var launchAtLogin: Bool = false {
         didSet {
@@ -23,7 +24,7 @@ class SettingsStore: ObservableObject {
     @Published var shortcut: String = "" {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(shortcut, forKey: shortcutKey)
+            defaults.set(shortcut, forKey: shortcutKey)
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -32,9 +33,9 @@ class SettingsStore: ObservableObject {
         didSet {
             guard !isLoading else { return }
             if let keys = shortcutKeys, let data = try? JSONEncoder().encode(keys) {
-                UserDefaults.standard.set(data, forKey: shortcutKeysKey)
+                defaults.set(data, forKey: shortcutKeysKey)
             } else {
-                UserDefaults.standard.removeObject(forKey: shortcutKeysKey)
+                defaults.removeObject(forKey: shortcutKeysKey)
             }
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
@@ -43,7 +44,7 @@ class SettingsStore: ObservableObject {
     @Published var editorFontName: String = "System Mono" {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(editorFontName, forKey: "editorFontName")
+            defaults.set(editorFontName, forKey: "editorFontName")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -51,7 +52,7 @@ class SettingsStore: ObservableObject {
     @Published var editorFontSize: Double = 14 {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(editorFontSize, forKey: "editorFontSize")
+            defaults.set(editorFontSize, forKey: "editorFontSize")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -59,7 +60,7 @@ class SettingsStore: ObservableObject {
     @Published var appearanceOverride: String = "system" {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(appearanceOverride, forKey: "appearanceOverride")
+            defaults.set(appearanceOverride, forKey: "appearanceOverride")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -67,15 +68,15 @@ class SettingsStore: ObservableObject {
     @Published var showInDock: Bool = false {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(showInDock, forKey: "showInDock")
+            defaults.set(showInDock, forKey: "showInDock")
             NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
         }
     }
 
-    @Published var showLineNumbers: Bool = false {
+    @Published var showLineNumbers: Bool = true {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(showLineNumbers, forKey: "showLineNumbers")
+            defaults.set(showLineNumbers, forKey: "showLineNumbers")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -83,7 +84,7 @@ class SettingsStore: ObservableObject {
     @Published var highlightCurrentLine: Bool = false {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(highlightCurrentLine, forKey: "highlightCurrentLine")
+            defaults.set(highlightCurrentLine, forKey: "highlightCurrentLine")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -91,7 +92,7 @@ class SettingsStore: ObservableObject {
     @Published var indentUsingSpaces: Bool = true {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(indentUsingSpaces, forKey: "indentUsingSpaces")
+            defaults.set(indentUsingSpaces, forKey: "indentUsingSpaces")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -99,7 +100,7 @@ class SettingsStore: ObservableObject {
     @Published var tabWidth: Int = 4 {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(tabWidth, forKey: "tabWidth")
+            defaults.set(tabWidth, forKey: "tabWidth")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -107,7 +108,7 @@ class SettingsStore: ObservableObject {
     @Published var wordWrap: Bool = true {
         didSet {
             guard !isLoading else { return }
-            UserDefaults.standard.set(wordWrap, forKey: "wordWrap")
+            defaults.set(wordWrap, forKey: "wordWrap")
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -135,7 +136,8 @@ class SettingsStore: ObservableObject {
     private let shortcutKey = "shortcut"
     private let shortcutKeysKey = "shortcutKeys"
 
-    private init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         loadSettings()
         syncLaunchAtLoginStatus()
         isLoading = false
@@ -146,20 +148,20 @@ class SettingsStore: ObservableObject {
     }
 
     private func loadSettings() {
-        shortcut = UserDefaults.standard.string(forKey: shortcutKey) ?? "⌥⌥⌥ L"
-        editorFontName = UserDefaults.standard.string(forKey: "editorFontName") ?? "System Mono"
-        let savedSize = UserDefaults.standard.double(forKey: "editorFontSize")
+        shortcut = defaults.string(forKey: shortcutKey) ?? "⌥⌥⌥ L"
+        editorFontName = defaults.string(forKey: "editorFontName") ?? "System Mono"
+        let savedSize = defaults.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
-        appearanceOverride = UserDefaults.standard.string(forKey: "appearanceOverride") ?? "system"
-        showInDock = UserDefaults.standard.object(forKey: "showInDock") as? Bool ?? false
-        showLineNumbers = UserDefaults.standard.bool(forKey: "showLineNumbers")
-        highlightCurrentLine = UserDefaults.standard.bool(forKey: "highlightCurrentLine")
-        indentUsingSpaces = UserDefaults.standard.object(forKey: "indentUsingSpaces") as? Bool ?? true
-        let savedTabWidth = UserDefaults.standard.integer(forKey: "tabWidth")
+        appearanceOverride = defaults.string(forKey: "appearanceOverride") ?? "system"
+        showInDock = defaults.object(forKey: "showInDock") as? Bool ?? false
+        showLineNumbers = defaults.object(forKey: "showLineNumbers") as? Bool ?? true
+        highlightCurrentLine = defaults.bool(forKey: "highlightCurrentLine")
+        indentUsingSpaces = defaults.object(forKey: "indentUsingSpaces") as? Bool ?? true
+        let savedTabWidth = defaults.integer(forKey: "tabWidth")
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
-        wordWrap = UserDefaults.standard.object(forKey: "wordWrap") as? Bool ?? true
+        wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
 
-        if let data = UserDefaults.standard.data(forKey: shortcutKeysKey),
+        if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             shortcutKeys = keys
         } else {

@@ -48,11 +48,15 @@ class TabStore: ObservableObject {
         tabs.firstIndex { $0.id == selectedTabID }
     }
 
-    private init() {
-        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        let itsypadDir = appSupport.appendingPathComponent("Itsypad")
-        try? FileManager.default.createDirectory(at: itsypadDir, withIntermediateDirectories: true)
-        sessionURL = itsypadDir.appendingPathComponent("session.json")
+    init(sessionURL: URL? = nil) {
+        if let sessionURL {
+            self.sessionURL = sessionURL
+        } else {
+            let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+            let itsypadDir = appSupport.appendingPathComponent("Itsypad")
+            try? FileManager.default.createDirectory(at: itsypadDir, withIntermediateDirectories: true)
+            self.sessionURL = itsypadDir.appendingPathComponent("session.json")
+        }
 
         restoreSession()
 
@@ -249,7 +253,7 @@ class TabStore: ObservableObject {
     }
 }
 
-private struct SessionData: Codable {
+struct SessionData: Codable {
     let tabs: [TabData]
     let selectedTabID: UUID?
 }

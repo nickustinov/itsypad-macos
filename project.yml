@@ -47,3 +47,17 @@ targets:
         LD_RUNPATH_SEARCH_PATHS: "@executable_path/../Frameworks"
         ENABLE_HARDENED_RUNTIME: true
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+  ItsypadTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: Tests
+    dependencies:
+      - target: itsypad
+    settings:
+      base:
+        SWIFT_VERSION: "5.9"
+        MACOSX_DEPLOYMENT_TARGET: "14.0"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Itsypad.app/Contents/MacOS/Itsypad"
+        BUNDLE_LOADER: "$(TEST_HOST)"

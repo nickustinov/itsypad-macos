@@ -1,5 +1,7 @@
 # Itsypad
 
+[![Tests](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml/badge.svg)](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml)
+
 A tiny, native macOS text editor that lives in your menu bar.
 
 I made this for myself. I write all my ideas and thoughts as plain text and needed something super lightweight — not an IDE, not VS Code, not even a full-blown editor. Just a fast scratchpad that's always one hotkey away. But I also paste code snippets regularly, so syntax highlighting was a must.
