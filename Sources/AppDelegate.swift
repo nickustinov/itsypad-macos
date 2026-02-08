@@ -431,7 +431,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private func buildFileMenuItem() -> NSMenuItem {
         let menu = NSMenu(title: "File")
         menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "t"))
-        menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n"))
+        let altNewTab = NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n")
+        altNewTab.isHidden = true
+        altNewTab.allowsKeyEquivalentWhenHidden = true
+        menu.addItem(altNewTab)
         menu.addItem(NSMenuItem(title: "Open...", action: #selector(openFileAction), keyEquivalent: "o"))
 
         let recentMenu = NSMenu(title: "Open recent")
