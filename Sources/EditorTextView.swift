@@ -244,6 +244,30 @@ final class EditorTextView: NSTextView {
         }
     }
 
+    // MARK: - Fn+Up / Fn+Down: move cursor, not just scroll
+
+    override func scrollPageDown(_ sender: Any?) {
+        guard let scrollView = enclosingScrollView else { return }
+        let clip = scrollView.contentView
+        let pageHeight = clip.bounds.height
+        let newY = min(clip.bounds.origin.y + pageHeight, frame.height - pageHeight)
+        clip.scroll(to: NSPoint(x: 0, y: max(0, newY)))
+        scrollView.reflectScrolledClipView(clip)
+        let cursorY = clip.bounds.origin.y + textContainerOrigin.y
+        setSelectedRange(NSRange(location: characterIndexForInsertion(at: NSPoint(x: textContainerOrigin.x, y: cursorY)), length: 0))
+    }
+
+    override func scrollPageUp(_ sender: Any?) {
+        guard let scrollView = enclosingScrollView else { return }
+        let clip = scrollView.contentView
+        let pageHeight = clip.bounds.height
+        let newY = max(clip.bounds.origin.y - pageHeight, 0)
+        clip.scroll(to: NSPoint(x: 0, y: newY))
+        scrollView.reflectScrolledClipView(clip)
+        let cursorY = clip.bounds.origin.y + textContainerOrigin.y
+        setSelectedRange(NSRange(location: characterIndexForInsertion(at: NSPoint(x: textContainerOrigin.x, y: cursorY)), length: 0))
+    }
+
     // MARK: - Duplicate line (Cmd+D)
 
     override func keyDown(with event: NSEvent) {
