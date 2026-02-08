@@ -100,13 +100,48 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     @MainActor
     private func createEditorState(for tab: TabData) -> EditorState {
         let settings = SettingsStore.shared
+        let scrollView = createScrollView()
+        let textView = createTextView(settings: settings)
 
+        // Word wrap initial state (no-wrap needs explicit setup)
+        if !settings.wordWrap {
+            textView.isHorizontallyResizable = true
+            scrollView.hasHorizontalScroller = true
+            textView.textContainer?.widthTracksTextView = false
+            textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+        }
+
+        scrollView.documentView = textView
+
+        let gutter = createGutter()
+        let highlighter = createHighlighter(for: textView, settings: settings)
+        setupEditorContent(textView: textView, highlighter: highlighter, tab: tab)
+        wireUpTextChanges(textView: textView, tabID: tab.id)
+
+        applyThemeToEditor(textView: textView, gutter: gutter, theme: highlighter.theme)
+        highlighter.applyWrapIndent(to: textView, font: settings.editorFont)
+        highlighter.scheduleHighlightIfNeeded()
+
+        return EditorState(
+            textView: textView,
+            scrollView: scrollView,
+            gutterView: gutter,
+            highlightCoordinator: highlighter
+        )
+    }
+
+    @MainActor
+    private func createScrollView() -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.drawsBackground = false
         scrollView.autohidesScrollers = true
         scrollView.hasVerticalScroller = true
         scrollView.contentView.postsBoundsChangedNotifications = true
+        return scrollView
+    }
 
+    @MainActor
+    private func createTextView(settings: SettingsStore) -> EditorTextView {
         let textView = EditorTextView(frame: .zero)
         textView.isEditable = true
         textView.isRichText = false
@@ -134,37 +169,38 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         textView.autoresizingMask = [.width, .height]
         textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
+        return textView
+    }
 
-        // Word wrap initial state (no-wrap needs explicit setup)
-        if !settings.wordWrap {
-            textView.isHorizontallyResizable = true
-            scrollView.hasHorizontalScroller = true
-            textView.textContainer?.widthTracksTextView = false
-            textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        }
-
-        scrollView.documentView = textView
-
+    private func createGutter() -> LineNumberGutterView {
         let gutter = LineNumberGutterView()
         gutter.translatesAutoresizingMaskIntoConstraints = false
         gutter.wantsLayer = true
         gutter.layer?.masksToBounds = true
+        return gutter
+    }
 
+    @MainActor
+    private func createHighlighter(for textView: EditorTextView, settings: SettingsStore) -> SyntaxHighlightCoordinator {
         let highlighter = SyntaxHighlightCoordinator()
         highlighter.textView = textView
+        highlighter.font = settings.editorFont
         textView.delegate = highlighter
+        return highlighter
+    }
 
-        // Set content
+    @MainActor
+    private func setupEditorContent(textView: EditorTextView, highlighter: SyntaxHighlightCoordinator, tab: TabData) {
         textView.string = tab.content
         highlighter.language = tab.language
-        highlighter.font = settings.editorFont
 
-        // Restore cursor position
         let pos = min(tab.cursorPosition, (textView.string as NSString).length)
         textView.setSelectedRange(NSRange(location: pos, length: 0))
+        textView.scrollRangeToVisible(NSRange(location: pos, length: 0))
+    }
 
-        // Wire up text changes
-        let tabID = tab.id
+    @MainActor
+    private func wireUpTextChanges(textView: EditorTextView, tabID: UUID) {
         textView.onTextChange = { [weak self] text in
             guard let self else { return }
             self.tabStore.updateContent(id: tabID, content: text)
@@ -174,21 +210,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 self.highlighterForTab(bonsplitID)?.language = updatedTab.language
             }
         }
-
-        // Apply theme colors
-        let theme = highlighter.theme
-        applyThemeToEditor(textView: textView, gutter: gutter, theme: theme)
-
-        // Trigger initial highlight
-        highlighter.applyWrapIndent(to: textView, font: settings.editorFont)
-        highlighter.scheduleHighlightIfNeeded()
-
-        return EditorState(
-            textView: textView,
-            scrollView: scrollView,
-            gutterView: gutter,
-            highlightCoordinator: highlighter
-        )
     }
 
     // MARK: - Lookup helpers
@@ -469,19 +490,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     private func applyGutterVisibility(state: EditorState, showGutter: Bool) {
-        let gutter = state.gutterView
-        gutter.showLineNumbers = showGutter
-
-        if let constraint = gutter.constraints.first(where: { $0.identifier == "gutterWidth" }) {
-            if showGutter {
-                let lineCount = state.textView.string.components(separatedBy: "\n").count
-                let digits = max(3, "\(lineCount)".count)
-                let digitWidth = ("8" as NSString).size(withAttributes: [.font: gutter.lineFont]).width
-                constraint.constant = CGFloat(digits) * digitWidth + 16
-            } else {
-                constraint.constant = 1
-            }
-        }
+        let lineCount = state.textView.string.components(separatedBy: "\n").count
+        state.gutterView.updateVisibility(showGutter, lineCount: lineCount)
     }
 
     private func applyThemeToEditor(textView: EditorTextView, gutter: LineNumberGutterView, theme: EditorTheme) {

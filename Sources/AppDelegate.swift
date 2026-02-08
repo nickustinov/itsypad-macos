@@ -319,56 +319,60 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     private func setupMainMenu() {
         let mainMenu = NSMenu()
+        mainMenu.addItem(buildAppMenuItem())
+        mainMenu.addItem(buildFileMenuItem())
+        mainMenu.addItem(buildEditMenuItem())
+        mainMenu.addItem(buildViewMenuItem())
+        NSApp.mainMenu = mainMenu
+    }
 
-        // App menu
-        let appMenu = NSMenu()
-        appMenu.addItem(NSMenuItem(title: "About Itsypad", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
-        appMenu.addItem(.separator())
+    private func buildAppMenuItem() -> NSMenuItem {
+        let menu = NSMenu()
+        menu.addItem(NSMenuItem(title: "About Itsypad", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
+        menu.addItem(.separator())
         let settingsMenuItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
         settingsMenuItem.target = self
-        appMenu.addItem(settingsMenuItem)
-        appMenu.addItem(.separator())
-        appMenu.addItem(NSMenuItem(title: "Quit Itsypad", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(settingsMenuItem)
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Quit Itsypad", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 
-        let appMenuItem = NSMenuItem()
-        appMenuItem.submenu = appMenu
-        mainMenu.addItem(appMenuItem)
+        let item = NSMenuItem()
+        item.submenu = menu
+        return item
+    }
 
-        // File menu
-        let fileMenu = NSMenu(title: "File")
-        fileMenu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "t"))
-        fileMenu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n"))
-        fileMenu.addItem(NSMenuItem(title: "Open...", action: #selector(openFileAction), keyEquivalent: "o"))
-        fileMenu.addItem(NSMenuItem(title: "Save", action: #selector(saveFileAction), keyEquivalent: "s"))
+    private func buildFileMenuItem() -> NSMenuItem {
+        let menu = NSMenu(title: "File")
+        menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "t"))
+        menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n"))
+        menu.addItem(NSMenuItem(title: "Open...", action: #selector(openFileAction), keyEquivalent: "o"))
+        menu.addItem(NSMenuItem(title: "Save", action: #selector(saveFileAction), keyEquivalent: "s"))
 
         let saveAsItem = NSMenuItem(title: "Save as...", action: #selector(saveFileAsAction), keyEquivalent: "S")
         saveAsItem.keyEquivalentModifierMask = [.command, .shift]
-        fileMenu.addItem(saveAsItem)
+        menu.addItem(saveAsItem)
 
-        fileMenu.addItem(.separator())
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Close tab", action: #selector(closeTabAction), keyEquivalent: "w"))
 
-        let closeTabItem = NSMenuItem(title: "Close tab", action: #selector(closeTabAction), keyEquivalent: "w")
-        fileMenu.addItem(closeTabItem)
+        let item = NSMenuItem()
+        item.submenu = menu
+        return item
+    }
 
-        let fileMenuItem = NSMenuItem()
-        fileMenuItem.submenu = fileMenu
-        mainMenu.addItem(fileMenuItem)
-
-        // Edit menu
-        let editMenu = NSMenu(title: "Edit")
-        editMenu.addItem(NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"))
+    private func buildEditMenuItem() -> NSMenuItem {
+        let menu = NSMenu(title: "Edit")
+        menu.addItem(NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"))
         let redoItem = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
         redoItem.keyEquivalentModifierMask = [.command, .shift]
-        editMenu.addItem(redoItem)
-        editMenu.addItem(.separator())
-        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
-        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
-        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
-        editMenu.addItem(NSMenuItem(title: "Select all", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        menu.addItem(redoItem)
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        menu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        menu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        menu.addItem(NSMenuItem(title: "Select all", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        menu.addItem(.separator())
 
-        editMenu.addItem(.separator())
-
-        // Find submenu
         let findMenu = NSMenu(title: "Find")
 
         let findItem = NSMenuItem(title: "Find...", action: #selector(findAction(_:)), keyEquivalent: "f")
@@ -400,55 +404,54 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         let findMenuItem = NSMenuItem(title: "Find", action: nil, keyEquivalent: "")
         findMenuItem.submenu = findMenu
-        editMenu.addItem(findMenuItem)
+        menu.addItem(findMenuItem)
 
-        let editMenuItem = NSMenuItem()
-        editMenuItem.submenu = editMenu
-        mainMenu.addItem(editMenuItem)
+        let item = NSMenuItem()
+        item.submenu = menu
+        return item
+    }
 
-        // View menu
-        let viewMenu = NSMenu(title: "View")
+    private func buildViewMenuItem() -> NSMenuItem {
+        let menu = NSMenu(title: "View")
 
         let zoomInItem = NSMenuItem(title: "Increase font size", action: #selector(increaseFontSize), keyEquivalent: "+")
         zoomInItem.target = self
-        viewMenu.addItem(zoomInItem)
+        menu.addItem(zoomInItem)
 
         let zoomOutItem = NSMenuItem(title: "Decrease font size", action: #selector(decreaseFontSize), keyEquivalent: "-")
         zoomOutItem.target = self
-        viewMenu.addItem(zoomOutItem)
+        menu.addItem(zoomOutItem)
 
         let resetZoomItem = NSMenuItem(title: "Reset font size", action: #selector(resetFontSize), keyEquivalent: "0")
         resetZoomItem.target = self
-        viewMenu.addItem(resetZoomItem)
+        menu.addItem(resetZoomItem)
 
-        viewMenu.addItem(.separator())
+        menu.addItem(.separator())
 
         let wordWrapItem = NSMenuItem(title: "Word wrap", action: #selector(toggleWordWrap), keyEquivalent: "")
         wordWrapItem.target = self
-        viewMenu.addItem(wordWrapItem)
+        menu.addItem(wordWrapItem)
 
         let lineNumbersItem = NSMenuItem(title: "Show line numbers", action: #selector(toggleLineNumbers), keyEquivalent: "l")
         lineNumbersItem.keyEquivalentModifierMask = [.command, .shift]
         lineNumbersItem.target = self
-        viewMenu.addItem(lineNumbersItem)
+        menu.addItem(lineNumbersItem)
 
-        viewMenu.addItem(.separator())
+        menu.addItem(.separator())
 
         let nextTabItem = NSMenuItem(title: "Next tab", action: #selector(nextTabAction), keyEquivalent: "\t")
         nextTabItem.keyEquivalentModifierMask = [.control]
         nextTabItem.target = self
-        viewMenu.addItem(nextTabItem)
+        menu.addItem(nextTabItem)
 
         let prevTabItem = NSMenuItem(title: "Previous tab", action: #selector(previousTabAction), keyEquivalent: "\t")
         prevTabItem.keyEquivalentModifierMask = [.control, .shift]
         prevTabItem.target = self
-        viewMenu.addItem(prevTabItem)
+        menu.addItem(prevTabItem)
 
-        let viewMenuItem = NSMenuItem()
-        viewMenuItem.submenu = viewMenu
-        mainMenu.addItem(viewMenuItem)
-
-        NSApp.mainMenu = mainMenu
+        let item = NSMenuItem()
+        item.submenu = menu
+        return item
     }
 
     // MARK: - Menu actions

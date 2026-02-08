@@ -123,32 +123,8 @@ class HotkeyManager {
 
     private func handleFlagsChanged(_ event: NSEvent) {
         let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        let keyCode = event.keyCode
 
-        var pressedModifier: String?
-
-        switch Int(keyCode) {
-        case kVK_Option:
-            if flags.contains(.option) { pressedModifier = "left-option" }
-        case kVK_RightOption:
-            if flags.contains(.option) { pressedModifier = "right-option" }
-        case kVK_Command:
-            if flags.contains(.command) { pressedModifier = "left-command" }
-        case kVK_RightCommand:
-            if flags.contains(.command) { pressedModifier = "right-command" }
-        case kVK_Control:
-            if flags.contains(.control) { pressedModifier = "left-control" }
-        case kVK_RightControl:
-            if flags.contains(.control) { pressedModifier = "right-control" }
-        case kVK_Shift:
-            if flags.contains(.shift) { pressedModifier = "left-shift" }
-        case kVK_RightShift:
-            if flags.contains(.shift) { pressedModifier = "right-shift" }
-        default:
-            break
-        }
-
-        guard let modifier = pressedModifier else { return }
+        guard let modifier = ModifierKeyDetection.modifierName(for: event.keyCode, flags: flags) else { return }
 
         let now = Date()
         var timestamps = modifierPressTimestamps[modifier] ?? []

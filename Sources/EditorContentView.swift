@@ -53,14 +53,17 @@ struct EditorContentView: NSViewRepresentable {
             let textView = editorState.textView
             if let window = textView.window, window.firstResponder !== textView {
                 window.makeFirstResponder(textView)
+            } else if textView.window == nil {
+                // New tab — view not yet in window, defer to next run loop
+                DispatchQueue.main.async {
+                    textView.window?.makeFirstResponder(textView)
+                }
             }
         }
     }
 
     private func gutterWidth(for gutter: LineNumberGutterView, textView: EditorTextView) -> CGFloat {
         let lineCount = textView.string.components(separatedBy: "\n").count
-        let digits = max(3, "\(lineCount)".count)
-        let digitWidth = ("8" as NSString).size(withAttributes: [.font: gutter.lineFont]).width
-        return CGFloat(digits) * digitWidth + 16
+        return LineNumberGutterView.calculateWidth(lineCount: lineCount, font: gutter.lineFont)
     }
 }
