@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml/badge.svg)](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml)
 
-A fast, native scratchpad and clipboard manager for macOS. Free forever.
+A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 
 ![Itsypad screenshot](itsypad-screenshot-v2.png)
 
