@@ -9,7 +9,7 @@ A tiny, native macOS text editor + clipboard manager.
 ## Features
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace
-- **Clipboard manager** — 500 item history, searchable, click to copy
+- **Clipboard manager** — 500-item history, searchable, click to copy
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **Menu bar app** — show or hide in menu bar
@@ -17,7 +17,7 @@ A tiny, native macOS text editor + clipboard manager.
 - **Open at login** — optional auto-start
 - **iCloud sync** — sync scratch tabs across Macs via iCloud
 
-### Editor
+## Editor
 - **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder
 - **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
 - **Find and replace** — built-in find bar with next/previous match and use selection for find
@@ -25,7 +25,7 @@ A tiny, native macOS text editor + clipboard manager.
 - **Auto-save** — content is continuously saved to session, never lose your work
 - **Monokai-inspired theme** — dark and light variants with system appearance support
 
-### Clipboard manager
+## Clipboard manager
 - **Text and images** — stores clipboard content
 - **Searchable** — filter history with highlighted search matches
 - **Click to copy** — click any entry to copy it back to clipboard
@@ -79,11 +79,11 @@ Sources/
 │   ├── EditorTextView.swift            # NSTextView subclass with editing helpers and file drops
 │   ├── EditorContentView.swift         # NSViewRepresentable wrapping text view, scroll view, and gutter
 │   ├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore and Bonsplit
-│   ├── EditorTheme.swift               # Monokai-inspired dark/light colour palettes
+│   ├── EditorTheme.swift               # Monokai-inspired dark/light color palettes
 │   ├── SyntaxHighlightCoordinator.swift # Tree-sitter syntax highlighting with injection support
 │   ├── LanguageDetector.swift          # File extension → language mapping via CodeEditLanguages
 │   ├── LineNumberGutterView.swift      # Line number gutter drawn alongside the text view
-│   └── FileWatcher.swift              # DispatchSource-based file change monitoring
+│   └── FileWatcher.swift                # DispatchSource-based file change monitoring
 ├── Clipboard/
 │   ├── ClipboardStore.swift            # Clipboard monitoring and history persistence
 │   ├── ClipboardContentView.swift      # NSCollectionView grid of clipboard cards with search
