@@ -349,7 +349,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 tabStore.selectedTabID = tabStoreID
             }
 
-            // Note: first responder is handled by EditorContentView.updateNSView
+            // First responder is handled by EditorContentView.updateNSView
             // when isSelected changes, ensuring correct SwiftUI timing
         }
     }

@@ -122,10 +122,8 @@ struct TabBarView: View {
             tab: tab,
             isSelected: pane.selectedTabId == tab.id,
             onSelect: {
-                withAnimation(.easeInOut(duration: TabBarMetrics.selectionDuration)) {
-                    pane.selectTab(tab.id)
-                    controller.focusPane(pane.id)
-                }
+                pane.selectTab(tab.id)
+                controller.focusPane(pane.id)
             },
             onClose: {
                 withAnimation(.easeInOut(duration: TabBarMetrics.closeDuration)) {
@@ -159,10 +157,8 @@ struct TabBarView: View {
             tab: tab,
             isSelected: pane.selectedTabId == tab.id,
             onSelect: {
-                withAnimation(.easeInOut(duration: TabBarMetrics.selectionDuration)) {
-                    pane.selectTab(tab.id)
-                    controller.focusPane(pane.id)
-                }
+                pane.selectTab(tab.id)
+                controller.focusPane(pane.id)
             },
             onClose: {}
         )

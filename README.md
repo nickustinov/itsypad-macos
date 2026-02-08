@@ -11,7 +11,7 @@ Nothing I tried felt right, so I built Itsypad. It's a native Swift/AppKit app �
 - **Menu bar app** — lives in the system tray, toggle with a global hotkey
 - **Multi-tab** — work on multiple files/notes at once, drag to reorder
 - **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
-- **Monokai Pro theme** — dark and light variants, controls editor background, tab bar, and window chrome
+- **Monokai-inspired theme** — dark and light variants, controls editor background, tab bar, and window chrome
 - **Clipboard tab** — pinned to the right side of the tab bar, always accessible
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts. Never lose your work
 - **Global hotkey** — configurable shortcut including triple-tap modifier keys (e.g. triple-tap Left Option). Distinguishes left and right modifier keys
