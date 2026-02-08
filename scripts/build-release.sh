@@ -4,7 +4,7 @@ set -e
 # Configuration
 APP_NAME="itsypad"
 BUNDLE_ID="com.nickustinov.itsypad"
-VERSION=$(defaults read "$(pwd)/Sources/Info.plist" CFBundleShortVersionString)
+VERSION=$(grep 'MARKETING_VERSION:' project.yml | grep -v CFBundle | sed 's/.*: *"\(.*\)"/\1/')
 
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
