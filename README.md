@@ -4,7 +4,7 @@
 
 A tiny, native macOS text editor + clipboard manager.
 
-![Itsypad screenshot](itsypad-screenshot-v1.png)
+![Itsypad screenshot](itsypad-screenshot-v2.png)
 
 ## Features
 
