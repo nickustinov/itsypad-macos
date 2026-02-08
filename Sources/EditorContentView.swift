@@ -48,9 +48,6 @@ struct EditorContentView: NSViewRepresentable {
         let theme = editorState.highlightCoordinator.theme
         container.window?.appearance = NSAppearance(named: theme.isDark ? .darkAqua : .aqua)
 
-        // Suppress cursor rects on inactive tabs so I-beam doesn't leak through
-        editorState.textView.isActiveTab = isSelected
-
         // Claim first responder when this tab becomes selected
         if isSelected {
             let textView = editorState.textView

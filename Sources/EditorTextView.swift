@@ -8,46 +8,7 @@ final class EditorTextView: NSTextView {
     override var isOpaque: Bool { false }
 
     var onTextChange: ((String) -> Void)?
-    var isActiveTab: Bool = true {
-        didSet {
-            if oldValue != isActiveTab {
-                updateTrackingAreas()
-                window?.invalidateCursorRects(for: self)
-            }
-        }
-    }
-
-    override func resetCursorRects() {
-        if isActiveTab {
-            super.resetCursorRects()
-        } else {
-            discardCursorRects()
-        }
-    }
-
-    override func updateTrackingAreas() {
-        // Remove our custom blocking tracking area
-        for area in trackingAreas where area.owner === self && area.options.contains(.cursorUpdate) {
-            removeTrackingArea(area)
-        }
-        super.updateTrackingAreas()
-        // When inactive, add a tracking area that forces arrow cursor
-        if !isActiveTab {
-            addTrackingArea(NSTrackingArea(
-                rect: bounds,
-                options: [.cursorUpdate, .activeAlways, .inVisibleRect],
-                owner: self
-            ))
-        }
-    }
-
-    override func cursorUpdate(with event: NSEvent) {
-        if isActiveTab {
-            super.cursorUpdate(with: event)
-        } else {
-            NSCursor.arrow.set()
-        }
-    }
+    var isActiveTab: Bool = true
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
