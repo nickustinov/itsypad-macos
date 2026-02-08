@@ -48,6 +48,9 @@ struct TabBarView: View {
                                     .id(tab.id)
                             }
 
+                            // New tab button
+                            newTabButton
+
                             // Drop zone at end of tabs
                             dropZoneAtEnd
                         }
@@ -107,11 +110,6 @@ struct TabBarView: View {
         }
         .frame(height: TabBarMetrics.barHeight)
         .contentShape(Rectangle())
-        .simultaneousGesture(
-            TapGesture(count: 2).onEnded {
-                controller.delegate?.splitTabBar(controller, didDoubleClickTabBarInPane: pane.id)
-            }
-        )
         .background(tabBarBackground)
         .saturation(shouldShowFullSaturation ? 1.0 : 0)
     }
@@ -168,6 +166,21 @@ struct TabBarView: View {
             },
             onClose: {}
         )
+    }
+
+    // MARK: - New Tab Button
+
+    @ViewBuilder
+    private var newTabButton: some View {
+        Button {
+            controller.delegate?.splitTabBar(controller, didDoubleClickTabBarInPane: pane.id)
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(TabBarColors.inactiveText)
+                .frame(width: TabBarMetrics.tabHeight, height: TabBarMetrics.tabHeight)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Item Provider

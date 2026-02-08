@@ -112,17 +112,10 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
 
     @ViewBuilder
     private func dropZonesLayer(size: CGSize) -> some View {
-        // Single unified drop zone that determines zone based on position
         Color.clear
             .onTapGesture {
                 controller.focusPane(pane.id)
             }
-            .onDrop(of: [.text], delegate: UnifiedPaneDropDelegate(
-                size: size,
-                pane: pane,
-                controller: controller,
-                activeDropZone: $activeDropZone
-            ))
     }
 
     // MARK: - Drop Placeholder

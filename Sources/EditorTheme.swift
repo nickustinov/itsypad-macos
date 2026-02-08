@@ -34,7 +34,7 @@ struct EditorTheme {
     static let dark = EditorTheme(
         isDark: true,
         background: hex(0x25252c),
-        foreground: hex(0xfcfcfa),
+        foreground: hex(0xd4d4d4),
         captures: [
             // Keywords and control flow
             "keyword": hex(0xff6188),
@@ -84,7 +84,7 @@ struct EditorTheme {
             "punctuation.special": hex(0xff6188),
 
             // Variables and parameters
-            "variable": hex(0xfcfcfa),
+            "variable": hex(0xd4d4d4),
             "variable.builtin": hex(0xfc9867),
             "parameter": hex(0xfc9867),
             "property": hex(0x78dce8),
@@ -105,7 +105,7 @@ struct EditorTheme {
     static let light = EditorTheme(
         isDark: false,
         background: hex(0xffffff),
-        foreground: hex(0x2d2a2e),
+        foreground: hex(0x403e41),
         captures: [
             "keyword": hex(0xd3284e),
             "keyword.function": hex(0xd3284e),
@@ -147,7 +147,7 @@ struct EditorTheme {
             "punctuation.bracket": hex(0x6e6b6e),
             "punctuation.special": hex(0xd3284e),
 
-            "variable": hex(0x2d2a2e),
+            "variable": hex(0x403e41),
             "variable.builtin": hex(0xc55715),
             "parameter": hex(0xc55715),
             "property": hex(0x2990a4),

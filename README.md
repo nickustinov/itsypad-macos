@@ -9,11 +9,13 @@ Nothing I tried felt right, so I built Itsypad. It's a native Swift/AppKit app �
 ## Features
 
 - **Menu bar app** — lives in the system tray, toggle with a global hotkey
-- **Multi-tab** — work on multiple files/notes at once
-- **Syntax highlighting** — 185+ languages via [Highlightr](https://github.com/raspu/Highlightr) (highlight.js), with automatic language detection
-- **Themes** — 90+ built-in themes including all four Catppuccin flavors (Latte, Frappé, Macchiato, Mocha). The theme controls everything: editor background, tab bar, window chrome, caret color
+- **Multi-tab** — work on multiple files/notes at once, drag to reorder
+- **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
+- **Monokai Pro theme** — dark and light variants, controls editor background, tab bar, and window chrome
+- **Clipboard tab** — pinned to the right side of the tab bar, always accessible
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts. Never lose your work
 - **Global hotkey** — configurable shortcut including triple-tap modifier keys (e.g. triple-tap Left Option). Distinguishes left and right modifier keys
+- **Find and replace** — Cmd+F to find, Cmd+Option+F for find and replace
 - **Line numbers** — optional, off by default
 - **Current line highlight** — optional, off by default
 - **Auto-indent** — matches indentation of the previous line on Enter
@@ -22,11 +24,10 @@ Nothing I tried felt right, so I built Itsypad. It's a native Swift/AppKit app �
 - **Duplicate line** — Cmd+D
 - **Auto-close brackets** — `()`, `[]`, `{}`
 - **Tab cycling** — Ctrl+Tab / Shift+Ctrl+Tab
-- **Double-click tab bar** — creates a new tab
+- **New tab** — Cmd+T or Cmd+N, or click the + button in the tab bar
 - **Save prompt** — asks to save when closing a dirty tab
 - **Custom fonts** — pick any monospace font installed on your system
 - **Font size controls** — Cmd+Plus, Cmd+Minus, Cmd+0 to reset
-- **Find** — Cmd+F
 - **Window memory** — remembers size and position
 - **Open at login** — optional
 

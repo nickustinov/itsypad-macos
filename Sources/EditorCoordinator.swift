@@ -29,6 +29,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         config.allowTabReordering = true
         config.contentViewLifecycle = .keepAllAlive
         config.allowCloseLastPane = false
+        config.newTabPosition = .end
         config.appearance.tabBarHeight = 28
 
         controller = BonsplitController(configuration: config)
@@ -193,6 +194,15 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     private func highlighterForTab(_ bonsplitID: TabID) -> SyntaxHighlightCoordinator? {
         editorStates[bonsplitID]?.highlightCoordinator
+    }
+
+    @MainActor
+    func activeTextView() -> EditorTextView? {
+        guard let focusedPaneId = controller.focusedPaneId,
+              let selectedTab = controller.selectedTab(inPane: focusedPaneId),
+              selectedTab.id != clipboardTabID,
+              let state = editorStates[selectedTab.id] else { return nil }
+        return state.textView
     }
 
     // MARK: - Public actions (menu/toolbar)

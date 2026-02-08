@@ -12,6 +12,23 @@ final class EditorTextView: NSTextView {
 
     var onTextChange: ((String) -> Void)?
 
+    // MARK: - Reject Bonsplit tab drags
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        if isTabTransferDrag(sender) { return [] }
+        return super.draggingEntered(sender)
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        if isTabTransferDrag(sender) { return false }
+        return super.performDragOperation(sender)
+    }
+
+    private func isTabTransferDrag(_ sender: any NSDraggingInfo) -> Bool {
+        guard let str = sender.draggingPasteboard.string(forType: .string) else { return false }
+        return str.contains("\"sourcePaneId\"")
+    }
+
     // MARK: - Typing helpers
 
     override func insertText(_ insertString: Any, replacementRange: NSRange) {

@@ -1,5 +1,6 @@
 import AppKit
 
+@Observable
 public final class BonsplitTheme: @unchecked Sendable {
     public static let shared = BonsplitTheme()
 

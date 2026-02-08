@@ -352,6 +352,42 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
         editMenu.addItem(NSMenuItem(title: "Select all", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
 
+        editMenu.addItem(.separator())
+
+        // Find submenu
+        let findMenu = NSMenu(title: "Find")
+
+        let findItem = NSMenuItem(title: "Find...", action: #selector(findAction(_:)), keyEquivalent: "f")
+        findItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
+        findItem.target = self
+        findMenu.addItem(findItem)
+
+        let replaceItem = NSMenuItem(title: "Find and replace...", action: #selector(findAction(_:)), keyEquivalent: "f")
+        replaceItem.keyEquivalentModifierMask = [.command, .option]
+        replaceItem.tag = Int(NSTextFinder.Action.showReplaceInterface.rawValue)
+        replaceItem.target = self
+        findMenu.addItem(replaceItem)
+
+        let findNextItem = NSMenuItem(title: "Find next", action: #selector(findAction(_:)), keyEquivalent: "g")
+        findNextItem.tag = Int(NSTextFinder.Action.nextMatch.rawValue)
+        findNextItem.target = self
+        findMenu.addItem(findNextItem)
+
+        let findPrevItem = NSMenuItem(title: "Find previous", action: #selector(findAction(_:)), keyEquivalent: "G")
+        findPrevItem.keyEquivalentModifierMask = [.command, .shift]
+        findPrevItem.tag = Int(NSTextFinder.Action.previousMatch.rawValue)
+        findPrevItem.target = self
+        findMenu.addItem(findPrevItem)
+
+        let useSelItem = NSMenuItem(title: "Use selection for find", action: #selector(findAction(_:)), keyEquivalent: "e")
+        useSelItem.tag = Int(NSTextFinder.Action.setSearchString.rawValue)
+        useSelItem.target = self
+        findMenu.addItem(useSelItem)
+
+        let findMenuItem = NSMenuItem(title: "Find", action: nil, keyEquivalent: "")
+        findMenuItem.submenu = findMenu
+        editMenu.addItem(findMenuItem)
+
         let editMenuItem = NSMenuItem()
         editMenuItem.submenu = editMenu
         mainMenu.addItem(editMenuItem)
@@ -422,6 +458,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc private func saveFileAsAction() {
         editorCoordinator?.saveFileAs()
+    }
+
+    @objc private func findAction(_ sender: NSMenuItem) {
+        editorCoordinator?.activeTextView()?.performFindPanelAction(sender)
     }
 
     @objc private func closeTabAction() {
