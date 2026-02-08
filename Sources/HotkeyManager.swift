@@ -6,6 +6,7 @@ class HotkeyManager {
 
     private var hotkeyRef: EventHotKeyRef?
     private var hotkeyID: EventHotKeyID?
+    private var clipboardHotkeyRef: EventHotKeyRef?
 
     // Triple-tap tracking
     private var modifierPressTimestamps: [String: [Date]] = [:]
@@ -49,7 +50,11 @@ class HotkeyManager {
 
                 DispatchQueue.main.async {
                     if let delegate = NSApp.delegate as? AppDelegate {
-                        delegate.toggleWindow()
+                        if hotkeyID.id == 2 {
+                            delegate.toggleClipboard()
+                        } else {
+                            delegate.toggleWindow()
+                        }
                     }
                 }
                 return noErr
@@ -63,7 +68,11 @@ class HotkeyManager {
 
     func register() {
         unregister()
+        registerMain()
+        registerClipboard()
+    }
 
+    private func registerMain() {
         guard let keys = SettingsStore.shared.shortcutKeys, !keys.isTripleTap else { return }
 
         let id = EventHotKeyID(signature: OSType(0x4950_4144), id: 1) // "IPAD"
@@ -86,11 +95,37 @@ class HotkeyManager {
         }
     }
 
+    private func registerClipboard() {
+        guard let keys = SettingsStore.shared.clipboardShortcutKeys, !keys.isTripleTap else { return }
+
+        let id = EventHotKeyID(signature: OSType(0x4950_4144), id: 2)
+        var ref: EventHotKeyRef?
+
+        let modifiers = carbonModifiers(from: NSEvent.ModifierFlags(rawValue: keys.modifiers))
+
+        let status = RegisterEventHotKey(
+            UInt32(keys.keyCode),
+            modifiers,
+            id,
+            GetApplicationEventTarget(),
+            0,
+            &ref
+        )
+
+        if status == noErr {
+            clipboardHotkeyRef = ref
+        }
+    }
+
     func unregister() {
         if let ref = hotkeyRef {
             UnregisterEventHotKey(ref)
             hotkeyRef = nil
             hotkeyID = nil
+        }
+        if let ref = clipboardHotkeyRef {
+            UnregisterEventHotKey(ref)
+            clipboardHotkeyRef = nil
         }
     }
 
@@ -135,18 +170,33 @@ class HotkeyManager {
         if timestamps.count >= 3 {
             modifierPressTimestamps[modifier] = []
 
-            guard let keys = SettingsStore.shared.shortcutKeys,
-                  keys.isTripleTap,
-                  let tap = keys.tapModifier else { return }
-
-            // Exact match, or backward-compat with old format (e.g. "option" matches both sides)
             let baseModifier = modifier.replacingOccurrences(of: "left-", with: "").replacingOccurrences(of: "right-", with: "")
-            guard modifier == tap || baseModifier == tap else { return }
+            let settings = SettingsStore.shared
 
-            DispatchQueue.main.async {
-                if let delegate = NSApp.delegate as? AppDelegate {
-                    delegate.toggleWindow()
+            // Check main shortcut
+            if let keys = settings.shortcutKeys,
+               keys.isTripleTap,
+               let tap = keys.tapModifier,
+               modifier == tap || baseModifier == tap {
+                DispatchQueue.main.async {
+                    if let delegate = NSApp.delegate as? AppDelegate {
+                        delegate.toggleWindow()
+                    }
                 }
+                return
+            }
+
+            // Check clipboard shortcut
+            if let keys = settings.clipboardShortcutKeys,
+               keys.isTripleTap,
+               let tap = keys.tapModifier,
+               modifier == tap || baseModifier == tap {
+                DispatchQueue.main.async {
+                    if let delegate = NSApp.delegate as? AppDelegate {
+                        delegate.toggleClipboard()
+                    }
+                }
+                return
             }
         }
     }

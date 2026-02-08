@@ -18,6 +18,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var reverseMap: [TabID: UUID] = [:]
     private var editorStates: [TabID: EditorState] = [:]
     private(set) var clipboardTabID: TabID?
+    private var isRemovingClipboardTab = false
 
     private var previousBonsplitTabID: TabID?
     private var settingsObserver: Any?
@@ -78,9 +79,11 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         }
 
-        // Create clipboard tab last — pinned to the right
-        if let clipTabID = controller.createTab(title: "Clipboard", icon: "doc.on.clipboard", isClosable: false, isPinned: true) {
-            clipboardTabID = clipTabID
+        // Create clipboard tab last — pinned to the right (if enabled)
+        if SettingsStore.shared.clipboardEnabled {
+            if let clipTabID = controller.createTab(title: "Clipboard", icon: "doc.on.clipboard", isClosable: false, isPinned: true) {
+                clipboardTabID = clipTabID
+            }
         }
 
         // Select the previously selected tab, or first document tab
@@ -336,6 +339,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         controller.selectPreviousTab()
     }
 
+    @MainActor
+    func selectClipboardTab() {
+        guard let clipID = clipboardTabID else { return }
+        controller.selectTab(clipID)
+    }
+
     // MARK: - BonsplitDelegate
 
     func splitTabBar(
@@ -343,8 +352,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         shouldCloseTab tab: Bonsplit.Tab,
         inPane pane: PaneID
     ) -> Bool {
-        // Never close clipboard tab
-        if tab.id == clipboardTabID { return false }
+        // Never close clipboard tab (unless programmatically removing it)
+        if tab.id == clipboardTabID { return isRemovingClipboardTab }
 
         guard let tabStoreID = reverseMap[tab.id],
               let tabData = tabStore.tabs.first(where: { $0.id == tabStoreID }) else {
@@ -494,12 +503,14 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     // MARK: - Settings
 
+    @MainActor
     private func applySettings() {
         let settings = SettingsStore.shared
         let font = settings.editorFont
         let showGutter = settings.showLineNumbers
 
         applyBonsplitTheme()
+        applyClipboardEnabled(settings.clipboardEnabled)
 
         for (_, state) in editorStates {
             state.textView.font = font
@@ -511,6 +522,26 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
             let theme = state.highlightCoordinator.theme
             applyThemeToEditor(textView: state.textView, gutter: state.gutterView, theme: theme)
+        }
+    }
+
+    @MainActor
+    private func applyClipboardEnabled(_ enabled: Bool) {
+        if enabled {
+            ClipboardStore.shared.startMonitoring()
+            if clipboardTabID == nil {
+                if let clipTabID = controller.createTab(title: "Clipboard", icon: "doc.on.clipboard", isClosable: false, isPinned: true) {
+                    clipboardTabID = clipTabID
+                }
+            }
+        } else {
+            ClipboardStore.shared.stopMonitoring()
+            if let clipTabID = clipboardTabID {
+                isRemovingClipboardTab = true
+                _ = controller.closeTab(clipTabID)
+                isRemovingClipboardTab = false
+                clipboardTabID = nil
+            }
         }
     }
 

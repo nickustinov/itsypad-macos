@@ -68,6 +68,16 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.shortcutKeys?.tapModifier, "left-option")
     }
 
+    func testDefaultClipboardShortcut() {
+        XCTAssertEqual(store.clipboardShortcut, "⌥⌥⌥ R")
+    }
+
+    func testDefaultClipboardShortcutKeys() {
+        XCTAssertNotNil(store.clipboardShortcutKeys)
+        XCTAssertEqual(store.clipboardShortcutKeys?.isTripleTap, true)
+        XCTAssertEqual(store.clipboardShortcutKeys?.tapModifier, "right-option")
+    }
+
     // MARK: - Setting persistence
 
     func testShortcutPersistsToDefaults() {

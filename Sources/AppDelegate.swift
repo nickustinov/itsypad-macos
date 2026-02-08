@@ -33,18 +33,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var settingsObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Dock icon / Cmd-Tab visibility
-        NSApp.setActivationPolicy(SettingsStore.shared.showInDock ? .regular : .accessory)
-
         setupStatusItem()
         setupEditorWindow()
         setupMainMenu()
+        updateDockVisibility()
 
         // Register hotkey
         HotkeyManager.shared.register()
 
-        // Start clipboard monitoring
-        ClipboardStore.shared.startMonitoring()
+        // Start clipboard monitoring if enabled
+        if SettingsStore.shared.clipboardEnabled {
+            ClipboardStore.shared.startMonitoring()
+        }
 
         // Track window visibility and re-show after other apps quit
         NotificationCenter.default.addObserver(
@@ -58,6 +58,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             selector: #selector(windowDidOrderOut),
             name: NSWindow.didResignKeyNotification,
             object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(editorWindowWillClose),
+            name: NSWindow.willCloseNotification,
+            object: editorWindow
         )
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification,
@@ -77,6 +83,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         ) { [weak self] _ in
             MainActor.assumeIsolated {
                 self?.applyWindowAppearance()
+                self?.updateDockVisibility()
             }
         }
     }
@@ -90,6 +97,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     @objc private func windowDidOrderOut(_ note: Notification) {
         // Only clear the flag if WE intentionally hid it (via toggleWindow)
         // Don't clear on resign-key — that happens when another app activates
+    }
+
+    @objc private func editorWindowWillClose(_ note: Notification) {
+        windowWasVisible = false
+        DispatchQueue.main.async { [weak self] in
+            self?.updateDockVisibility()
+        }
     }
 
     private func restoreWindowIfNeeded() {
@@ -229,6 +243,28 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
+        updateDockVisibility()
+    }
+
+    func toggleClipboard() {
+        guard let window = editorWindow else { return }
+
+        if window.isKeyWindow {
+            windowWasVisible = false
+            window.orderOut(nil)
+        } else {
+            windowWasVisible = true
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            editorCoordinator?.selectClipboardTab()
+        }
+        updateDockVisibility()
+    }
+
+    private func updateDockVisibility() {
+        let alwaysShow = SettingsStore.shared.showInDock
+        let windowVisible = editorWindow?.isVisible ?? false
+        NSApp.setActivationPolicy((alwaysShow || windowVisible) ? .regular : .accessory)
     }
 
     // MARK: - NSToolbarDelegate

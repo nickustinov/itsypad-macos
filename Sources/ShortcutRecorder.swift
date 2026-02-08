@@ -2,6 +2,7 @@ import Carbon.HIToolbox
 import SwiftUI
 
 struct ShortcutRecorderView: View {
+    var label: String
     @Binding var shortcut: String
     @Binding var shortcutKeys: ShortcutKeys?
     @State private var isRecording = false
@@ -9,7 +10,7 @@ struct ShortcutRecorderView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Show Itsypad")
+                Text(label)
 
                 Spacer()
 

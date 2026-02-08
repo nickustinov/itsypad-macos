@@ -79,18 +79,31 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Startup") {
+            Section("Itsypad") {
                 Toggle("Open at login", isOn: $store.launchAtLogin)
-            }
-
-            Section("Shortcut") {
                 ShortcutRecorderView(
+                    label: "Show Itsypad",
                     shortcut: $store.shortcut,
                     shortcutKeys: Binding(
                         get: { store.shortcutKeys },
                         set: { store.shortcutKeys = $0 }
                     )
                 )
+                Toggle("Always show in dock", isOn: $store.showInDock)
+            }
+
+            Section("Clipboard") {
+                Toggle("Enable clipboard history", isOn: $store.clipboardEnabled)
+                if store.clipboardEnabled {
+                    ShortcutRecorderView(
+                        label: "Show clipboard",
+                        shortcut: $store.clipboardShortcut,
+                        shortcutKeys: Binding(
+                            get: { store.clipboardShortcutKeys },
+                            set: { store.clipboardShortcutKeys = $0 }
+                        )
+                    )
+                }
             }
 
             Section("About") {
@@ -148,10 +161,6 @@ struct AppearanceSettingsView: View {
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
                 }
-            }
-
-            Section("Dock") {
-                Toggle("Show in dock", isOn: $store.showInDock)
             }
 
             Section("Font") {

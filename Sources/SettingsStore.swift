@@ -69,7 +69,7 @@ class SettingsStore: ObservableObject {
         didSet {
             guard !isLoading else { return }
             defaults.set(showInDock, forKey: "showInDock")
-            NSApp.setActivationPolicy(showInDock ? .regular : .accessory)
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
 
@@ -109,6 +109,34 @@ class SettingsStore: ObservableObject {
         didSet {
             guard !isLoading else { return }
             defaults.set(wordWrap, forKey: "wordWrap")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var clipboardEnabled: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardEnabled, forKey: "clipboardEnabled")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var clipboardShortcut: String = "" {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardShortcut, forKey: "clipboardShortcut")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var clipboardShortcutKeys: ShortcutKeys? = nil {
+        didSet {
+            guard !isLoading else { return }
+            if let keys = clipboardShortcutKeys, let data = try? JSONEncoder().encode(keys) {
+                defaults.set(data, forKey: "clipboardShortcutKeys")
+            } else {
+                defaults.removeObject(forKey: "clipboardShortcutKeys")
+            }
             NotificationCenter.default.post(name: .settingsChanged, object: nil)
         }
     }
@@ -160,12 +188,21 @@ class SettingsStore: ObservableObject {
         let savedTabWidth = defaults.integer(forKey: "tabWidth")
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
         wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
+        clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
 
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             shortcutKeys = keys
         } else {
             shortcutKeys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: "left-option")
+        }
+
+        clipboardShortcut = defaults.string(forKey: "clipboardShortcut") ?? "⌥⌥⌥ R"
+        if let data = defaults.data(forKey: "clipboardShortcutKeys"),
+           let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
+            clipboardShortcutKeys = keys
+        } else {
+            clipboardShortcutKeys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: "right-option")
         }
     }
 }
