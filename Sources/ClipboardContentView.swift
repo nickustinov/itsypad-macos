@@ -6,16 +6,109 @@ private let tileHeight: CGFloat = 110
 private let tileSpacing: CGFloat = 8
 private let sectionInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
+private class ArrowCursorSearchField: NSSearchField {
+    private var trackingAreaRef: NSTrackingArea?
+
+    override func resetCursorRects() {
+        discardCursorRects()
+        addCursorRect(bounds, cursor: .arrow)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingAreaRef {
+            removeTrackingArea(trackingAreaRef)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+}
+
+private class ArrowCursorCollectionView: NSCollectionView {
+    private var trackingAreaRef: NSTrackingArea?
+
+    override func resetCursorRects() {
+        discardCursorRects()
+        addCursorRect(bounds, cursor: .arrow)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingAreaRef {
+            removeTrackingArea(trackingAreaRef)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+}
+
+private class ArrowCursorLabel: NSTextField {
+    private var trackingAreaRef: NSTrackingArea?
+
+    override func resetCursorRects() {
+        discardCursorRects()
+        addCursorRect(bounds, cursor: .arrow)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingAreaRef {
+            removeTrackingArea(trackingAreaRef)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self
+        )
+        addTrackingArea(area)
+        trackingAreaRef = area
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+}
+
 // MARK: - Clipboard card view
 
 private class ClipboardCardView: NSView {
-    private let previewLabel = NSTextField(wrappingLabelWithString: "")
+    private let previewLabel = ArrowCursorLabel(wrappingLabelWithString: "")
     private let imageView = NSImageView()
-    private let timestampLabel = NSTextField(labelWithString: "")
+    private let timestampLabel = ArrowCursorLabel(labelWithString: "")
     private let deleteButton = NSButton()
-    private let copiedBadge = NSTextField(labelWithString: "Copied")
+    private let copiedBadge = ArrowCursorLabel(labelWithString: "Copied")
     private var trackingArea: NSTrackingArea?
-    private var isHovered = false { didSet { updateBackground(); deleteButton.isHidden = !isHovered } }
+    private var isHovered = false { didSet { updateBackground(); updateHoverControls() } }
     private var entry: ClipboardEntry?
     private var copiedFlashWork: DispatchWorkItem?
     var onDelete: ((UUID) -> Void)?
@@ -58,7 +151,8 @@ private class ClipboardCardView: NSView {
         deleteButton.translatesAutoresizingMaskIntoConstraints = false
         deleteButton.bezelStyle = .inline
         deleteButton.isBordered = false
-        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")
+        let smallConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")?.withSymbolConfiguration(smallConfig)
         deleteButton.imagePosition = .imageOnly
         deleteButton.target = self
         deleteButton.action = #selector(deleteClicked)
@@ -67,7 +161,7 @@ private class ClipboardCardView: NSView {
 
         copiedBadge.translatesAutoresizingMaskIntoConstraints = false
         copiedBadge.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        copiedBadge.textColor = .controlAccentColor
+        copiedBadge.textColor = .secondaryLabelColor
         copiedBadge.isSelectable = false
         copiedBadge.isHidden = true
 
@@ -94,12 +188,17 @@ private class ClipboardCardView: NSView {
             deleteButton.leadingAnchor.constraint(greaterThanOrEqualTo: timestampLabel.trailingAnchor, constant: 4),
             deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
             deleteButton.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
-            deleteButton.widthAnchor.constraint(equalToConstant: 16),
-            deleteButton.heightAnchor.constraint(equalToConstant: 16),
+            deleteButton.widthAnchor.constraint(equalToConstant: 12),
+            deleteButton.heightAnchor.constraint(equalToConstant: 12),
 
-            copiedBadge.topAnchor.constraint(equalTo: topAnchor, constant: 6),
-            copiedBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            copiedBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
+            copiedBadge.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
         ])
+    }
+
+    private func updateHoverControls() {
+        let showingCopied = !copiedBadge.isHidden
+        deleteButton.isHidden = !isHovered || showingCopied
     }
 
     @objc private func deleteClicked() {
@@ -221,9 +320,12 @@ private class ClipboardCardView: NSView {
         copiedFlashWork?.cancel()
 
         copiedBadge.isHidden = false
+        deleteButton.isHidden = true
 
         let work = DispatchWorkItem { [weak self] in
-            self?.copiedBadge.isHidden = true
+            guard let self else { return }
+            self.copiedBadge.isHidden = true
+            self.updateHoverControls()
         }
         copiedFlashWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: work)
@@ -232,9 +334,36 @@ private class ClipboardCardView: NSView {
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let ta = trackingArea { removeTrackingArea(ta) }
-        let ta = NSTrackingArea(rect: bounds, options: [.mouseEnteredAndExited, .activeAlways], owner: self)
+        let ta = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self
+        )
         addTrackingArea(ta)
         trackingArea = ta
+
+        // Re-check mouse position on scroll to fix stale hover state
+        if let window {
+            let mouseInWindow = window.mouseLocationOutsideOfEventStream
+            let localPoint = convert(mouseInWindow, from: nil)
+            let mouseInside = visibleRect.contains(localPoint)
+            if isHovered != mouseInside {
+                isHovered = mouseInside
+            }
+        }
+    }
+
+    override func resetCursorRects() {
+        discardCursorRects()
+        addCursorRect(bounds, cursor: .arrow)
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.arrow.set()
     }
 
     override func mouseEntered(with event: NSEvent) { isHovered = true }
@@ -273,10 +402,10 @@ private class ClipboardCardItem: NSCollectionViewItem {
 // MARK: - Clipboard content view
 
 class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout {
-    private let searchField = NSSearchField()
+    private let searchField = ArrowCursorSearchField()
     private let scrollView = NSScrollView()
-    private let collectionView = NSCollectionView()
-    private let emptyLabel = NSTextField(labelWithString: "")
+    private let collectionView = ArrowCursorCollectionView()
+    private let emptyLabel = ArrowCursorLabel(labelWithString: "")
     private var filteredEntries: [ClipboardEntry] = []
     private var clipboardObserver: Any?
     private var tabSelectedObserver: Any?
@@ -388,6 +517,31 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     func focusSearchField() {
         // Use afterDelay to ensure SwiftUI has finished its layout pass
         window?.perform(#selector(NSWindow.makeFirstResponder(_:)), with: searchField, afterDelay: 0.1)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas where area.owner === self {
+            removeTrackingArea(area)
+        }
+        addTrackingArea(NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .cursorUpdate, .activeAlways, .inVisibleRect],
+            owner: self
+        ))
+    }
+
+    override func cursorUpdate(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        NSCursor.arrow.set()
+    }
+
+    override func resetCursorRects() {
+        discardCursorRects()
+        addCursorRect(bounds, cursor: .arrow)
     }
 
     override func layout() {

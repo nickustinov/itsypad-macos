@@ -121,7 +121,7 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var clipboardMaxEntries: Int = 200 {
+    @Published var clipboardMaxEntries: Int = 500 {
         didSet {
             guard !isLoading else { return }
             defaults.set(clipboardMaxEntries, forKey: "clipboardMaxEntries")
@@ -198,7 +198,7 @@ class SettingsStore: ObservableObject {
         wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
         let savedMaxEntries = defaults.integer(forKey: "clipboardMaxEntries")
-        clipboardMaxEntries = savedMaxEntries > 0 ? savedMaxEntries : 200
+        clipboardMaxEntries = savedMaxEntries > 0 ? savedMaxEntries : 500
 
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
@@ -207,12 +207,10 @@ class SettingsStore: ObservableObject {
             shortcutKeys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: "left-option")
         }
 
-        clipboardShortcut = defaults.string(forKey: "clipboardShortcut") ?? "⌥⌥⌥ R"
+        clipboardShortcut = defaults.string(forKey: "clipboardShortcut") ?? ""
         if let data = defaults.data(forKey: "clipboardShortcutKeys"),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             clipboardShortcutKeys = keys
-        } else {
-            clipboardShortcutKeys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: "right-option")
         }
     }
 }
