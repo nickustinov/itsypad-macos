@@ -39,9 +39,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
     private func setLanguage(_ lang: String) {
         let codeLang = LanguageDetector.shared.codeLanguage(for: lang)
-        NSLog("[SyntaxHL] setLanguage(\"%@\") → codeLang.id=%@ tsLanguage=%@ queryURL=%@",
-              lang, String(describing: codeLang.id), codeLang.language == nil ? "nil" : "present",
-              codeLang.queryURL?.absoluteString ?? "nil")
         if let tsLanguage = codeLang.language {
             try? parser.setLanguage(tsLanguage)
             currentQuery = TreeSitterModel.shared.query(for: codeLang.id)
@@ -63,8 +60,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 }
             }
         }
-        NSLog("[SyntaxHL] setLanguage(\"%@\") → query=%@, injectionQuery=%@",
-              lang, currentQuery == nil ? "nil" : "present", injectionQuery == nil ? "nil" : "present")
         scheduleHighlightIfNeeded()
     }
 
@@ -179,27 +174,10 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 }
             }
 
-            NSLog("[SyntaxHL] rehighlight: captures=%d, injectionRegions=%d, names=%@",
-                  namedRanges.count, injectionRanges.count,
-                  Array(Set(namedRanges.map(\.name))).sorted().joined(separator: ", "))
-
             DispatchQueue.main.async { [weak self] in
-                guard let self, let tv = self.textView else {
-                    NSLog("[SyntaxHL] main: self or textView nil, skipping")
-                    return
-                }
-                guard self.highlightGeneration == generation else {
-                    NSLog("[SyntaxHL] main: generation mismatch (current=%d, expected=%d), skipping",
-                          self.highlightGeneration, generation)
-                    return
-                }
-                guard tv.string == textSnapshot else {
-                    NSLog("[SyntaxHL] main: text changed since parse, skipping")
-                    return
-                }
-
-                NSLog("[SyntaxHL] main: applying %d captures to text of length %d",
-                      namedRanges.count, (tv.string as NSString).length)
+                guard let self, let tv = self.textView else { return }
+                guard self.highlightGeneration == generation else { return }
+                guard tv.string == textSnapshot else { return }
 
                 let fullRange = NSRange(location: 0, length: (tv.string as NSString).length)
                 let sel = tv.selectedRange()
