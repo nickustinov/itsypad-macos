@@ -1,6 +1,6 @@
 import Cocoa
 
 let app = NSApplication.shared
-let delegate = AppDelegate()
+let delegate = MainActor.assumeIsolated { AppDelegate() }
 app.delegate = delegate
 app.run()

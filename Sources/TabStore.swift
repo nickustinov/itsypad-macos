@@ -209,9 +209,19 @@ class TabStore: ObservableObject {
         }
     }
 
+    func moveTab(from sourceIndex: Int, to destinationIndex: Int) {
+        guard sourceIndex != destinationIndex,
+              tabs.indices.contains(sourceIndex),
+              destinationIndex >= 0, destinationIndex <= tabs.count else { return }
+        let tab = tabs.remove(at: sourceIndex)
+        let insertAt = destinationIndex > sourceIndex ? destinationIndex - 1 : destinationIndex
+        tabs.insert(tab, at: insertAt)
+        scheduleSave()
+    }
+
     // MARK: - Session persistence
 
-    private func scheduleSave() {
+    func scheduleSave() {
         saveDebounceWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             self?.saveSession()

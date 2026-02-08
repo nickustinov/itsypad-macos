@@ -16,6 +16,8 @@ packages:
   CodeEditLanguages:
     url: https://github.com/CodeEditApp/CodeEditLanguages
     from: "0.1.20"
+  Bonsplit:
+    path: Packages/Bonsplit
 
 targets:
   itsypad:
@@ -29,6 +31,8 @@ targets:
     dependencies:
       - package: CodeEditLanguages
         product: CodeEditLanguages
+      - package: Bonsplit
+        product: Bonsplit
     info:
       path: Sources/Info.plist
     settings:

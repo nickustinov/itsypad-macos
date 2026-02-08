@@ -12,13 +12,23 @@ private class EditorPanel: NSPanel {
     }
 }
 
-class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
+// MARK: - Toolbar identifiers
+
+private extension NSToolbarItem.Identifier {
+    static let newTab = NSToolbarItem.Identifier("newTab")
+    static let openFile = NSToolbarItem.Identifier("openFile")
+    static let saveFile = NSToolbarItem.Identifier("saveFile")
+}
+
+@MainActor
+class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSToolbarDelegate {
     private var statusItem: NSStatusItem!
     private var editorWindow: NSPanel?
-    private var editorViewController: EditorViewController?
+    private var editorCoordinator: EditorCoordinator?
     private var settingsWindow: NSWindow?
     private var windowWasVisible = false
     private var workspaceObserver: Any?
+    private var settingsObserver: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Dock icon / Cmd-Tab visibility
@@ -52,7 +62,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.restoreWindowIfNeeded()
+            MainActor.assumeIsolated {
+                self?.restoreWindowIfNeeded()
+            }
+        }
+
+        // Apply theme to window when settings change
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .settingsChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.applyWindowAppearance()
+            }
         }
     }
 
@@ -149,9 +172,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     // MARK: - Editor window
 
     private func setupEditorWindow() {
-        if editorViewController == nil {
-            editorViewController = EditorViewController()
-        }
+        let coordinator = EditorCoordinator()
+        editorCoordinator = coordinator
+
+        let rootView = BonsplitRootView(coordinator: coordinator)
+        let hostingView = NSHostingView(rootView: rootView)
 
         let panel = EditorPanel(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
@@ -166,17 +191,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         panel.level = .normal
         panel.collectionBehavior = [.fullScreenAuxiliary]
         panel.minSize = NSSize(width: 320, height: 400)
-        panel.contentViewController = editorViewController
+        panel.contentView = hostingView
         panel.isReleasedWhenClosed = false
         panel.center()
         panel.setFrameAutosaveName("EditorWindow")
 
         let toolbar = NSToolbar(identifier: "EditorToolbar")
-        toolbar.delegate = editorViewController
+        toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         panel.toolbar = toolbar
 
         editorWindow = panel
+
+        applyWindowAppearance()
+    }
+
+    private func applyWindowAppearance() {
+        let theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
+        editorWindow?.appearance = NSAppearance(named: theme.isDark ? .darkAqua : .aqua)
+
+        // Set window background to theme color so Bonsplit's tab bar picks it up
+        let blendTarget: NSColor = theme.isDark ? .white : .black
+        let tabBarBg = theme.background.blended(withFraction: 0.06, of: blendTarget) ?? theme.background
+        editorWindow?.backgroundColor = tabBarBg
     }
 
     func toggleWindow() {
@@ -190,6 +227,45 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
         }
+    }
+
+    // MARK: - NSToolbarDelegate
+
+    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.newTab, .openFile, .saveFile]
+    }
+
+    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .space]
+    }
+
+    func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
+        let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+
+        switch itemIdentifier {
+        case .newTab:
+            item.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New tab")
+            item.label = "New tab"
+            item.toolTip = "New tab"
+            item.target = self
+            item.action = #selector(newTabAction)
+        case .openFile:
+            item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: "Open")
+            item.label = "Open"
+            item.toolTip = "Open file"
+            item.target = self
+            item.action = #selector(openFileAction)
+        case .saveFile:
+            item.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: "Save")
+            item.label = "Save"
+            item.toolTip = "Save file"
+            item.target = self
+            item.action = #selector(saveFileAction)
+        default:
+            return nil
+        }
+
+        return item
     }
 
     // MARK: - Settings
@@ -247,6 +323,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
         // File menu
         let fileMenu = NSMenu(title: "File")
         fileMenu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "t"))
+        fileMenu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n"))
         fileMenu.addItem(NSMenuItem(title: "Open...", action: #selector(openFileAction), keyEquivalent: "o"))
         fileMenu.addItem(NSMenuItem(title: "Save", action: #selector(saveFileAction), keyEquivalent: "s"))
 
@@ -332,31 +409,31 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     }
 
     @objc private func newTabAction() {
-        editorViewController?.newTab()
+        editorCoordinator?.newTab()
     }
 
     @objc private func openFileAction() {
-        editorViewController?.openFile()
+        editorCoordinator?.openFile()
     }
 
     @objc private func saveFileAction() {
-        editorViewController?.saveFile()
+        editorCoordinator?.saveFile()
     }
 
     @objc private func saveFileAsAction() {
-        editorViewController?.saveFileAs()
+        editorCoordinator?.saveFileAs()
     }
 
     @objc private func closeTabAction() {
-        editorViewController?.closeCurrentTab()
+        editorCoordinator?.closeCurrentTab()
     }
 
     @objc private func nextTabAction() {
-        editorViewController?.selectNextTab()
+        editorCoordinator?.selectNextTab()
     }
 
     @objc private func previousTabAction() {
-        editorViewController?.selectPreviousTab()
+        editorCoordinator?.selectPreviousTab()
     }
 
     @objc private func increaseFontSize() {
