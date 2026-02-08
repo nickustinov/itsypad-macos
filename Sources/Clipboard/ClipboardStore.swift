@@ -151,6 +151,15 @@ class ClipboardStore {
         lastChangeCount = pasteboard.changeCount
     }
 
+    func clearAll() {
+        for entry in entries {
+            cleanupImageFile(for: entry)
+        }
+        entries.removeAll()
+        scheduleSave()
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
+    }
+
     func deleteEntry(id: UUID) {
         if let index = entries.firstIndex(where: { $0.id == id }) {
             let entry = entries.remove(at: index)

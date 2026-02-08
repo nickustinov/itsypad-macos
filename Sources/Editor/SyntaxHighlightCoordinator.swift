@@ -191,10 +191,18 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 ], range: fullRange)
 
                 // Apply capture colors (sorted: less-specific first, more-specific overrides)
+                var markdownSpans: [(NSRange, NSColor)] = []
                 for nr in namedRanges {
                     let range = nr.range
                     guard range.location + range.length <= fullRange.length else { continue }
                     let color = currentTheme.color(for: nr.name)
+                    tv.textStorage?.addAttribute(.foregroundColor, value: color, range: range)
+                    // Collect markdown emphasis/strong spans to re-apply over their delimiters
+                    if nr.name == "text.strong" || nr.name == "text.emphasis" {
+                        markdownSpans.append((range, color))
+                    }
+                }
+                for (range, color) in markdownSpans {
                     tv.textStorage?.addAttribute(.foregroundColor, value: color, range: range)
                 }
 

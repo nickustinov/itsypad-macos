@@ -4,11 +4,13 @@
 
 A tiny, native macOS text editor + clipboard manager.
 
+![Itsypad screenshot](itsypad-screenshot.png)
+
 ## Features
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace
 - **Clipboard manager** — 500 item history, searchable, click to copy
-- **Global hotkeys** — tap left ⌥ three times to show/hide, or define own hotkey
+- **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **Menu bar app** — show or hide in menu bar
 - **Dock app** — show or hide in Dock, as you prefer
@@ -67,34 +69,40 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 
 ```
 Sources/
-├── Launch.swift                    # App entry point
-├── AppDelegate.swift               # Menu bar, toolbar, window, and menu setup
-├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore and Bonsplit
-├── EditorTextView.swift            # NSTextView subclass with editing helpers and file drops
-├── EditorContentView.swift         # NSViewRepresentable wrapping text view, scroll view, and gutter
-├── SyntaxHighlightCoordinator.swift # Tree-sitter syntax highlighting with injection support
-├── EditorTheme.swift               # Monokai-inspired dark/light colour palettes
-├── LanguageDetector.swift          # File extension → language mapping via CodeEditLanguages
-├── LineNumberGutterView.swift      # Line number gutter drawn alongside the text view
-├── BonsplitRootView.swift          # SwiftUI root view rendering editor and clipboard tabs
-├── ClipboardStore.swift            # Clipboard monitoring and history persistence
-├── ClipboardContentView.swift      # NSCollectionView grid of clipboard cards with search
-├── ClipboardTabView.swift          # NSViewRepresentable wrapper for ClipboardContentView
-├── TabStore.swift                  # Tab data model with persistence
-├── Models.swift                    # ShortcutKeys and shared data types
-├── SettingsStore.swift             # UserDefaults-backed settings with change notifications
-├── SettingsView.swift              # SwiftUI settings window (general, editor, appearance)
-├── ShortcutRecorder.swift          # SwiftUI hotkey recorder control
-├── HotkeyManager.swift             # Global hotkeys and triple-tap modifier detection
-├── ModifierKeyDetection.swift      # Left/right modifier key identification from key codes
+├── App/
+│   ├── Launch.swift                    # App entry point
+│   ├── AppDelegate.swift               # Menu bar, toolbar, window, and menu setup
+│   ├── BonsplitRootView.swift          # SwiftUI root view rendering editor and clipboard tabs
+│   ├── Models.swift                    # ShortcutKeys and shared data types
+│   └── TabStore.swift                  # Tab data model with persistence
+├── Editor/
+│   ├── EditorTextView.swift            # NSTextView subclass with editing helpers and file drops
+│   ├── EditorContentView.swift         # NSViewRepresentable wrapping text view, scroll view, and gutter
+│   ├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore and Bonsplit
+│   ├── EditorTheme.swift               # Monokai-inspired dark/light colour palettes
+│   ├── SyntaxHighlightCoordinator.swift # Tree-sitter syntax highlighting with injection support
+│   ├── LanguageDetector.swift          # File extension → language mapping via CodeEditLanguages
+│   ├── LineNumberGutterView.swift      # Line number gutter drawn alongside the text view
+│   └── FileWatcher.swift              # DispatchSource-based file change monitoring
+├── Clipboard/
+│   ├── ClipboardStore.swift            # Clipboard monitoring and history persistence
+│   ├── ClipboardContentView.swift      # NSCollectionView grid of clipboard cards with search
+│   └── ClipboardTabView.swift          # NSViewRepresentable wrapper for ClipboardContentView
+├── Settings/
+│   ├── SettingsStore.swift             # UserDefaults-backed settings with change notifications
+│   ├── SettingsView.swift              # SwiftUI settings window (general, editor, appearance)
+│   └── ShortcutRecorder.swift          # SwiftUI hotkey recorder control
+├── Hotkey/
+│   ├── HotkeyManager.swift             # Global hotkeys and triple-tap modifier detection
+│   └── ModifierKeyDetection.swift      # Left/right modifier key identification from key codes
 ├── Resources/
-│   └── Assets.xcassets             # App icon and custom images
-├── Info.plist                      # Bundle metadata and document types
-└── itsypad.entitlements            # Entitlements (unsigned executable memory for tree-sitter)
+│   └── Assets.xcassets                 # App icon and custom images
+├── Info.plist                          # Bundle metadata and document types
+└── itsypad.entitlements                # Entitlements (unsigned executable memory for tree-sitter)
 Executable/
-└── main.swift                      # Executable target entry point
+└── main.swift                          # Executable target entry point
 Packages/
-└── Bonsplit/                       # Local package: split pane and tab bar framework
+└── Bonsplit/                           # Local package: split pane and tab bar framework
 Tests/
 ├── ClipboardStoreTests.swift
 ├── EditorThemeTests.swift

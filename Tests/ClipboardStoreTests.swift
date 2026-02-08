@@ -101,6 +101,34 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertTrue(store.entries.isEmpty)
     }
 
+    // MARK: - clearAll
+
+    func testClearAllRemovesAllEntries() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "one"),
+            ClipboardEntry(kind: .text, text: "two"),
+        ]
+        store.clearAll()
+        XCTAssertTrue(store.entries.isEmpty)
+    }
+
+    func testClearAllRemovesImageFiles() throws {
+        let fileName = "test-clear.png"
+        let fileURL = tempImagesDir.appendingPathComponent(fileName)
+        try Data([0x89, 0x50]).write(to: fileURL)
+
+        store.entries = [ClipboardEntry(kind: .image, imageFileName: fileName)]
+        store.clearAll()
+
+        XCTAssertTrue(store.entries.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
+    func testClearAllOnEmptyIsNoOp() {
+        store.clearAll()
+        XCTAssertTrue(store.entries.isEmpty)
+    }
+
     // MARK: - Persistence
 
     func testPersistenceRoundtrip() {

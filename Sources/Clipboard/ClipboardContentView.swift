@@ -297,6 +297,7 @@ private class ClipboardCardItem: NSCollectionViewItem {
 
 class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout {
     private let searchField = NSSearchField()
+    private let clearAllButton = NSButton()
     private let scrollView = NSScrollView()
     private let collectionView = NSCollectionView()
     private let emptyLabel = NSTextField(labelWithString: "")
@@ -334,6 +335,14 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         searchField.sendsSearchStringImmediately = true
         searchField.font = NSFont.systemFont(ofSize: 12)
 
+        // Clear all button
+        clearAllButton.translatesAutoresizingMaskIntoConstraints = false
+        clearAllButton.title = "Clear all"
+        clearAllButton.bezelStyle = .accessoryBarAction
+        clearAllButton.font = NSFont.systemFont(ofSize: 11)
+        clearAllButton.target = self
+        clearAllButton.action = #selector(clearAllClicked)
+
         // Flow layout
         let layout = NSCollectionViewFlowLayout()
         layout.minimumInteritemSpacing = tileSpacing
@@ -362,14 +371,18 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         emptyLabel.isHidden = true
 
         addSubview(searchField)
+        addSubview(clearAllButton)
         addSubview(scrollView)
         addSubview(emptyLabel)
 
         NSLayoutConstraint.activate([
             searchField.topAnchor.constraint(equalTo: topAnchor, constant: 8),
             searchField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            searchField.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
+            searchField.trailingAnchor.constraint(equalTo: clearAllButton.leadingAnchor, constant: -8),
             searchField.heightAnchor.constraint(equalToConstant: 32),
+
+            clearAllButton.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
+            clearAllButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
 
             scrollView.topAnchor.constraint(equalTo: searchField.bottomAnchor, constant: 4),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
@@ -424,6 +437,18 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
 
     @objc private func searchChanged() {
         reloadEntries()
+    }
+
+    @objc private func clearAllClicked() {
+        guard !ClipboardStore.shared.entries.isEmpty else { return }
+        let alert = NSAlert()
+        alert.messageText = "Clear clipboard history?"
+        alert.informativeText = "This will delete all \(ClipboardStore.shared.entries.count) entries. This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Clear all")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        ClipboardStore.shared.clearAll()
     }
 
     func reloadEntries() {
