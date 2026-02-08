@@ -6,6 +6,7 @@ struct TabItemView: View {
     let isSelected: Bool
     let onSelect: () -> Void
     let onClose: () -> Void
+    var contextMenuItems: [TabContextMenuItem] = []
 
     @State private var isHovered = false
     @State private var isCloseHovered = false
@@ -50,6 +51,22 @@ struct TabItemView: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: TabBarMetrics.hoverDuration)) {
                 isHovered = hovering
+            }
+        }
+        .contextMenu {
+            if !contextMenuItems.isEmpty {
+                ForEach(contextMenuItems) { item in
+                    Button {
+                        item.action()
+                    } label: {
+                        if let icon = item.icon {
+                            Label(item.title, systemImage: icon)
+                        } else {
+                            Text(item.title)
+                        }
+                    }
+                    .disabled(!item.isEnabled)
+                }
             }
         }
         .accessibilityElement(children: .combine)

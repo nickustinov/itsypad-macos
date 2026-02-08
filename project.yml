@@ -28,6 +28,7 @@ targets:
         excludes:
           - Info.plist
           - itsypad.entitlements
+      - path: Executable
     dependencies:
       - package: CodeEditLanguages
         product: CodeEditLanguages

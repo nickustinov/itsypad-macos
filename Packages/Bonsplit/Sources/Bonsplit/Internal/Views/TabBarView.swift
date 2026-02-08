@@ -129,7 +129,12 @@ struct TabBarView: View {
                 withAnimation(.easeInOut(duration: TabBarMetrics.closeDuration)) {
                     _ = controller.closeTab(TabID(id: tab.id), inPane: pane.id)
                 }
-            }
+            },
+            contextMenuItems: controller.delegate?.splitTabBar(
+                controller,
+                contextMenuItemsForTab: Tab(from: tab),
+                inPane: pane.id
+            ) ?? []
         )
         .onDrag {
             createItemProvider(for: tab)

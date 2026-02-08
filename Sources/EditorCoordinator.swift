@@ -411,6 +411,45 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         }
     }
 
+    func splitTabBar(
+        _ controller: BonsplitController,
+        contextMenuItemsForTab tab: Bonsplit.Tab,
+        inPane pane: PaneID
+    ) -> [TabContextMenuItem] {
+        guard let tabStoreID = reverseMap[tab.id],
+              let tabData = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return [] }
+
+        var items: [TabContextMenuItem] = []
+
+        items.append(TabContextMenuItem(title: "Save as...", icon: "square.and.arrow.down") {
+            MainActor.assumeIsolated {
+                self.tabStore.saveFileAs(id: tabStoreID)
+                if let bonsplitID = self.tabIDMap[tabStoreID],
+                   let updated = self.tabStore.tabs.first(where: { $0.id == tabStoreID }) {
+                    self.controller.updateTab(bonsplitID, title: updated.name, isDirty: updated.isDirty)
+                }
+            }
+        })
+
+        let hasFile = tabData.fileURL != nil
+
+        items.append(TabContextMenuItem(title: "Copy path", icon: "doc.on.doc", isEnabled: hasFile) {
+            if let url = tabData.fileURL {
+                let pasteboard = NSPasteboard.general
+                pasteboard.clearContents()
+                pasteboard.setString(url.path, forType: .string)
+            }
+        })
+
+        items.append(TabContextMenuItem(title: "Reveal in Finder", icon: "folder", isEnabled: hasFile) {
+            if let url = tabData.fileURL {
+                NSWorkspace.shared.activateFileViewerSelecting([url])
+            }
+        })
+
+        return items
+    }
+
     // MARK: - Private helpers
 
     @MainActor

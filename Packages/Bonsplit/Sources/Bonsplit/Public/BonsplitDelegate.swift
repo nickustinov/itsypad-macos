@@ -61,6 +61,9 @@ public protocol BonsplitDelegate: AnyObject {
 
     /// Called to check if notifications should be sent during divider drag (opt-in for real-time sync)
     func splitTabBar(_ controller: BonsplitController, shouldNotifyDuringDrag: Bool) -> Bool
+
+    /// Called when a tab is right-clicked. Return menu items to show, or empty for no menu.
+    func splitTabBar(_ controller: BonsplitController, contextMenuItemsForTab tab: Tab, inPane pane: PaneID) -> [TabContextMenuItem]
 }
 
 // MARK: - Default Implementations (all methods optional)
@@ -80,4 +83,5 @@ public extension BonsplitDelegate {
     func splitTabBar(_ controller: BonsplitController, didDoubleClickTabBarInPane pane: PaneID) {}
     func splitTabBar(_ controller: BonsplitController, didChangeGeometry snapshot: LayoutSnapshot) {}
     func splitTabBar(_ controller: BonsplitController, shouldNotifyDuringDrag: Bool) -> Bool { false }
+    func splitTabBar(_ controller: BonsplitController, contextMenuItemsForTab tab: Tab, inPane pane: PaneID) -> [TabContextMenuItem] { [] }
 }
