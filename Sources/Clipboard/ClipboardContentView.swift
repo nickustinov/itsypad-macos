@@ -6,14 +6,32 @@ private let tileHeight: CGFloat = 110
 private let tileSpacing: CGFloat = 8
 private let sectionInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
+// MARK: - Non-interactive text field (prevents I-beam cursor from NSTextFieldCell)
+
+private class CardTextField: NSTextField {
+    override func resetCursorRects() {
+        discardCursorRects()
+    }
+
+    convenience init(label string: String) {
+        self.init(frame: .zero)
+        stringValue = string
+        isEditable = false
+        isSelectable = false
+        isBordered = false
+        isBezeled = false
+        drawsBackground = false
+    }
+}
+
 // MARK: - Clipboard card view
 
 private class ClipboardCardView: NSView {
-    private let previewLabel = NSTextField(wrappingLabelWithString: "")
+    private let previewLabel = CardTextField(label: "")
     private let imageView = NSImageView()
-    private let timestampLabel = NSTextField(labelWithString: "")
+    private let timestampLabel = CardTextField(label: "")
     private let deleteButton = NSButton()
-    private let copiedBadge = NSTextField(labelWithString: "Copied")
+    private let copiedBadge = CardTextField(label: "Copied")
     private let zoomButton = NSButton()
     private var trackingArea: NSTrackingArea?
     private var isHovered = false { didSet { updateBackground(); updateHoverControls() } }
@@ -313,7 +331,7 @@ private class ClipboardPreviewOverlay: NSView {
     private let contentScrollView = NSScrollView()
     private let imageView = NSImageView()
     private let closeButton = NSButton()
-    private let timestampLabel = NSTextField(labelWithString: "")
+    private let timestampLabel = CardTextField(label: "")
     private let copyButton = NSButton()
     private var textView: NSTextView?
     private var eventMonitor: Any?
