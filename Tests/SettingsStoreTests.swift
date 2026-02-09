@@ -98,7 +98,7 @@ final class SettingsStoreTests: XCTestCase {
     }
 
     func testIcloudSyncPersistsToDefaults() {
-        store.icloudSync = true
+        store.setICloudSync(true)
         XCTAssertTrue(defaults.bool(forKey: "icloudSync"))
     }
 

@@ -30,7 +30,7 @@ final class TabStoreTests: XCTestCase {
         tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("json")
-        store = TabStore(sessionURL: tempURL)
+        store = TabStore(sessionURL: tempURL, cloudStore: MockKeyValueStore())
     }
 
     override func tearDown() {
