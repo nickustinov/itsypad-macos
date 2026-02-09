@@ -66,6 +66,14 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⇧Tab | Unindent selection |
 | Fn↓ / Fn↑ | Page down / up (moves cursor) |
 
+## Also by me
+
+If you like Itsypad, check out my other macOS apps - same philosophy of native, lightweight, no-bloat design.
+
+**[Itsyhome](https://itsyhome.app)** - Control your entire smart home from the macOS menu bar. Cameras, lights, thermostats, locks, scenes, and 18+ HomeKit device types. Global keyboard shortcuts, Stream Deck support, deeplinks, and webhooks for power users. Free and [open source](https://github.com/nickustinov/itsyhome-macos).
+
+**[Itsytv](https://itsytv.app)** - The missing Apple TV remote for macOS. Full D-pad and playback controls, now-playing widget, app launcher, text input, and multi-device support. Free and [open source](https://github.com/nickustinov/itsytv-macos).
+
 ## Architecture
 
 ```
