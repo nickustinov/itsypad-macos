@@ -5,6 +5,7 @@ import AppKit
 struct TabItemView: View {
     let tab: TabItem
     let isSelected: Bool
+    var isFocused: Bool = true
     let onSelect: () -> Void
     let onClose: () -> Void
     var contextMenuItems: [TabContextMenuItem] = []
@@ -110,6 +111,7 @@ struct TabItemView: View {
                 Rectangle()
                     .fill(Color.accentColor)
                     .frame(height: TabBarMetrics.activeIndicatorHeight)
+                    .saturation(isFocused ? 1.0 : 0)
             }
 
             // Right border separator

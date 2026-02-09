@@ -111,7 +111,6 @@ struct TabBarView: View {
         .frame(height: TabBarMetrics.barHeight)
         .contentShape(Rectangle())
         .background(tabBarBackground)
-        .saturation(shouldShowFullSaturation ? 1.0 : 0)
     }
 
     // MARK: - Tab Item
@@ -121,6 +120,7 @@ struct TabBarView: View {
         TabItemView(
             tab: tab,
             isSelected: pane.selectedTabId == tab.id,
+            isFocused: shouldShowFullSaturation,
             onSelect: {
                 pane.selectTab(tab.id)
                 controller.focusPane(pane.id)
@@ -161,6 +161,7 @@ struct TabBarView: View {
         TabItemView(
             tab: tab,
             isSelected: pane.selectedTabId == tab.id,
+            isFocused: shouldShowFullSaturation,
             onSelect: {
                 pane.selectTab(tab.id)
                 controller.focusPane(pane.id)
@@ -301,7 +302,7 @@ struct TabBarView: View {
     @ViewBuilder
     private var tabBarBackground: some View {
         Rectangle()
-            .fill(isFocused ? TabBarColors.barBackground : TabBarColors.barBackground.opacity(0.95))
+            .fill(TabBarColors.barBackground)
             .overlay(alignment: .bottom) {
                 Rectangle()
                     .fill(TabBarColors.separator)

@@ -29,7 +29,10 @@ enum TabBarColors {
     }
 
     static var inactiveTabBackground: Color {
-        .clear
+        if let color = BonsplitTheme.shared.activeTabBackground {
+            return Color(nsColor: color.blended(withFraction: 0.06, of: .white) ?? color)
+        }
+        return .clear
     }
 
     // MARK: - Text Colors
