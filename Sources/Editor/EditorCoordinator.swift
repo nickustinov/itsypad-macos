@@ -26,6 +26,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var isRestoringLayout = false
     private var settingsObserver: Any?
     private var fileDropObserver: Any?
+    private var cloudMergeObserver: Any?
+    private var windowActivateObserver: Any?
 
     @MainActor
     init() {
@@ -72,6 +74,27 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 }
             }
         }
+
+        cloudMergeObserver = NotificationCenter.default.addObserver(
+            forName: TabStore.cloudTabsMerged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let result = notification.userInfo?["result"] as? TabStore.CloudMergeResult else { return }
+                self?.handleCloudMerge(result)
+            }
+        }
+
+        windowActivateObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.tabStore.checkICloud()
+            }
+        }
     }
 
     deinit {
@@ -80,6 +103,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = fileDropObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = cloudMergeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = windowActivateObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -792,6 +821,43 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         // Re-watch since delete/rename events invalidate the source
         startWatching(url: fileURL, tabID: tabID)
+    }
+
+    // MARK: - iCloud sync
+
+    @MainActor
+    private func handleCloudMerge(_ result: TabStore.CloudMergeResult) {
+        // Create Bonsplit tabs for new cloud tabs
+        for tabID in result.newTabIDs {
+            guard let tab = tabStore.tabs.first(where: { $0.id == tabID }),
+                  tabIDMap[tabID] == nil else { continue }
+            if let bonsplitTabID = controller.createTab(
+                title: tab.name,
+                icon: nil,
+                isDirty: tab.isDirty
+            ) {
+                tabIDMap[tab.id] = bonsplitTabID
+                reverseMap[bonsplitTabID] = tab.id
+                editorStates[bonsplitTabID] = createEditorState(for: tab)
+                NSLog("[iCloud] Created Bonsplit tab for '%@'", tab.name)
+            }
+        }
+
+        // Update editor content for existing tabs
+        for tabID in result.updatedTabIDs {
+            guard let tab = tabStore.tabs.first(where: { $0.id == tabID }),
+                  let bonsplitID = tabIDMap[tabID],
+                  let state = editorStates[bonsplitID] else { continue }
+
+            let cursorPos = state.textView.selectedRange().location
+            state.textView.string = tab.content
+            let clampedPos = min(cursorPos, (tab.content as NSString).length)
+            state.textView.setSelectedRange(NSRange(location: clampedPos, length: 0))
+            state.highlightCoordinator.language = tab.language
+            state.highlightCoordinator.scheduleHighlightIfNeeded()
+            controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
+            NSLog("[iCloud] Updated Bonsplit tab for '%@'", tab.name)
+        }
     }
 
     // MARK: - Settings
