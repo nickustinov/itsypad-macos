@@ -57,21 +57,21 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
             showSplitButtons: showSplitButtons,
             contentViewLifecycle: contentViewLifecycle
         )
-        let hostingController = NSHostingController(rootView: paneView)
-        hostingController.view.translatesAutoresizingMaskIntoConstraints = false
+        let hostingView = CursorPassthroughHostingView(rootView: paneView)
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
 
         let containerView = NSView()
-        containerView.addSubview(hostingController.view)
+        containerView.addSubview(hostingView)
 
         NSLayoutConstraint.activate([
-            hostingController.view.topAnchor.constraint(equalTo: containerView.topAnchor),
-            hostingController.view.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
-            hostingController.view.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
-            hostingController.view.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
+            hostingView.topAnchor.constraint(equalTo: containerView.topAnchor),
+            hostingView.leadingAnchor.constraint(equalTo: containerView.leadingAnchor),
+            hostingView.trailingAnchor.constraint(equalTo: containerView.trailingAnchor),
+            hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
         ])
 
-        // Store hosting controller to keep it alive
-        context.coordinator.hostingController = hostingController
+        // Store hosting view to keep it alive
+        context.coordinator.hostingView = hostingView
 
         return containerView
     }
@@ -85,7 +85,7 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
             showSplitButtons: showSplitButtons,
             contentViewLifecycle: contentViewLifecycle
         )
-        context.coordinator.hostingController?.rootView = paneView
+        context.coordinator.hostingView?.rootView = paneView
     }
 
     func makeCoordinator() -> Coordinator {
@@ -93,6 +93,6 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
     }
 
     class Coordinator {
-        var hostingController: NSHostingController<PaneContainerView<Content, EmptyContent>>?
+        var hostingView: CursorPassthroughHostingView<PaneContainerView<Content, EmptyContent>>?
     }
 }

@@ -22,24 +22,12 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
                 showSplitButtons: showSplitButtons
             )
 
-            // Content area with drop zones
-            contentAreaWithDropZones
+            // Content area
+            contentArea
+                .clipped()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
-    }
-
-    // MARK: - Content Area with Drop Zones
-
-    @ViewBuilder
-    private var contentAreaWithDropZones: some View {
-        GeometryReader { geometry in
-            let size = geometry.size
-
-            contentArea
-                .frame(width: size.width, height: size.height)
-        }
-        .clipped()
     }
 
     // MARK: - Content Area
@@ -96,7 +84,7 @@ private struct HiddenWhenInactive<Content: View>: NSViewRepresentable {
     @ViewBuilder var content: Content
 
     func makeNSView(context: Context) -> NSView {
-        let host = NSHostingView(rootView: content)
+        let host = CursorPassthroughHostingView(rootView: content)
         host.translatesAutoresizingMaskIntoConstraints = false
 
         let container = NSView()
@@ -114,8 +102,9 @@ private struct HiddenWhenInactive<Content: View>: NSViewRepresentable {
 
     func updateNSView(_ container: NSView, context: Context) {
         container.isHidden = !isVisible
-        if let host = container.subviews.first as? NSHostingView<Content> {
+        if let host = container.subviews.first as? CursorPassthroughHostingView<Content> {
             host.rootView = content
         }
     }
 }
+
