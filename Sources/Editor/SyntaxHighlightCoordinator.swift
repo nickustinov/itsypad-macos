@@ -9,9 +9,10 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     }
     var font: NSFont = NSFont.monospacedSystemFont(ofSize: 14, weight: .regular)
 
-    // HighlightJS is only accessed from highlightQueue
-    private let highlightJS: HighlightJS
-    private let highlightQueue = DispatchQueue(label: "Itsypad.SyntaxHighlight", qos: .userInitiated)
+    // Shared across all coordinators — JSContext created lazily on first highlight call.
+    // All access serialized via highlightQueue.
+    private static let highlightJS = HighlightJS.shared
+    private static let highlightQueue = DispatchQueue(label: "Itsypad.SyntaxHighlight", qos: .userInitiated)
 
     private(set) var theme: EditorTheme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
     private(set) var themeBackgroundColor: NSColor = EditorTheme.current(for: SettingsStore.shared.appearanceOverride).background
@@ -23,7 +24,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private var lastAppearance: String?
 
     override init() {
-        highlightJS = HighlightJS()!
         super.init()
         applyTheme()
         setLanguage(language)
@@ -41,16 +41,16 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let themeName = isDark ? "itsypad-dark.min" : "itsypad-light.min"
         let currentFont = font
 
-        highlightQueue.sync {
-            if highlightJS.loadTheme(named: themeName) {
+        Self.highlightQueue.sync {
+            if Self.highlightJS.loadTheme(named: themeName) {
                 NSLog("[SyntaxHighlight] Loaded theme '%@'", themeName)
             } else {
                 NSLog("[SyntaxHighlight] FAILED to load theme '%@'", themeName)
             }
-            highlightJS.setCodeFont(currentFont)
+            Self.highlightJS.setCodeFont(currentFont)
         }
 
-        themeBackgroundColor = highlightJS.backgroundColor
+        themeBackgroundColor = Self.highlightJS.backgroundColor
         if let srgb = themeBackgroundColor.usingColorSpace(.sRGB) {
             let luminance = 0.2126 * srgb.redComponent + 0.7152 * srgb.greenComponent + 0.0722 * srgb.blueComponent
             themeIsDark = luminance < 0.5
@@ -99,7 +99,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
             return
         }
 
-        let highlightJS = self.highlightJS
+        let highlightJS = Self.highlightJS
 
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -148,7 +148,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         }
 
         pendingHighlight = work
-        highlightQueue.asyncAfter(deadline: .now() + 0.05, execute: work)
+        Self.highlightQueue.asyncAfter(deadline: .now() + 0.05, execute: work)
     }
 
     private func applyPlainText(tv: EditorTextView, text: String, font: NSFont, theme: EditorTheme) {

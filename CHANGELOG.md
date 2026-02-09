@@ -1,6 +1,16 @@
 # Changelog
 
-## 1.0.5
+## 1.1.0
+
+Improvements:
+- Replaced Highlightr and tree-sitter with a lightweight custom highlight.js wrapper — fixes broken syntax coloring from compound CSS selectors in highlight.js v11, now correctly highlights all 185+ languages
+- Added zoom preview for clipboard tiles — hover a tile and click the magnifying glass icon to view full content in a near-fullscreen overlay with rounded corners, scrollable text, and a copy button
+- Added promotion section for other macOS apps
+
+Bug fixes:
+- Fixed I-beam cursor appearing on clipboard tiles
+
+## 1.0.5 (unreleased)
 
 Improvements:
 - Added zoom preview for clipboard tiles — hover a tile and click the magnifying glass icon to view full content in a near-fullscreen overlay with rounded corners, scrollable text, and a copy button

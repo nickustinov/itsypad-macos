@@ -4,7 +4,10 @@ import JavaScriptCore
 /// Lightweight highlight.js wrapper with proper compound CSS selector support.
 /// NOT thread-safe — caller must serialize access (e.g., via a serial DispatchQueue).
 class HighlightJS {
-    private let hljs: JSValue
+    static let shared = HighlightJS()
+
+    private var hljs: JSValue?
+    private var didLoadJS = false
 
     private(set) var backgroundColor: NSColor = .black
     private(set) var foregroundColor: NSColor = .white
@@ -19,15 +22,20 @@ class HighlightJS {
         #endif
     }()
 
-    init?() {
-        guard let jsContext = JSContext() else { return nil }
-        guard let jsPath = Self.appBundle.path(forResource: "highlight.min", ofType: "js"),
+    init() {}
+
+    /// Lazily creates the JSContext and loads highlight.js on first use.
+    private func ensureLoaded() -> JSValue? {
+        if didLoadJS { return hljs }
+        didLoadJS = true
+        guard let jsContext = JSContext(),
+              let jsPath = Self.appBundle.path(forResource: "highlight.min", ofType: "js"),
               let jsSource = try? String(contentsOfFile: jsPath) else {
             return nil
         }
         jsContext.evaluateScript(jsSource)
-        guard let hljs = jsContext.objectForKeyedSubscript("hljs") else { return nil }
-        self.hljs = hljs
+        hljs = jsContext.objectForKeyedSubscript("hljs")
+        return hljs
     }
 
     // MARK: - Public API
@@ -60,6 +68,7 @@ class HighlightJS {
     }
 
     func highlight(_ code: String, as language: String) -> NSAttributedString? {
+        guard let hljs = ensureLoaded() else { return nil }
         let result = hljs.invokeMethod("highlight", withArguments: [language, code, true])
         if result?.isUndefined == true {
             return nil
@@ -71,7 +80,8 @@ class HighlightJS {
     }
 
     func supportedLanguages() -> [String] {
-        (hljs.invokeMethod("listLanguages", withArguments: [])?.toArray() as? [String]) ?? []
+        guard let hljs = ensureLoaded() else { return [] }
+        return (hljs.invokeMethod("listLanguages", withArguments: [])?.toArray() as? [String]) ?? []
     }
 
     // MARK: - CSS parser

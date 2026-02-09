@@ -20,7 +20,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 
 ## Editor
 - **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder (tab bar by [Bonsplit](https://github.com/almonk/bonsplit))
-- **Syntax highlighting** — 185+ languages via tree-sitter ([CodeEditLanguages](https://github.com/CodeEditApp/CodeEditLanguages)), with automatic language detection
+- **Syntax highlighting** — 185+ languages via [highlight.js](https://highlightjs.org), with automatic language detection
 - **Find and replace** — built-in find bar with next/previous match and use selection for find
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts
 - **Auto-save** — content is continuously saved to session, never lose your work
@@ -30,6 +30,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 - **Text and images** — stores clipboard content
 - **Searchable** — filter history with highlighted search matches
 - **Click to copy** — click any entry to copy it back to clipboard
+- **Zoom preview** — hover a tile and click the magnifying glass to view full content in a near-fullscreen overlay
 - **Delete entries** — remove individual items on hover
 - **Separate hotkey** — assign a dedicated global hotkey to show/hide
 
@@ -89,8 +90,9 @@ Sources/
 │   ├── EditorContentView.swift         # NSViewRepresentable wrapping text view, scroll view, and gutter
 │   ├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore, Bonsplit, and iCloud
 │   ├── EditorTheme.swift               # Monokai-inspired dark/light color palettes
-│   ├── SyntaxHighlightCoordinator.swift # Tree-sitter syntax highlighting with injection support
-│   ├── LanguageDetector.swift          # File extension → language mapping via CodeEditLanguages
+│   ├── HighlightJS.swift               # JSContext wrapper for highlight.js with CSS/HTML parsing
+│   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
+│   ├── LanguageDetector.swift          # File extension → language mapping for highlight.js
 │   ├── LineNumberGutterView.swift      # Line number gutter drawn alongside the text view
 │   └── FileWatcher.swift                # DispatchSource-based file change monitoring
 ├── Clipboard/
@@ -107,7 +109,7 @@ Sources/
 ├── Resources/
 │   └── Assets.xcassets                 # App icon and custom images
 ├── Info.plist                          # Bundle metadata and document types
-└── itsypad.entitlements                # Entitlements (unsigned executable memory for tree-sitter)
+└── itsypad.entitlements                # Entitlements (unsigned executable memory for highlight.js)
 Executable/
 └── main.swift                          # Executable target entry point
 Packages/
