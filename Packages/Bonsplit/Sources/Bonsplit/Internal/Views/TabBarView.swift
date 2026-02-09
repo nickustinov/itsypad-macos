@@ -356,17 +356,17 @@ struct TabDropDelegate: DropDelegate {
                     guard let sourceIndex = pane.tabs.firstIndex(where: { $0.id == transfer.tab.id }) else {
                         return
                     }
-                    withAnimation(.spring(duration: TabBarMetrics.reorderDuration, bounce: TabBarMetrics.reorderBounce)) {
-                        pane.moveTab(from: sourceIndex, to: targetIndex)
-                    }
+                    pane.moveTab(from: sourceIndex, to: targetIndex)
                 } else {
-                    // Different pane - transfer
+                    // Different pane - transfer.
+                    // No animation: cross-pane moves may collapse the split, causing a
+                    // view-type transition (SplitContainerView → SinglePaneWrapper).
+                    // Animating this keeps both hierarchies alive during the transition,
+                    // and they race over shared AppKit views (scrollView, textView).
                     guard let sourcePaneId = controller.rootNode.allPaneIds.first(where: { $0.id == transfer.sourcePaneId }) else {
                         return
                     }
-                    withAnimation(.spring(duration: TabBarMetrics.reorderDuration, bounce: TabBarMetrics.reorderBounce)) {
-                        controller.moveTab(transfer.tab, from: sourcePaneId, to: pane.id, atIndex: targetIndex)
-                    }
+                    controller.moveTab(transfer.tab, from: sourcePaneId, to: pane.id, atIndex: targetIndex)
                 }
             }
         }

@@ -49,6 +49,7 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
     var contentViewLifecycle: ContentViewLifecycle = .recreateOnSwitch
 
     func makeNSView(context: Context) -> NSView {
+
         let paneView = PaneContainerView(
             pane: pane,
             controller: controller,
@@ -76,6 +77,7 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
+
         let paneView = PaneContainerView(
             pane: pane,
             controller: controller,

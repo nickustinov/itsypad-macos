@@ -48,20 +48,17 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
                 }
 
             case .keepAllAlive:
-                // macOS-like behavior: keep all tab views in hierarchy.
-                // We use NSView.isHidden instead of SwiftUI opacity(0)
-                // because opacity(0) leaves NSTextView cursor rects active,
-                // leaking I-beam cursors into non-editor tabs.
-                ZStack {
-                    ForEach(pane.tabs) { tab in
-                        let isVisible = tab.id == pane.selectedTabId
-                        HiddenWhenInactive(isVisible: isVisible) {
-                            contentBuilder(tab, pane.id)
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                        .allowsHitTesting(isVisible)
-                    }
-                }
+                // Keep all tab views alive using a flat AppKit container.
+                // Each tab gets its own CursorPassthroughHostingView managed at
+                // the AppKit level. isHidden prevents cursor rect leaking.
+                // This avoids nested SwiftUI hosting views which cause
+                // AttributeGraph cycles and blank content.
+                TabContentContainer(
+                    tabs: pane.tabs,
+                    selectedTabId: pane.selectedTabId,
+                    paneId: pane.id,
+                    contentBuilder: contentBuilder
+                )
             }
         }
     }
@@ -94,38 +91,77 @@ private class ArrowCursorNSView: NSView {
     }
 }
 
-// MARK: - Hidden-when-inactive wrapper
+// MARK: - Tab content container
 
-/// Wraps SwiftUI content in an NSView and uses `isHidden` to hide inactive tabs.
-/// Unlike SwiftUI's `opacity(0)`, setting `isHidden = true` on the NSView prevents
-/// AppKit from calling `resetCursorRects` on child views, which stops hidden
-/// NSTextViews from leaking I-beam cursor rects into other tabs.
-private struct HiddenWhenInactive<Content: View>: NSViewRepresentable {
-    var isVisible: Bool
-    @ViewBuilder var content: Content
+/// Manages all tab content views at the AppKit level using a flat container.
+/// Each tab gets its own CursorPassthroughHostingView as a direct subview,
+/// with isHidden controlling visibility. This avoids the nested hosting view
+/// pattern (NSViewRepresentable → NSHostingView → NSViewRepresentable)
+/// that causes AttributeGraph cycles.
+private struct TabContentContainer<Content: View>: NSViewRepresentable {
+    let tabs: [TabItem]
+    let selectedTabId: UUID?
+    let paneId: PaneID
+    let contentBuilder: (TabItem, PaneID) -> Content
 
     func makeNSView(context: Context) -> NSView {
-        let host = CursorPassthroughHostingView(rootView: content)
-        host.translatesAutoresizingMaskIntoConstraints = false
-
         let container = NSView()
-        container.addSubview(host)
-        NSLayoutConstraint.activate([
-            host.topAnchor.constraint(equalTo: container.topAnchor),
-            host.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            host.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            host.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-        ])
-
-        container.isHidden = !isVisible
+        for tab in tabs {
+            addHostingView(for: tab, to: container, coordinator: context.coordinator)
+        }
         return container
     }
 
     func updateNSView(_ container: NSView, context: Context) {
-        container.isHidden = !isVisible
-        if let host = container.subviews.first as? CursorPassthroughHostingView<Content> {
-            host.rootView = content
+        let coordinator = context.coordinator
+        let currentTabIds = Set(tabs.map(\.id))
+
+        // Remove hosting views for tabs that no longer exist
+        for (tabId, hosting) in coordinator.hostingViews where !currentTabIds.contains(tabId) {
+            hosting.removeFromSuperview()
+            coordinator.hostingViews.removeValue(forKey: tabId)
+        }
+
+        // Add or update hosting views
+        for tab in tabs {
+            if let hosting = coordinator.hostingViews[tab.id] {
+                // Update visibility
+                hosting.isHidden = tab.id != selectedTabId
+                // Update content
+                hosting.rootView = AnyView(
+                    contentBuilder(tab, paneId)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                )
+            } else {
+                // New tab — add hosting view
+                addHostingView(for: tab, to: container, coordinator: coordinator)
+            }
         }
     }
-}
 
+    private func addHostingView(for tab: TabItem, to container: NSView, coordinator: Coordinator) {
+        let content = AnyView(
+            contentBuilder(tab, paneId)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        )
+        let hosting = CursorPassthroughHostingView(rootView: content)
+        hosting.translatesAutoresizingMaskIntoConstraints = false
+        hosting.isHidden = tab.id != selectedTabId
+        container.addSubview(hosting)
+        NSLayoutConstraint.activate([
+            hosting.topAnchor.constraint(equalTo: container.topAnchor),
+            hosting.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            hosting.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            hosting.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+        ])
+        coordinator.hostingViews[tab.id] = hosting
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator {
+        var hostingViews: [UUID: CursorPassthroughHostingView<AnyView>] = [:]
+    }
+}
