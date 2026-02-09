@@ -36,7 +36,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         config.allowSplits = true
         config.allowTabReordering = false
         config.allowCrossPaneTabMove = false
-        config.contentViewLifecycle = .recreateOnSwitch
+        config.contentViewLifecycle = .keepAllAlive
         config.allowCloseLastPane = false
         config.newTabPosition = .end
         config.appearance.tabBarHeight = 28

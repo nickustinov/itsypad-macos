@@ -22,11 +22,24 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
                 showSplitButtons: showSplitButtons
             )
 
-            // Content area
-            contentArea
+            // Content area with drop zones
+            contentAreaWithDropZones
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .textBackgroundColor))
+    }
+
+    // MARK: - Content Area with Drop Zones
+
+    @ViewBuilder
+    private var contentAreaWithDropZones: some View {
+        GeometryReader { geometry in
+            let size = geometry.size
+
+            contentArea
+                .frame(width: size.width, height: size.height)
+        }
+        .clipped()
     }
 
     // MARK: - Content Area
@@ -34,8 +47,7 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
     @ViewBuilder
     private var contentArea: some View {
         if pane.tabs.isEmpty {
-            emptyPaneBuilder(pane.id)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            emptyPaneView
         } else {
             switch contentViewLifecycle {
             case .recreateOnSwitch:
@@ -62,6 +74,14 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
                 }
             }
         }
+    }
+
+    // MARK: - Empty Pane View
+
+    @ViewBuilder
+    private var emptyPaneView: some View {
+        emptyPaneBuilder(pane.id)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
