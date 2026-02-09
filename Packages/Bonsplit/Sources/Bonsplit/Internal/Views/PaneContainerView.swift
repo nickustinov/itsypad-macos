@@ -15,12 +15,14 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Tab bar
+            // Tab bar — wrapped in ArrowCursorOverlay to explicitly set arrow cursor,
+            // since CursorPassthroughHostingView at the parent level neutralizes cursor handling.
             TabBarView(
                 pane: pane,
                 isFocused: isFocused,
                 showSplitButtons: showSplitButtons
             )
+            .overlay { ArrowCursorOverlay().allowsHitTesting(false) }
 
             // Content area
             contentArea
@@ -70,6 +72,25 @@ struct PaneContainerView<Content: View, EmptyContent: View>: View {
     private var emptyPaneView: some View {
         emptyPaneBuilder(pane.id)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Arrow cursor overlay
+
+/// Transparent NSView overlay that sets an arrow cursor rect over its entire bounds.
+/// Used on the tab bar to restore the arrow cursor in areas where
+/// CursorPassthroughHostingView has neutralized the hosting view's default behavior.
+private struct ArrowCursorOverlay: NSViewRepresentable {
+    func makeNSView(context: Context) -> ArrowCursorNSView {
+        ArrowCursorNSView()
+    }
+
+    func updateNSView(_ nsView: ArrowCursorNSView, context: Context) {}
+}
+
+private class ArrowCursorNSView: NSView {
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .arrow)
     }
 }
 

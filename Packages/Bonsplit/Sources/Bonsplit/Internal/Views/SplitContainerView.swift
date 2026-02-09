@@ -109,13 +109,13 @@ struct SplitContainerView<Content: View, EmptyContent: View>: NSViewRepresentabl
     // MARK: - Helpers
 
     private func makeHostingView(for node: SplitNode) -> NSView {
-        let host = CursorPassthroughHostingView(rootView: AnyView(makeView(for: node)))
-        host.translatesAutoresizingMaskIntoConstraints = false
-        return host
+        let hostingView = CursorPassthroughHostingView(rootView: AnyView(makeView(for: node)))
+        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        return hostingView
     }
 
     private func updateHostingView(_ view: NSView, for node: SplitNode) {
-        if let hostingView = view as? CursorPassthroughHostingView<AnyView> {
+        if let hostingView = view as? NSHostingView<AnyView> {
             hostingView.rootView = AnyView(makeView(for: node))
         }
     }

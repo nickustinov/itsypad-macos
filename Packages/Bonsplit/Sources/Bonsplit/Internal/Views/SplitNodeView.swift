@@ -70,7 +70,6 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
             hostingView.bottomAnchor.constraint(equalTo: containerView.bottomAnchor)
         ])
 
-        // Store hosting view to keep it alive
         context.coordinator.hostingView = hostingView
 
         return containerView
