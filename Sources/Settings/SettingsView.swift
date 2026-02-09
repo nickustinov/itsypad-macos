@@ -97,7 +97,10 @@ struct GeneralSettingsView: View {
                 Toggle("Show in menu bar", isOn: $store.showInMenuBar)
                     .disabled(!store.showInDock)
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("iCloud sync", isOn: $store.icloudSync)
+                    Toggle("iCloud sync", isOn: Binding(
+                        get: { store.icloudSync },
+                        set: { store.setICloudSync($0) }
+                    ))
                     Text("Only syncs scratch tabs and their content. Tabs backed by files on disk are not transferred.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)

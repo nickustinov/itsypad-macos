@@ -121,17 +121,16 @@ class SettingsStore: ObservableObject {
         }
     }
 
-    @Published var icloudSync: Bool = false {
-        didSet {
-            NSLog("[iCloud] icloudSync didSet fired: %@ (isLoading: %@)", icloudSync ? "true" : "false", isLoading ? "true" : "false")
-            guard !isLoading else { return }
-            defaults.set(icloudSync, forKey: "icloudSync")
-            defaults.synchronize()
-            NSLog("[iCloud] Persisted icloudSync=%@ to UserDefaults (verified: %@)",
-                  icloudSync ? "true" : "false",
-                  defaults.bool(forKey: "icloudSync") ? "true" : "false")
-            NotificationCenter.default.post(name: .settingsChanged, object: nil)
-        }
+    @Published var icloudSync: Bool = false
+
+    func setICloudSync(_ enabled: Bool) {
+        icloudSync = enabled
+        defaults.set(enabled, forKey: "icloudSync")
+        defaults.synchronize()
+        NSLog("[iCloud] setICloudSync(%@) — verified in defaults: %@",
+              enabled ? "true" : "false",
+              defaults.bool(forKey: "icloudSync") ? "true" : "false")
+        NotificationCenter.default.post(name: .settingsChanged, object: nil)
     }
 
     @Published var clipboardEnabled: Bool = true {
