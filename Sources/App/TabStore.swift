@@ -13,7 +13,7 @@ extension NSUbiquitousKeyValueStore: KeyValueStoreProtocol {
     }
 }
 
-struct TabData: Identifiable, Codable, Equatable {
+struct TabData: Identifiable, Equatable {
     let id: UUID
     var name: String
     var content: String
@@ -22,6 +22,7 @@ struct TabData: Identifiable, Codable, Equatable {
     var languageLocked: Bool
     var isDirty: Bool
     var cursorPosition: Int
+    var lastModified: Date
 
     init(
         id: UUID = UUID(),
@@ -31,7 +32,8 @@ struct TabData: Identifiable, Codable, Equatable {
         fileURL: URL? = nil,
         languageLocked: Bool = false,
         isDirty: Bool = false,
-        cursorPosition: Int = 0
+        cursorPosition: Int = 0,
+        lastModified: Date = Date()
     ) {
         self.id = id
         self.name = name
@@ -41,6 +43,22 @@ struct TabData: Identifiable, Codable, Equatable {
         self.languageLocked = languageLocked
         self.isDirty = isDirty
         self.cursorPosition = cursorPosition
+        self.lastModified = lastModified
+    }
+}
+
+extension TabData: Codable {
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        content = try c.decode(String.self, forKey: .content)
+        language = try c.decode(String.self, forKey: .language)
+        fileURL = try c.decodeIfPresent(URL.self, forKey: .fileURL)
+        languageLocked = try c.decode(Bool.self, forKey: .languageLocked)
+        isDirty = try c.decode(Bool.self, forKey: .isDirty)
+        cursorPosition = try c.decode(Int.self, forKey: .cursorPosition)
+        lastModified = try c.decodeIfPresent(Date.self, forKey: .lastModified) ?? .distantPast
     }
 }
 
@@ -132,6 +150,7 @@ class TabStore: ObservableObject {
         guard tabs[index].content != content else { return }
         tabs[index].content = content
         tabs[index].isDirty = true
+        tabs[index].lastModified = Date()
 
         // Auto-name from first line when no file
         if tabs[index].fileURL == nil {
@@ -159,6 +178,7 @@ class TabStore: ObservableObject {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         tabs[index].language = language
         tabs[index].languageLocked = true
+        tabs[index].lastModified = Date()
         scheduleSave()
     }
 
@@ -363,13 +383,22 @@ class TabStore: ObservableObject {
         var result = CloudMergeResult()
         for cloudTab in cloudTabs {
             if let localIndex = tabs.firstIndex(where: { $0.id == cloudTab.id }) {
+                // Only accept cloud version if it's newer than local
+                guard cloudTab.lastModified > tabs[localIndex].lastModified else {
+                    NSLog("[iCloud] Skipping tab '%@' — local is newer (local: %@, cloud: %@)",
+                          tabs[localIndex].name,
+                          tabs[localIndex].lastModified.description,
+                          cloudTab.lastModified.description)
+                    continue
+                }
                 if tabs[localIndex].content != cloudTab.content
                     || tabs[localIndex].name != cloudTab.name
                     || tabs[localIndex].language != cloudTab.language {
-                    NSLog("[iCloud] Updating local tab '%@' (%@) from cloud", tabs[localIndex].name, cloudTab.id.uuidString)
+                    NSLog("[iCloud] Updating local tab '%@' (%@) — cloud is newer", tabs[localIndex].name, cloudTab.id.uuidString)
                     tabs[localIndex].content = cloudTab.content
                     tabs[localIndex].name = cloudTab.name
                     tabs[localIndex].language = cloudTab.language
+                    tabs[localIndex].lastModified = cloudTab.lastModified
                     result.updatedTabIDs.append(cloudTab.id)
                 }
             } else {
