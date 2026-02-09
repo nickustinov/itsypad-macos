@@ -361,6 +361,99 @@ final class TabStoreTests: XCTestCase {
         SettingsStore.shared.icloudSync = false
     }
 
+    // MARK: - LayoutNode Codable
+
+    func testLayoutNodePaneCodableRoundtrip() throws {
+        let node = LayoutNode.pane(PaneNodeData(
+            tabIDs: [UUID(), UUID()],
+            selectedTabID: UUID()
+        ))
+        let data = try JSONEncoder().encode(node)
+        let decoded = try JSONDecoder().decode(LayoutNode.self, from: data)
+        XCTAssertEqual(node, decoded)
+    }
+
+    func testLayoutNodeSplitCodableRoundtrip() throws {
+        let node = LayoutNode.split(SplitNodeData(
+            orientation: "horizontal",
+            dividerPosition: 0.4,
+            first: .pane(PaneNodeData(tabIDs: [UUID()], selectedTabID: nil)),
+            second: .pane(PaneNodeData(tabIDs: [UUID()], selectedTabID: nil))
+        ))
+        let data = try JSONEncoder().encode(node)
+        let decoded = try JSONDecoder().decode(LayoutNode.self, from: data)
+        XCTAssertEqual(node, decoded)
+    }
+
+    func testLayoutNodeNestedSplitCodableRoundtrip() throws {
+        let inner = LayoutNode.split(SplitNodeData(
+            orientation: "vertical",
+            dividerPosition: 0.3,
+            first: .pane(PaneNodeData(tabIDs: [UUID()], selectedTabID: nil)),
+            second: .pane(PaneNodeData(tabIDs: [UUID()], selectedTabID: nil))
+        ))
+        let node = LayoutNode.split(SplitNodeData(
+            orientation: "horizontal",
+            dividerPosition: 0.5,
+            first: inner,
+            second: .pane(PaneNodeData(tabIDs: [UUID(), UUID()], selectedTabID: UUID()))
+        ))
+        let data = try JSONEncoder().encode(node)
+        let decoded = try JSONDecoder().decode(LayoutNode.self, from: data)
+        XCTAssertEqual(node, decoded)
+    }
+
+    // MARK: - Session persistence with layout
+
+    func testSessionPersistenceWithLayout() {
+        let tabID = store.tabs.first!.id
+        store.currentLayout = .pane(PaneNodeData(tabIDs: [tabID], selectedTabID: tabID))
+        store.saveSession()
+
+        let restored = TabStore(sessionURL: tempURL)
+        XCTAssertNotNil(restored.savedLayout)
+        if case .pane(let data) = restored.savedLayout {
+            XCTAssertEqual(data.tabIDs, [tabID])
+            XCTAssertEqual(data.selectedTabID, tabID)
+        } else {
+            XCTFail("Expected pane layout")
+        }
+    }
+
+    func testSessionPersistenceWithSplitLayout() {
+        let tabID = store.tabs.first!.id
+        store.addNewTab()
+        let secondTabID = store.tabs.last!.id
+
+        store.currentLayout = .split(SplitNodeData(
+            orientation: "horizontal",
+            dividerPosition: 0.5,
+            first: .pane(PaneNodeData(tabIDs: [tabID], selectedTabID: tabID)),
+            second: .pane(PaneNodeData(tabIDs: [secondTabID], selectedTabID: secondTabID))
+        ))
+        store.saveSession()
+
+        let restored = TabStore(sessionURL: tempURL)
+        XCTAssertNotNil(restored.savedLayout)
+        if case .split(let data) = restored.savedLayout {
+            XCTAssertEqual(data.orientation, "horizontal")
+            XCTAssertEqual(data.dividerPosition, 0.5)
+        } else {
+            XCTFail("Expected split layout")
+        }
+    }
+
+    func testSessionPersistenceWithoutLayoutBackwardCompatible() {
+        store.saveSession()
+
+        let restored = TabStore(sessionURL: tempURL)
+        XCTAssertNil(restored.savedLayout)
+    }
+
+    func testSessionPersistenceLayoutNilByDefault() {
+        XCTAssertNil(store.currentLayout)
+    }
+
     func testMergeCloudTabsUpdatesExistingTab() {
         let cloud = MockKeyValueStore()
         let url = FileManager.default.temporaryDirectory

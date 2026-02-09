@@ -23,6 +23,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var isClosingConfirmedTab = false
 
     private var previousBonsplitTabID: TabID?
+    private var isRestoringLayout = false
     private var settingsObserver: Any?
     private var fileDropObserver: Any?
 
@@ -87,24 +88,16 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     @MainActor
     private func restoreSession() {
-        // Save the selected tab ID before creating tabs, because didSelectTab
-        // overwrites tabStore.selectedTabID on each createTab call
         let savedSelectedID = tabStore.selectedTabID
+        let tabsByID = Dictionary(tabStore.tabs.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
 
-        // Restore document tabs from TabStore
-        for tab in tabStore.tabs {
-            if let bonsplitTabID = controller.createTab(
-                title: tab.name,
-                icon: nil,
-                isDirty: tab.isDirty
-            ) {
-                tabIDMap[tab.id] = bonsplitTabID
-                reverseMap[bonsplitTabID] = tab.id
-                editorStates[bonsplitTabID] = createEditorState(for: tab)
-            }
+        if let layout = tabStore.savedLayout {
+            restoreWithLayout(layout, tabsByID: tabsByID)
+        } else {
+            restoreWithoutLayout(tabsByID: tabsByID)
         }
 
-        // Create clipboard tab last — pinned to the right (if enabled)
+        // Create clipboard tab last — always in the last pane
         if SettingsStore.shared.clipboardEnabled {
             if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false) {
                 clipboardTabID = clipTabID
@@ -122,6 +115,128 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             controller.selectTab(bonsplitID)
             previousBonsplitTabID = bonsplitID
         }
+    }
+
+    @MainActor
+    private func restoreWithoutLayout(tabsByID: [UUID: TabData]) {
+        for tab in tabStore.tabs {
+            if let bonsplitTabID = controller.createTab(
+                title: tab.name,
+                icon: nil,
+                isDirty: tab.isDirty
+            ) {
+                tabIDMap[tab.id] = bonsplitTabID
+                reverseMap[bonsplitTabID] = tab.id
+                editorStates[bonsplitTabID] = createEditorState(for: tab)
+            }
+        }
+    }
+
+    @MainActor
+    private func restoreWithLayout(_ layout: LayoutNode, tabsByID: [UUID: TabData]) {
+        isRestoringLayout = true
+        defer { isRestoringLayout = false }
+
+        // The controller starts with one default pane — use it as the root
+        guard let rootPane = controller.focusedPaneId else { return }
+
+        // Track per-pane selected tab IDs for post-restore selection
+        var paneSelections: [(PaneID, UUID)] = []
+
+        restoreNode(layout, inPane: rootPane, tabsByID: tabsByID, paneSelections: &paneSelections)
+
+        // Create any tabs that weren't in the layout (safety net)
+        let restoredIDs = Set(tabIDMap.keys)
+        for tab in tabStore.tabs where !restoredIDs.contains(tab.id) {
+            if let bonsplitTabID = controller.createTab(
+                title: tab.name,
+                icon: nil,
+                isDirty: tab.isDirty
+            ) {
+                tabIDMap[tab.id] = bonsplitTabID
+                reverseMap[bonsplitTabID] = tab.id
+                editorStates[bonsplitTabID] = createEditorState(for: tab)
+            }
+        }
+
+        // Restore per-pane selections
+        for (paneID, tabStoreID) in paneSelections {
+            if let bonsplitID = tabIDMap[tabStoreID] {
+                controller.selectTab(bonsplitID)
+            }
+            _ = paneID // used for future per-pane focus if needed
+        }
+
+        // Restore divider positions after layout pass
+        let savedLayout = layout
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let newTree = self.controller.treeSnapshot()
+                self.restoreDividerPositions(saved: savedLayout, current: newTree)
+            }
+        }
+    }
+
+    @MainActor
+    @discardableResult
+    private func restoreNode(
+        _ node: LayoutNode,
+        inPane pane: PaneID,
+        tabsByID: [UUID: TabData],
+        paneSelections: inout [(PaneID, UUID)]
+    ) -> PaneID {
+        switch node {
+        case .pane(let data):
+            for tabID in data.tabIDs {
+                guard let tab = tabsByID[tabID] else { continue }
+                if let bonsplitTabID = controller.createTab(
+                    title: tab.name,
+                    icon: nil,
+                    isDirty: tab.isDirty,
+                    inPane: pane
+                ) {
+                    tabIDMap[tab.id] = bonsplitTabID
+                    reverseMap[bonsplitTabID] = tab.id
+                    editorStates[bonsplitTabID] = createEditorState(for: tab)
+                }
+            }
+            if let selectedID = data.selectedTabID {
+                paneSelections.append((pane, selectedID))
+            }
+            return pane
+
+        case .split(let data):
+            let orientation: SplitOrientation = data.orientation == "vertical" ? .vertical : .horizontal
+
+            // Restore first subtree into the current pane
+            restoreNode(data.first, inPane: pane, tabsByID: tabsByID, paneSelections: &paneSelections)
+
+            // Split to create the second pane
+            guard let newPane = controller.splitPane(pane, orientation: orientation) else {
+                // Fallback: put second subtree tabs in current pane
+                restoreNode(data.second, inPane: pane, tabsByID: tabsByID, paneSelections: &paneSelections)
+                return pane
+            }
+
+            // Restore second subtree into the new pane
+            restoreNode(data.second, inPane: newPane, tabsByID: tabsByID, paneSelections: &paneSelections)
+
+            return pane
+        }
+    }
+
+    @MainActor
+    private func restoreDividerPositions(saved: LayoutNode, current: ExternalTreeNode) {
+        guard case .split(let savedSplit) = saved,
+              case .split(let currentSplit) = current else { return }
+
+        if let splitID = UUID(uuidString: currentSplit.id) {
+            controller.setDividerPosition(CGFloat(savedSplit.dividerPosition), forSplit: splitID, fromExternal: true)
+        }
+
+        restoreDividerPositions(saved: savedSplit.first, current: currentSplit.first)
+        restoreDividerPositions(saved: savedSplit.second, current: currentSplit.second)
     }
 
     // MARK: - Editor state factory
@@ -455,6 +570,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         orientation: SplitOrientation
     ) {
         MainActor.assumeIsolated {
+            guard !isRestoringLayout else { return }
+
             // New panes must never be empty — create an untitled tab
             tabStore.addNewTab()
             guard let newTab = tabStore.tabs.last else { return }
@@ -537,6 +654,55 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     @MainActor
     func saveActiveTabCursor() {
         saveCursorForSelectedTab()
+        tabStore.currentLayout = captureLayout()
+    }
+
+    // MARK: - Layout capture
+
+    @MainActor
+    func captureLayout() -> LayoutNode? {
+        let tree = controller.treeSnapshot()
+        let bonsplitToStore = buildExternalIDToStoreIDMap()
+        return convertNode(tree, mapping: bonsplitToStore)
+    }
+
+    private func buildExternalIDToStoreIDMap() -> [String: UUID] {
+        var map: [String: UUID] = [:]
+        for (tabStoreID, bonsplitTabID) in tabIDMap {
+            // TabID is Codable with a single `id: UUID` field.
+            // Encode to extract the UUID string that matches ExternalTab.id.
+            if let data = try? JSONEncoder().encode(bonsplitTabID),
+               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String],
+               let uuidString = dict["id"] {
+                map[uuidString] = tabStoreID
+            }
+        }
+        return map
+    }
+
+    private func convertNode(_ node: ExternalTreeNode, mapping: [String: UUID]) -> LayoutNode? {
+        switch node {
+        case .pane(let paneNode):
+            let tabIDs = paneNode.tabs.compactMap { mapping[$0.id] }
+            guard !tabIDs.isEmpty else { return nil }
+            let selectedID: UUID? = paneNode.selectedTabId.flatMap { mapping[$0] }
+            return .pane(PaneNodeData(tabIDs: tabIDs, selectedTabID: selectedID))
+
+        case .split(let splitNode):
+            guard let first = convertNode(splitNode.first, mapping: mapping),
+                  let second = convertNode(splitNode.second, mapping: mapping) else {
+                // If one side has no tabs (e.g. only clipboard), return the other
+                let first = convertNode(splitNode.first, mapping: mapping)
+                let second = convertNode(splitNode.second, mapping: mapping)
+                return first ?? second
+            }
+            return .split(SplitNodeData(
+                orientation: splitNode.orientation,
+                dividerPosition: splitNode.dividerPosition,
+                first: first,
+                second: second
+            ))
+        }
     }
 
     // MARK: - Private helpers

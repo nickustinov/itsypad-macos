@@ -49,6 +49,8 @@ class TabStore: ObservableObject {
 
     @Published var tabs: [TabData] = []
     @Published var selectedTabID: UUID?
+    private(set) var savedLayout: LayoutNode?
+    var currentLayout: LayoutNode?
 
     private var saveDebounceWork: DispatchWorkItem?
     private let sessionURL: URL
@@ -344,7 +346,8 @@ class TabStore: ObservableObject {
 
     func saveSession() {
         do {
-            let data = try JSONEncoder().encode(SessionData(tabs: tabs, selectedTabID: selectedTabID))
+            let session = SessionData(tabs: tabs, selectedTabID: selectedTabID, layout: currentLayout)
+            let data = try JSONEncoder().encode(session)
             try data.write(to: sessionURL, options: .atomic)
         } catch {
             NSLog("Failed to save session: \(error)")
@@ -359,10 +362,29 @@ class TabStore: ObservableObject {
 
         tabs = session.tabs
         selectedTabID = session.selectedTabID ?? tabs.first?.id
+        savedLayout = session.layout
     }
 }
 
 struct SessionData: Codable {
     let tabs: [TabData]
     let selectedTabID: UUID?
+    var layout: LayoutNode?
+}
+
+indirect enum LayoutNode: Codable, Equatable {
+    case pane(PaneNodeData)
+    case split(SplitNodeData)
+}
+
+struct PaneNodeData: Codable, Equatable {
+    let tabIDs: [UUID]
+    let selectedTabID: UUID?
+}
+
+struct SplitNodeData: Codable, Equatable {
+    let orientation: String
+    let dividerPosition: Double
+    let first: LayoutNode
+    let second: LayoutNode
 }
