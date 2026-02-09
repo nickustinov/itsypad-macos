@@ -12,7 +12,6 @@ struct TabItemView: View {
 
     @State private var isHovered = false
     @State private var isCloseHovered = false
-    @State private var didPushPointerCursor = false
 
     var body: some View {
         HStack(spacing: TabBarMetrics.contentSpacing) {
@@ -53,19 +52,6 @@ struct TabItemView: View {
         .onHover { hovering in
             withAnimation(.easeInOut(duration: TabBarMetrics.hoverDuration)) {
                 isHovered = hovering
-            }
-            if hovering, !didPushPointerCursor {
-                NSCursor.pointingHand.push()
-                didPushPointerCursor = true
-            } else if !hovering, didPushPointerCursor {
-                NSCursor.pop()
-                didPushPointerCursor = false
-            }
-        }
-        .onDisappear {
-            if didPushPointerCursor {
-                NSCursor.pop()
-                didPushPointerCursor = false
             }
         }
         .contextMenu {
