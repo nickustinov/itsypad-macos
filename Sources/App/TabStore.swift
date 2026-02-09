@@ -77,6 +77,8 @@ class TabStore: ObservableObject {
     private var icloudObserver: NSObjectProtocol?
     private var settingsObserver: NSObjectProtocol?
     private static let cloudTabsKey = "tabs"
+    private static let cloudDeletedKey = "deletedTabIDs"
+    private var deletedTabIDs: Set<UUID> = []
 
     var selectedTab: TabData? {
         tabs.first { $0.id == selectedTabID }
@@ -132,6 +134,11 @@ class TabStore: ObservableObject {
 
     func closeTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        // Record tombstone for scratch tabs so other devices don't re-add
+        if tabs[index].fileURL == nil && SettingsStore.shared.icloudSync {
+            deletedTabIDs.insert(id)
+            syncDeletedIDs()
+        }
         tabs.remove(at: index)
 
         if selectedTabID == id {
@@ -307,6 +314,19 @@ class TabStore: ObservableObject {
 
     static let cloudTabsMerged = Notification.Name("cloudTabsMerged")
 
+    private func syncDeletedIDs() {
+        let strings = deletedTabIDs.map(\.uuidString)
+        cloudStore.setData(try? JSONEncoder().encode(strings), forKey: Self.cloudDeletedKey)
+        cloudStore.synchronize()
+    }
+
+    private func loadDeletedIDs() {
+        guard let data = cloudStore.data(forKey: Self.cloudDeletedKey),
+              let strings = try? JSONDecoder().decode([String].self, from: data) else { return }
+        deletedTabIDs = Set(strings.compactMap(UUID.init))
+        NSLog("[iCloud] Loaded %d tombstones", deletedTabIDs.count)
+    }
+
     func startICloudSync() {
         guard icloudObserver == nil else {
             NSLog("[iCloud] startICloudSync: already observing, skipping")
@@ -316,6 +336,7 @@ class TabStore: ObservableObject {
         let synced = cloudStore.synchronize()
         NSLog("[iCloud] Initial synchronize returned %@", synced ? "true" : "false")
         if synced { lastICloudSync = Date() }
+        loadDeletedIDs()
         mergeCloudTabs()
         icloudObserver = NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
@@ -339,6 +360,8 @@ class TabStore: ObservableObject {
             NSLog("[iCloud] Removed observer")
         }
         cloudStore.removeObject(forKey: Self.cloudTabsKey)
+        cloudStore.removeObject(forKey: Self.cloudDeletedKey)
+        deletedTabIDs.removeAll()
         cloudStore.synchronize()
         NSLog("[iCloud] Cleared cloud data")
     }
@@ -347,6 +370,7 @@ class TabStore: ObservableObject {
         guard SettingsStore.shared.icloudSync else { return }
         NSLog("[iCloud] checkICloud: pulling latest from iCloud")
         cloudStore.synchronize()
+        loadDeletedIDs()
         mergeCloudTabs()
     }
 
@@ -383,6 +407,11 @@ class TabStore: ObservableObject {
 
         var result = CloudMergeResult()
         for cloudTab in cloudTabs {
+            // Never resurrect a deleted tab
+            if deletedTabIDs.contains(cloudTab.id) {
+                NSLog("[iCloud] Skipping tombstoned tab '%@' (%@)", cloudTab.name, cloudTab.id.uuidString)
+                continue
+            }
             if let localIndex = tabs.firstIndex(where: { $0.id == cloudTab.id }) {
                 // Only accept cloud version if it's newer than local
                 guard cloudTab.lastModified > tabs[localIndex].lastModified else {
@@ -409,14 +438,13 @@ class TabStore: ObservableObject {
             }
         }
 
-        // Remove local scratch tabs that no longer exist in the cloud
-        let cloudIDs = Set(cloudTabs.map(\.id))
-        let toRemove = tabs.filter { $0.fileURL == nil && !cloudIDs.contains($0.id) }
+        // Remove local scratch tabs that were tombstoned on another device
+        let toRemove = tabs.filter { $0.fileURL == nil && deletedTabIDs.contains($0.id) }
         for tab in toRemove {
-            NSLog("[iCloud] Removing local tab '%@' (%@) — deleted from cloud", tab.name, tab.id.uuidString)
+            NSLog("[iCloud] Removing tombstoned local tab '%@' (%@)", tab.name, tab.id.uuidString)
             result.removedTabIDs.append(tab.id)
         }
-        tabs.removeAll { $0.fileURL == nil && !cloudIDs.contains($0.id) }
+        tabs.removeAll { $0.fileURL == nil && deletedTabIDs.contains($0.id) }
 
         // Ensure at least one tab exists
         if tabs.isEmpty {
