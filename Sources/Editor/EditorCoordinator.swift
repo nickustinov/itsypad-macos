@@ -28,6 +28,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var fileDropObserver: Any?
     private var cloudMergeObserver: Any?
     private var windowActivateObserver: Any?
+    private var editorFocusObserver: Any?
 
     @MainActor
     init() {
@@ -95,6 +96,17 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 self?.tabStore.checkICloud()
             }
         }
+
+        editorFocusObserver = NotificationCenter.default.addObserver(
+            forName: EditorTextView.didReceiveClickNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let textView = notification.object as? EditorTextView else { return }
+                self?.handleEditorFocused(textView)
+            }
+        }
     }
 
     deinit {
@@ -109,6 +121,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = windowActivateObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = editorFocusObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -126,9 +141,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             restoreWithoutLayout(tabsByID: tabsByID)
         }
 
-        // Create clipboard tab last — always in the last pane
+        // Create clipboard tab in the pane it was saved in (or last pane as fallback)
         if SettingsStore.shared.clipboardEnabled {
-            if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false) {
+            let clipboardPane = findClipboardPane(in: tabStore.savedLayout) ?? controller.allPaneIds.last
+            if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false, inPane: clipboardPane) {
                 clipboardTabID = clipTabID
             }
         }
@@ -406,6 +422,59 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
               selectedTab.id != clipboardTabID,
               let state = editorStates[selectedTab.id] else { return nil }
         return state.textView
+    }
+
+    // MARK: - Clipboard pane restore
+
+    @MainActor
+    private func findClipboardPane(in layout: LayoutNode?) -> PaneID? {
+        guard let layout else { return nil }
+        let paneIndex = clipboardPaneIndex(in: layout, currentIndex: 0)?.index
+        guard let idx = paneIndex else { return nil }
+        let panes = controller.allPaneIds
+        return idx < panes.count ? panes[idx] : nil
+    }
+
+    private func clipboardPaneIndex(in node: LayoutNode, currentIndex: Int) -> (index: Int, nextIndex: Int)? {
+        switch node {
+        case .pane(let data):
+            if data.hasClipboard {
+                return (index: currentIndex, nextIndex: currentIndex + 1)
+            }
+            return nil
+        case .split(let data):
+            if let found = clipboardPaneIndex(in: data.first, currentIndex: currentIndex) {
+                return found
+            }
+            let firstCount = paneCount(in: data.first)
+            return clipboardPaneIndex(in: data.second, currentIndex: currentIndex + firstCount)
+        }
+    }
+
+    private func paneCount(in node: LayoutNode) -> Int {
+        switch node {
+        case .pane: return 1
+        case .split(let data): return paneCount(in: data.first) + paneCount(in: data.second)
+        }
+    }
+
+    // MARK: - Editor focus → pane focus
+
+    @MainActor
+    private func handleEditorFocused(_ textView: EditorTextView) {
+        // Find which Bonsplit tab owns this text view
+        guard let bonsplitTabID = editorStates.first(where: { $0.value.textView === textView })?.key else { return }
+
+        // Find which pane contains that tab
+        for paneID in controller.allPaneIds {
+            let paneTabs = controller.tabs(inPane: paneID)
+            if paneTabs.contains(where: { $0.id == bonsplitTabID }) {
+                if controller.focusedPaneId != paneID {
+                    controller.focusPane(paneID)
+                }
+                return
+            }
+        }
     }
 
     // MARK: - Public actions (menu/toolbar)
@@ -692,7 +761,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     func captureLayout() -> LayoutNode? {
         let tree = controller.treeSnapshot()
         let bonsplitToStore = buildExternalIDToStoreIDMap()
-        return convertNode(tree, mapping: bonsplitToStore)
+        let clipExternalID = clipboardTabID.flatMap { tabID -> String? in
+            guard let data = try? JSONEncoder().encode(tabID),
+                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] else { return nil }
+            return dict["id"]
+        }
+        return convertNode(tree, mapping: bonsplitToStore, clipboardExternalID: clipExternalID)
     }
 
     private func buildExternalIDToStoreIDMap() -> [String: UUID] {
@@ -709,20 +783,23 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         return map
     }
 
-    private func convertNode(_ node: ExternalTreeNode, mapping: [String: UUID]) -> LayoutNode? {
+    private func convertNode(_ node: ExternalTreeNode, mapping: [String: UUID], clipboardExternalID: String?) -> LayoutNode? {
         switch node {
         case .pane(let paneNode):
             let tabIDs = paneNode.tabs.compactMap { mapping[$0.id] }
-            guard !tabIDs.isEmpty else { return nil }
+            let hasClipboard = clipboardExternalID.map { clipID in
+                paneNode.tabs.contains { $0.id == clipID }
+            } ?? false
+            guard !tabIDs.isEmpty || hasClipboard else { return nil }
             let selectedID: UUID? = paneNode.selectedTabId.flatMap { mapping[$0] }
-            return .pane(PaneNodeData(tabIDs: tabIDs, selectedTabID: selectedID))
+            return .pane(PaneNodeData(tabIDs: tabIDs, selectedTabID: selectedID, hasClipboard: hasClipboard))
 
         case .split(let splitNode):
-            guard let first = convertNode(splitNode.first, mapping: mapping),
-                  let second = convertNode(splitNode.second, mapping: mapping) else {
+            guard let first = convertNode(splitNode.first, mapping: mapping, clipboardExternalID: clipboardExternalID),
+                  let second = convertNode(splitNode.second, mapping: mapping, clipboardExternalID: clipboardExternalID) else {
                 // If one side has no tabs (e.g. only clipboard), return the other
-                let first = convertNode(splitNode.first, mapping: mapping)
-                let second = convertNode(splitNode.second, mapping: mapping)
+                let first = convertNode(splitNode.first, mapping: mapping, clipboardExternalID: clipboardExternalID)
+                let second = convertNode(splitNode.second, mapping: mapping, clipboardExternalID: clipboardExternalID)
                 return first ?? second
             }
             return .split(SplitNodeData(

@@ -2,6 +2,7 @@ import AppKit
 
 final class EditorTextView: NSTextView {
     static let fileDropNotification = Notification.Name("editorTextViewFileDrop")
+    static let didReceiveClickNotification = Notification.Name("editorTextViewDidReceiveClick")
 
     override var acceptsFirstResponder: Bool { true }
     override var mouseDownCanMoveWindow: Bool { false }
@@ -9,6 +10,11 @@ final class EditorTextView: NSTextView {
 
     var onTextChange: ((String) -> Void)?
     var isActiveTab: Bool = true
+
+    override func mouseDown(with event: NSEvent) {
+        NotificationCenter.default.post(name: Self.didReceiveClickNotification, object: self)
+        super.mouseDown(with: event)
+    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()

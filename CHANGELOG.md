@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2
+
+Bug fixes:
+- Fixed clicking in editor area not switching active pane in split view
+- Fixed clipboard tab jumping to a different pane after app restart
+
 ## 1.0.1
 
 Bug fixes:

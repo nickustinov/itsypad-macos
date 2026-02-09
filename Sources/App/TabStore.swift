@@ -512,6 +512,20 @@ indirect enum LayoutNode: Codable, Equatable {
 struct PaneNodeData: Codable, Equatable {
     let tabIDs: [UUID]
     let selectedTabID: UUID?
+    var hasClipboard: Bool
+
+    init(tabIDs: [UUID], selectedTabID: UUID?, hasClipboard: Bool = false) {
+        self.tabIDs = tabIDs
+        self.selectedTabID = selectedTabID
+        self.hasClipboard = hasClipboard
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        tabIDs = try container.decode([UUID].self, forKey: .tabIDs)
+        selectedTabID = try container.decodeIfPresent(UUID.self, forKey: .selectedTabID)
+        hasClipboard = try container.decodeIfPresent(Bool.self, forKey: .hasClipboard) ?? false
+    }
 }
 
 struct SplitNodeData: Codable, Equatable {
