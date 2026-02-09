@@ -75,11 +75,11 @@ Sources/
 │   ├── AppDelegate.swift               # Menu bar, toolbar, window, and menu setup
 │   ├── BonsplitRootView.swift          # SwiftUI root view rendering editor and clipboard tabs
 │   ├── Models.swift                    # ShortcutKeys and shared data types
-│   └── TabStore.swift                  # Tab data model with persistence
+│   └── TabStore.swift                  # Tab data model with persistence and iCloud sync
 ├── Editor/
 │   ├── EditorTextView.swift            # NSTextView subclass with editing helpers and file drops
 │   ├── EditorContentView.swift         # NSViewRepresentable wrapping text view, scroll view, and gutter
-│   ├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore and Bonsplit
+│   ├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore, Bonsplit, and iCloud
 │   ├── EditorTheme.swift               # Monokai-inspired dark/light color palettes
 │   ├── SyntaxHighlightCoordinator.swift # Tree-sitter syntax highlighting with injection support
 │   ├── LanguageDetector.swift          # File extension → language mapping via CodeEditLanguages
@@ -107,6 +107,7 @@ Packages/
 Tests/
 ├── ClipboardStoreTests.swift
 ├── EditorThemeTests.swift
+├── FileWatcherTests.swift
 ├── LanguageDetectorTests.swift
 ├── LineNumberGutterViewTests.swift
 ├── ModifierKeyDetectionTests.swift
