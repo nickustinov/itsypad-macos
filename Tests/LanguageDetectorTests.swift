@@ -131,6 +131,22 @@ final class LanguageDetectorTests: XCTestCase {
         XCTAssertEqual(result.lang, "python")
     }
 
+    func testPythonImportAtStart() {
+        let result = detector.detect(text: "import os\nimport sys\n\ndef main():\n    print('hi')", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "python")
+    }
+
+    func testPythonFromImportAtStart() {
+        let result = detector.detect(text: "from collections import defaultdict\n\ndef solve():\n    pass", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "python")
+    }
+
+    func testPlainTextWithCodeKeywords() {
+        let text = "This article discusses #include directives, Go's := operator, and the function keyword."
+        let result = detector.detect(text: text, name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "plain")
+    }
+
     // MARK: - Edge cases
 
     func testEmptyText() {

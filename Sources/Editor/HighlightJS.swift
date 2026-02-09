@@ -68,8 +68,9 @@ class HighlightJS {
     }
 
     func highlight(_ code: String, as language: String) -> NSAttributedString? {
-        guard let hljs = ensureLoaded() else { return nil }
-        let result = hljs.invokeMethod("highlight", withArguments: [language, code, true])
+        guard let hljs = ensureLoaded(), let ctx = hljs.context else { return nil }
+        let options = JSValue(object: ["language": language, "ignoreIllegals": true], in: ctx)
+        let result = hljs.invokeMethod("highlight", withArguments: [code, options as Any])
         if result?.isUndefined == true {
             return nil
         }
@@ -77,6 +78,24 @@ class HighlightJS {
             return nil
         }
         return processHTML(html)
+    }
+
+    struct AutoResult {
+        let language: String
+        let relevance: Int
+        let attributed: NSAttributedString
+    }
+
+    func highlightAuto(_ code: String) -> AutoResult? {
+        guard let hljs = ensureLoaded() else { return nil }
+        let result = hljs.invokeMethod("highlightAuto", withArguments: [code])
+        if result?.isUndefined == true { return nil }
+        guard let lang = result?.objectForKeyedSubscript("language")?.toString(),
+              let html = result?.objectForKeyedSubscript("value")?.toString() else {
+            return nil
+        }
+        let relevance = result?.objectForKeyedSubscript("relevance")?.toInt32() ?? 0
+        return AutoResult(language: lang, relevance: Int(relevance), attributed: processHTML(html))
     }
 
     func supportedLanguages() -> [String] {
@@ -214,16 +233,36 @@ class HighlightJS {
 
         // Apply styles for each span level
         for classes in classStack {
-            // Try compound key first (sorted, dot-joined)
-            if classes.count > 1 {
-                let compoundKey = classes.sorted().joined(separator: ".")
+            let sorted = classes.sorted()
+
+            // Try full compound key first (sorted, dot-joined)
+            if sorted.count > 1 {
+                let compoundKey = sorted.joined(separator: ".")
                 if let style = themeDict[compoundKey] {
                     attrs.merge(style) { _, new in new }
                     continue
                 }
             }
+
+            // Try 2-class subsets when 3+ classes don't match as a full compound
+            if sorted.count > 2 {
+                var matched = false
+                for i in 0..<sorted.count {
+                    for j in (i + 1)..<sorted.count {
+                        let pairKey = "\(sorted[i]).\(sorted[j])"
+                        if let style = themeDict[pairKey] {
+                            attrs.merge(style) { _, new in new }
+                            matched = true
+                            break
+                        }
+                    }
+                    if matched { break }
+                }
+                if matched { continue }
+            }
+
             // Fall back to individual classes
-            for cls in classes {
+            for cls in sorted {
                 if let style = themeDict[cls] {
                     attrs.merge(style) { _, new in new }
                 }

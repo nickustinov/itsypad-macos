@@ -39,6 +39,7 @@ struct LanguageDetector {
         "toml": "toml",
         "m": "objective-c",
         "mm": "objective-c",
+        "php": "php",
         "ps1": "powershell",
         "txt": "plain",
     ]
@@ -47,7 +48,7 @@ struct LanguageDetector {
         "plain", "swift", "python", "javascript", "typescript", "html", "css",
         "c", "cpp", "csharp", "json", "markdown", "bash", "zsh", "java",
         "kotlin", "go", "ruby", "rust", "sql", "xml", "yaml", "toml",
-        "objective-c", "powershell",
+        "objective-c", "php", "powershell",
     ]
 
     struct Result {
@@ -92,6 +93,9 @@ struct LanguageDetector {
         if t.contains("<html") || t.contains("<!doctype html") {
             return Result(lang: "html", confidence: 85)
         }
+        if t.contains("<?php") {
+            return Result(lang: "php", confidence: 95)
+        }
         if t.contains("#!/bin/bash") || t.contains("#!/usr/bin/env bash") {
             return Result(lang: "bash", confidence: 90)
         }
@@ -99,54 +103,22 @@ struct LanguageDetector {
             return Result(lang: "zsh", confidence: 90)
         }
 
-        // Scoring
-        var scores: [String: Int] = [:]
-
-        func bump(_ key: String, _ amount: Int) { scores[key, default: 0] += amount }
-
-        // Swift
-        if t.contains("func ") { bump("swift", 5) }
-        if t.contains("let ") || t.contains("var ") { bump("swift", 4) }
-        if t.contains("->") { bump("swift", 4) }
-        if t.contains("struct ") && t.contains(": view") { bump("swift", 14) }
-
-        // Python
-        if t.contains("\ndef ") || t.hasPrefix("def ") { bump("python", 15) }
-        if t.contains("import ") && t.contains(":\n") { bump("python", 8) }
-
-        // JavaScript
-        if t.contains("function ") || t.contains("=>") || t.contains("console.log") { bump("javascript", 15) }
-
-        // C/C++
-        if t.contains("#include") || t.contains("std::") { bump("cpp", 20) }
-
-        // CSS
-        if t.contains("{") && t.contains("}") && t.contains(":") && t.contains(";") && !t.contains("func ") {
-            bump("css", 8)
+        // Short-snippet heuristics (highlight.js auto-detect needs ~50+ chars to be reliable)
+        if t.contains("\ndef ") || t.hasPrefix("def ") { return Result(lang: "python", confidence: 15) }
+        if t.hasPrefix("import ") && t.contains(":\n") { return Result(lang: "python", confidence: 15) }
+        if t.hasPrefix("from ") && t.contains("import ") { return Result(lang: "python", confidence: 15) }
+        if t.contains("package ") && t.contains("func ") { return Result(lang: "go", confidence: 15) }
+        if t.hasPrefix("#include") || t.contains("\n#include") { return Result(lang: "cpp", confidence: 15) }
+        if t.contains("console.log") || (t.contains("function ") && t.contains("=>")) {
+            return Result(lang: "javascript", confidence: 15)
         }
 
-        // Markdown
-        if t.contains("\n# ") || t.hasPrefix("# ") { bump("markdown", 8) }
-
-        // C#
-        if t.contains("using system") || t.contains("namespace ") { bump("csharp", 15) }
-
-        // Rust
-        if t.contains("fn ") && t.contains("let mut ") { bump("rust", 15) }
-
-        // Go
-        if t.contains("package ") && t.contains("func ") { bump("go", 15) }
-        if t.contains(":=") { bump("go", 10) }
-        if t.contains("fmt.") { bump("go", 8) }
-        if t.contains("make(") { bump("go", 5) }
-
-        // Ruby
-        if t.contains("\ndef ") && t.contains("\nend") { bump("ruby", 12) }
-
-        let sorted = scores.sorted { $0.value > $1.value }
-        if let top = sorted.first, top.value > 0 {
-            let second = sorted.dropFirst().first?.value ?? 0
-            return Result(lang: top.key, confidence: top.value - second)
+        // Delegate to highlight.js auto-detection for longer/complex snippets
+        let knownLanguages = Set(Self.allLanguages)
+        if let auto = HighlightJS.shared.highlightAuto(text),
+           auto.relevance >= 7,
+           knownLanguages.contains(auto.language) {
+            return Result(lang: auto.language, confidence: auto.relevance)
         }
 
         return Result(lang: "plain", confidence: 0)
