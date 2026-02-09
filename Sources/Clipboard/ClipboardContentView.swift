@@ -703,6 +703,11 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         window?.perform(#selector(NSWindow.makeFirstResponder(_:)), with: searchField, afterDelay: 0.1)
     }
 
+    override func resetCursorRects() {
+        discardCursorRects()
+        addCursorRect(visibleRect, cursor: .arrow)
+    }
+
     override func layout() {
         super.layout()
         let width = scrollView.bounds.width
