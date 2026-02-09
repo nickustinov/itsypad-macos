@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.5
+
+Improvements:
+- Added zoom preview for clipboard tiles — hover a tile and click the magnifying glass icon to view full content in a near-fullscreen overlay with rounded corners, scrollable text, and a copy button
+
 ## 1.0.4
 
 Bug fixes:

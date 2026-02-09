@@ -14,11 +14,13 @@ private class ClipboardCardView: NSView {
     private let timestampLabel = NSTextField(labelWithString: "")
     private let deleteButton = NSButton()
     private let copiedBadge = NSTextField(labelWithString: "Copied")
+    private let zoomButton = NSButton()
     private var trackingArea: NSTrackingArea?
     private var isHovered = false { didSet { updateBackground(); updateHoverControls() } }
     private var entry: ClipboardEntry?
     private var copiedFlashWork: DispatchWorkItem?
     var onDelete: ((UUID) -> Void)?
+    var onZoom: ((ClipboardEntry) -> Void)?
 
     var themeBackground: NSColor = .windowBackgroundColor { didSet { updateBackground() } }
     var isDark: Bool = false { didSet { updateAppearance() } }
@@ -72,10 +74,23 @@ private class ClipboardCardView: NSView {
         copiedBadge.isSelectable = false
         copiedBadge.isHidden = true
 
+        zoomButton.translatesAutoresizingMaskIntoConstraints = false
+        zoomButton.bezelStyle = .inline
+        zoomButton.isBordered = false
+        let zoomConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
+        zoomButton.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Preview")?
+            .withSymbolConfiguration(zoomConfig)
+        zoomButton.imagePosition = .imageOnly
+        zoomButton.target = self
+        zoomButton.action = #selector(zoomClicked)
+        zoomButton.isHidden = true
+        zoomButton.contentTintColor = .secondaryLabelColor
+
         addSubview(imageView)
         addSubview(previewLabel)
         addSubview(timestampLabel)
         addSubview(deleteButton)
+        addSubview(zoomButton)
         addSubview(copiedBadge)
 
         NSLayoutConstraint.activate([
@@ -92,11 +107,15 @@ private class ClipboardCardView: NSView {
             timestampLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
             timestampLabel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
 
-            deleteButton.leadingAnchor.constraint(greaterThanOrEqualTo: timestampLabel.trailingAnchor, constant: 4),
             deleteButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
             deleteButton.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
             deleteButton.widthAnchor.constraint(equalToConstant: 12),
             deleteButton.heightAnchor.constraint(equalToConstant: 12),
+
+            zoomButton.trailingAnchor.constraint(equalTo: deleteButton.leadingAnchor, constant: -6),
+            zoomButton.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
+            zoomButton.widthAnchor.constraint(equalToConstant: 12),
+            zoomButton.heightAnchor.constraint(equalToConstant: 12),
 
             copiedBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
             copiedBadge.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
@@ -106,11 +125,17 @@ private class ClipboardCardView: NSView {
     private func updateHoverControls() {
         let showingCopied = !copiedBadge.isHidden
         deleteButton.isHidden = !isHovered || showingCopied
+        zoomButton.isHidden = !isHovered || showingCopied
     }
 
     @objc private func deleteClicked() {
         guard let entry else { return }
         onDelete?(entry.id)
+    }
+
+    @objc private func zoomClicked() {
+        guard let entry else { return }
+        onZoom?(entry)
     }
 
     func configure(with entry: ClipboardEntry, searchQuery: String = "") {
@@ -196,6 +221,7 @@ private class ClipboardCardView: NSView {
         copiedFlashWork?.cancel()
         copiedBadge.isHidden = true
         deleteButton.isHidden = true
+        zoomButton.isHidden = true
         isHovered = false
         imageView.image = nil
         imageView.isHidden = true
@@ -228,6 +254,7 @@ private class ClipboardCardView: NSView {
 
         copiedBadge.isHidden = false
         deleteButton.isHidden = true
+        zoomButton.isHidden = true
 
         let work = DispatchWorkItem { [weak self] in
             guard let self else { return }
@@ -278,6 +305,237 @@ private class ClipboardCardView: NSView {
     }
 }
 
+// MARK: - Preview overlay
+
+private class ClipboardPreviewOverlay: NSView {
+    private let scrimView = NSView()
+    private let panelView = NSView()
+    private let contentScrollView = NSScrollView()
+    private let imageView = NSImageView()
+    private let closeButton = NSButton()
+    private let timestampLabel = NSTextField(labelWithString: "")
+    private let copyButton = NSButton()
+    private var textView: NSTextView?
+    private var eventMonitor: Any?
+    private var entry: ClipboardEntry?
+    var onDismiss: (() -> Void)?
+
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setup()
+    }
+
+    private func setup() {
+        wantsLayer = true
+
+        scrimView.translatesAutoresizingMaskIntoConstraints = false
+        scrimView.wantsLayer = true
+        scrimView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.45).cgColor
+        addSubview(scrimView)
+
+        panelView.translatesAutoresizingMaskIntoConstraints = false
+        panelView.wantsLayer = true
+        panelView.layer?.cornerRadius = 12
+        panelView.layer?.masksToBounds = true
+        addSubview(panelView)
+
+        contentScrollView.translatesAutoresizingMaskIntoConstraints = false
+        contentScrollView.drawsBackground = false
+        contentScrollView.hasVerticalScroller = true
+        contentScrollView.autohidesScrollers = true
+        contentScrollView.borderType = .noBorder
+        panelView.addSubview(contentScrollView)
+
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+        imageView.imageScaling = .scaleProportionallyDown
+        imageView.imageAlignment = .alignCenter
+        imageView.isHidden = true
+        panelView.addSubview(imageView)
+
+        closeButton.translatesAutoresizingMaskIntoConstraints = false
+        closeButton.bezelStyle = .inline
+        closeButton.isBordered = false
+        let closeConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close")?
+            .withSymbolConfiguration(closeConfig)
+        closeButton.imagePosition = .imageOnly
+        closeButton.target = self
+        closeButton.action = #selector(closeClicked)
+        panelView.addSubview(closeButton)
+
+        timestampLabel.translatesAutoresizingMaskIntoConstraints = false
+        timestampLabel.font = NSFont.systemFont(ofSize: 11)
+        timestampLabel.isSelectable = false
+        panelView.addSubview(timestampLabel)
+
+        copyButton.translatesAutoresizingMaskIntoConstraints = false
+        copyButton.title = "Copy"
+        copyButton.bezelStyle = .accessoryBarAction
+        copyButton.font = NSFont.systemFont(ofSize: 11)
+        copyButton.target = self
+        copyButton.action = #selector(copyClicked)
+        panelView.addSubview(copyButton)
+
+        // Separator line above bottom bar
+        let separator = NSView()
+        separator.translatesAutoresizingMaskIntoConstraints = false
+        separator.wantsLayer = true
+        separator.layer?.backgroundColor = NSColor.separatorColor.cgColor
+        panelView.addSubview(separator)
+
+        NSLayoutConstraint.activate([
+            scrimView.topAnchor.constraint(equalTo: topAnchor),
+            scrimView.leadingAnchor.constraint(equalTo: leadingAnchor),
+            scrimView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            scrimView.bottomAnchor.constraint(equalTo: bottomAnchor),
+
+            panelView.topAnchor.constraint(equalTo: topAnchor, constant: 40),
+            panelView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 32),
+            panelView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -32),
+            panelView.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -32),
+
+            closeButton.topAnchor.constraint(equalTo: panelView.topAnchor, constant: 8),
+            closeButton.trailingAnchor.constraint(equalTo: panelView.trailingAnchor, constant: -8),
+            closeButton.widthAnchor.constraint(equalToConstant: 20),
+            closeButton.heightAnchor.constraint(equalToConstant: 20),
+
+            contentScrollView.topAnchor.constraint(equalTo: panelView.topAnchor, constant: 12),
+            contentScrollView.leadingAnchor.constraint(equalTo: panelView.leadingAnchor, constant: 12),
+            contentScrollView.trailingAnchor.constraint(equalTo: panelView.trailingAnchor, constant: -12),
+            contentScrollView.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -8),
+
+            imageView.topAnchor.constraint(equalTo: panelView.topAnchor, constant: 12),
+            imageView.leadingAnchor.constraint(equalTo: panelView.leadingAnchor, constant: 12),
+            imageView.trailingAnchor.constraint(equalTo: panelView.trailingAnchor, constant: -12),
+            imageView.bottomAnchor.constraint(equalTo: separator.topAnchor, constant: -8),
+
+            separator.leadingAnchor.constraint(equalTo: panelView.leadingAnchor),
+            separator.trailingAnchor.constraint(equalTo: panelView.trailingAnchor),
+            separator.heightAnchor.constraint(equalToConstant: 1),
+            separator.bottomAnchor.constraint(equalTo: timestampLabel.topAnchor, constant: -8),
+
+            timestampLabel.leadingAnchor.constraint(equalTo: panelView.leadingAnchor, constant: 12),
+            timestampLabel.bottomAnchor.constraint(equalTo: panelView.bottomAnchor, constant: -10),
+
+            copyButton.trailingAnchor.constraint(equalTo: panelView.trailingAnchor, constant: -12),
+            copyButton.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
+        ])
+
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.superview != nil else { return event }
+            if event.keyCode == 53 {
+                self.onDismiss?()
+                return nil
+            }
+            return event
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if !panelView.frame.contains(point) {
+            onDismiss?()
+        }
+    }
+
+    func configure(with entry: ClipboardEntry, themeBackground: NSColor, isDark: Bool) {
+        self.entry = entry
+
+        let blend: NSColor = isDark ? .white : .black
+        let panelBg = themeBackground.blended(withFraction: isDark ? 0.07 : 0.10, of: blend) ?? themeBackground
+        panelView.layer?.backgroundColor = panelBg.cgColor
+
+        let labelColor: NSColor = isDark
+            ? NSColor.white.withAlphaComponent(0.5)
+            : NSColor.black.withAlphaComponent(0.5)
+        timestampLabel.textColor = labelColor
+        closeButton.contentTintColor = labelColor
+        timestampLabel.stringValue = relativeTime(from: entry.timestamp)
+
+        switch entry.kind {
+        case .text:
+            imageView.isHidden = true
+            contentScrollView.isHidden = false
+
+            let textColor: NSColor = isDark ? .white : .black
+            let tv = NSTextView()
+            tv.isEditable = false
+            tv.isSelectable = true
+            tv.drawsBackground = false
+            tv.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+            tv.textColor = textColor
+            tv.string = entry.text ?? ""
+            tv.textContainerInset = NSSize(width: 4, height: 4)
+            tv.isVerticallyResizable = true
+            tv.isHorizontallyResizable = false
+            tv.textContainer?.widthTracksTextView = true
+            tv.autoresizingMask = [.width]
+            contentScrollView.documentView = tv
+            textView = tv
+
+        case .image:
+            contentScrollView.isHidden = true
+            imageView.isHidden = false
+            if let fileName = entry.imageFileName {
+                let fileURL = ClipboardStore.shared.imagesDirectory.appendingPathComponent(fileName)
+                imageView.image = NSImage(contentsOf: fileURL)
+            }
+        }
+    }
+
+    func animateIn() {
+        alphaValue = 0
+        panelView.layer?.setAffineTransform(CGAffineTransform(scaleX: 0.95, y: 0.95))
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            self.animator().alphaValue = 1
+            self.panelView.layer?.setAffineTransform(.identity)
+        }
+    }
+
+    func animateOut(completion: @escaping () -> Void) {
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.15
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            self.animator().alphaValue = 0
+        }, completionHandler: completion)
+    }
+
+    @objc private func closeClicked() { onDismiss?() }
+
+    @objc private func copyClicked() {
+        guard let entry else { return }
+        ClipboardStore.shared.copyToClipboard(entry)
+        copyButton.title = "Copied!"
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.copyButton.title = "Copy"
+        }
+    }
+
+    private func relativeTime(from date: Date) -> String {
+        let interval = -date.timeIntervalSinceNow
+        if interval < 60 { return "just now" }
+        if interval < 3600 { return "\(Int(interval / 60))m ago" }
+        if interval < 86400 { return "\(Int(interval / 3600))h ago" }
+        let days = Int(interval / 86400)
+        if days == 1 { return "yesterday" }
+        return "\(days)d ago"
+    }
+
+    deinit {
+        if let monitor = eventMonitor {
+            NSEvent.removeMonitor(monitor)
+        }
+    }
+}
+
 // MARK: - Collection view item
 
 private class ClipboardCardItem: NSCollectionViewItem {
@@ -306,6 +564,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     private var tabSelectedObserver: Any?
     private var lastLayoutWidth: CGFloat = 0
     private var currentSearchQuery: String = ""
+    private var previewOverlay: ClipboardPreviewOverlay?
 
     var themeBackground: NSColor = .windowBackgroundColor {
         didSet { applyTheme() }
@@ -478,6 +737,9 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
                 ClipboardStore.shared.deleteEntry(id: id)
                 self?.reloadEntries()
             }
+            cardItem.cardView?.onZoom = { [weak self] entry in
+                self?.showPreview(for: entry)
+            }
             cardItem.cardView?.configure(with: filteredEntries[indexPath.item], searchQuery: currentSearchQuery)
         }
         return item
@@ -494,6 +756,29 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         let columns = max(1, floor((availableWidth + tileSpacing) / (tileMinWidth + tileSpacing)))
         let tileWidth = floor((availableWidth - tileSpacing * (columns - 1)) / columns)
         return NSSize(width: tileWidth, height: tileHeight)
+    }
+
+    // MARK: - Preview
+
+    private func showPreview(for entry: ClipboardEntry) {
+        dismissPreview()
+        let overlay = ClipboardPreviewOverlay(frame: bounds)
+        overlay.autoresizingMask = [.width, .height]
+        overlay.configure(with: entry, themeBackground: themeBackground, isDark: isDark)
+        overlay.onDismiss = { [weak self] in
+            self?.dismissPreview()
+        }
+        addSubview(overlay)
+        previewOverlay = overlay
+        overlay.animateIn()
+    }
+
+    private func dismissPreview() {
+        guard let overlay = previewOverlay else { return }
+        previewOverlay = nil
+        overlay.animateOut {
+            overlay.removeFromSuperview()
+        }
     }
 
     // MARK: - Theme
