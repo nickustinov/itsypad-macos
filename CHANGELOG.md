@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.4
+
+Bug fixes:
+- Fixed plain text with bullet dashes being misdetected as markdown
+- Removed iCloud debug logging
+
+## 1.0.3
+
+Bug fixes:
+- Fixed inactive pane colors in split view — unfocused split panes now keep their themed tab bar color instead of turning gray; only the accent strip on the selected tab desaturates in unfocused panes
+
 ## 1.0.2
 
 Bug fixes:

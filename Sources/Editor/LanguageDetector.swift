@@ -127,7 +127,7 @@ struct LanguageDetector {
         }
 
         // Markdown
-        if t.contains("\n# ") || t.hasPrefix("# ") || t.contains("\n- ") { bump("markdown", 8) }
+        if t.contains("\n# ") || t.hasPrefix("# ") { bump("markdown", 8) }
 
         // C#
         if t.contains("using system") || t.contains("namespace ") { bump("csharp", 15) }

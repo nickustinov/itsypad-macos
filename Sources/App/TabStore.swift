@@ -106,7 +106,6 @@ class TabStore: ObservableObject {
             addNewTab()
         }
 
-        NSLog("[iCloud] TabStore init — icloudSync setting: %@", SettingsStore.shared.icloudSync ? "true" : "false")
         if SettingsStore.shared.icloudSync {
             startICloudSync()
         }
@@ -175,6 +174,8 @@ class TabStore: ObservableObject {
             )
             if result.confidence > 5 {
                 tabs[index].language = result.lang
+            } else if tabs[index].language != "plain" && result.lang == "plain" {
+                tabs[index].language = "plain"
             }
         }
 
@@ -324,51 +325,35 @@ class TabStore: ObservableObject {
         guard let data = cloudStore.data(forKey: Self.cloudDeletedKey),
               let strings = try? JSONDecoder().decode([String].self, from: data) else { return }
         deletedTabIDs = Set(strings.compactMap(UUID.init))
-        NSLog("[iCloud] Loaded %d tombstones", deletedTabIDs.count)
     }
 
     func startICloudSync() {
-        guard icloudObserver == nil else {
-            NSLog("[iCloud] startICloudSync: already observing, skipping")
-            return
-        }
-        NSLog("[iCloud] Starting iCloud sync")
+        guard icloudObserver == nil else { return }
         let synced = cloudStore.synchronize()
-        NSLog("[iCloud] Initial synchronize returned %@", synced ? "true" : "false")
         if synced { lastICloudSync = Date() }
         loadDeletedIDs()
         mergeCloudTabs()
         icloudObserver = NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: cloudStore, queue: .main
-        ) { [weak self] notification in
-            let reason = (notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int)
-                .map(String.init) ?? "unknown"
-            let keys = (notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String])
-                ?? []
-            NSLog("[iCloud] Received external change notification — reason: %@, keys: %@", reason, keys as CVarArg)
+        ) { [weak self] _ in
             self?.mergeCloudTabs()
         }
-        NSLog("[iCloud] Registered for didChangeExternallyNotification")
     }
 
     func stopICloudSync() {
-        NSLog("[iCloud] Stopping iCloud sync")
         if let observer = icloudObserver {
             NotificationCenter.default.removeObserver(observer)
             icloudObserver = nil
-            NSLog("[iCloud] Removed observer")
         }
         cloudStore.removeObject(forKey: Self.cloudTabsKey)
         cloudStore.removeObject(forKey: Self.cloudDeletedKey)
         deletedTabIDs.removeAll()
         cloudStore.synchronize()
-        NSLog("[iCloud] Cleared cloud data")
     }
 
     func checkICloud() {
         guard SettingsStore.shared.icloudSync else { return }
-        NSLog("[iCloud] checkICloud: pulling latest from iCloud")
         cloudStore.synchronize()
         loadDeletedIDs()
         mergeCloudTabs()
@@ -377,54 +362,27 @@ class TabStore: ObservableObject {
     private func saveToICloud() {
         guard SettingsStore.shared.icloudSync else { return }
         let scratchTabs = tabs.filter { $0.fileURL == nil }
-        NSLog("[iCloud] Saving %d scratch tabs to iCloud", scratchTabs.count)
-        guard let data = try? JSONEncoder().encode(scratchTabs) else {
-            NSLog("[iCloud] Failed to encode scratch tabs")
-            return
-        }
-        NSLog("[iCloud] Encoded %d bytes", data.count)
+        guard let data = try? JSONEncoder().encode(scratchTabs) else { return }
         cloudStore.setData(data, forKey: Self.cloudTabsKey)
-        let synced = cloudStore.synchronize()
-        NSLog("[iCloud] synchronize after save returned %@", synced ? "true" : "false")
+        cloudStore.synchronize()
         lastICloudSync = Date()
     }
 
     private func mergeCloudTabs() {
-        guard SettingsStore.shared.icloudSync else {
-            NSLog("[iCloud] mergeCloudTabs: sync disabled, skipping")
-            return
-        }
-        guard let data = cloudStore.data(forKey: Self.cloudTabsKey) else {
-            NSLog("[iCloud] mergeCloudTabs: no cloud data found for key '%@'", Self.cloudTabsKey)
-            return
-        }
-        NSLog("[iCloud] mergeCloudTabs: got %d bytes from cloud", data.count)
-        guard let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data) else {
-            NSLog("[iCloud] mergeCloudTabs: failed to decode cloud data")
-            return
-        }
-        NSLog("[iCloud] mergeCloudTabs: decoded %d cloud tabs, %d local tabs", cloudTabs.count, tabs.count)
+        guard SettingsStore.shared.icloudSync else { return }
+        guard let data = cloudStore.data(forKey: Self.cloudTabsKey) else { return }
+        guard let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data) else { return }
 
         var result = CloudMergeResult()
         for cloudTab in cloudTabs {
             // Never resurrect a deleted tab
-            if deletedTabIDs.contains(cloudTab.id) {
-                NSLog("[iCloud] Skipping tombstoned tab '%@' (%@)", cloudTab.name, cloudTab.id.uuidString)
-                continue
-            }
+            if deletedTabIDs.contains(cloudTab.id) { continue }
             if let localIndex = tabs.firstIndex(where: { $0.id == cloudTab.id }) {
                 // Only accept cloud version if it's newer than local
-                guard cloudTab.lastModified > tabs[localIndex].lastModified else {
-                    NSLog("[iCloud] Skipping tab '%@' — local is newer (local: %@, cloud: %@)",
-                          tabs[localIndex].name,
-                          tabs[localIndex].lastModified.description,
-                          cloudTab.lastModified.description)
-                    continue
-                }
+                guard cloudTab.lastModified > tabs[localIndex].lastModified else { continue }
                 if tabs[localIndex].content != cloudTab.content
                     || tabs[localIndex].name != cloudTab.name
                     || tabs[localIndex].language != cloudTab.language {
-                    NSLog("[iCloud] Updating local tab '%@' (%@) — cloud is newer", tabs[localIndex].name, cloudTab.id.uuidString)
                     tabs[localIndex].content = cloudTab.content
                     tabs[localIndex].name = cloudTab.name
                     tabs[localIndex].language = cloudTab.language
@@ -432,7 +390,6 @@ class TabStore: ObservableObject {
                     result.updatedTabIDs.append(cloudTab.id)
                 }
             } else {
-                NSLog("[iCloud] Appending new tab '%@' (%@) from cloud", cloudTab.name, cloudTab.id.uuidString)
                 tabs.append(cloudTab)
                 result.newTabIDs.append(cloudTab.id)
             }
@@ -441,7 +398,6 @@ class TabStore: ObservableObject {
         // Remove local scratch tabs that were tombstoned on another device
         let toRemove = tabs.filter { $0.fileURL == nil && deletedTabIDs.contains($0.id) }
         for tab in toRemove {
-            NSLog("[iCloud] Removing tombstoned local tab '%@' (%@)", tab.name, tab.id.uuidString)
             result.removedTabIDs.append(tab.id)
         }
         tabs.removeAll { $0.fileURL == nil && deletedTabIDs.contains($0.id) }
@@ -452,7 +408,6 @@ class TabStore: ObservableObject {
         }
 
         let changed = !result.newTabIDs.isEmpty || !result.updatedTabIDs.isEmpty || !result.removedTabIDs.isEmpty
-        NSLog("[iCloud] mergeCloudTabs: new=%d, updated=%d, removed=%d", result.newTabIDs.count, result.updatedTabIDs.count, result.removedTabIDs.count)
         lastICloudSync = Date()
 
         if changed {
@@ -495,6 +450,21 @@ class TabStore: ObservableObject {
         tabs = session.tabs
         selectedTabID = session.selectedTabID ?? tabs.first?.id
         savedLayout = session.layout
+
+        // Re-detect language for unlocked tabs to fix stale detection
+        for index in tabs.indices where !tabs[index].languageLocked {
+            let tab = tabs[index]
+            let result = LanguageDetector.shared.detect(
+                text: tab.content,
+                name: tab.name,
+                fileURL: tab.fileURL
+            )
+            if result.confidence > 5 {
+                tabs[index].language = result.lang
+            } else if result.lang == "plain" && tab.language != "plain" {
+                tabs[index].language = "plain"
+            }
+        }
     }
 }
 

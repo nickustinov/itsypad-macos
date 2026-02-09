@@ -145,6 +145,12 @@ final class LanguageDetectorTests: XCTestCase {
         XCTAssertEqual(result.confidence, 0)
     }
 
+    func testBulletDashesStayPlainText() {
+        let text = "New features\n    – Home Assistant support\n    – Dual RGB + color temperature\n\nBug fixes\n    – Fix camera snapshot timer"
+        let result = detector.detect(text: text, name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "plain")
+    }
+
     // MARK: - detectFromExtension
 
     func testDetectFromExtensionKnown() {
