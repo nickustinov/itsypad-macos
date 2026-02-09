@@ -302,6 +302,7 @@ class TabStore: ObservableObject {
     struct CloudMergeResult {
         var newTabIDs: [UUID] = []
         var updatedTabIDs: [UUID] = []
+        var removedTabIDs: [UUID] = []
     }
 
     static let cloudTabsMerged = Notification.Name("cloudTabsMerged")
@@ -408,8 +409,22 @@ class TabStore: ObservableObject {
             }
         }
 
-        let changed = !result.newTabIDs.isEmpty || !result.updatedTabIDs.isEmpty
-        NSLog("[iCloud] mergeCloudTabs: new=%d, updated=%d", result.newTabIDs.count, result.updatedTabIDs.count)
+        // Remove local scratch tabs that no longer exist in the cloud
+        let cloudIDs = Set(cloudTabs.map(\.id))
+        let toRemove = tabs.filter { $0.fileURL == nil && !cloudIDs.contains($0.id) }
+        for tab in toRemove {
+            NSLog("[iCloud] Removing local tab '%@' (%@) — deleted from cloud", tab.name, tab.id.uuidString)
+            result.removedTabIDs.append(tab.id)
+        }
+        tabs.removeAll { $0.fileURL == nil && !cloudIDs.contains($0.id) }
+
+        // Ensure at least one tab exists
+        if tabs.isEmpty {
+            addNewTab()
+        }
+
+        let changed = !result.newTabIDs.isEmpty || !result.updatedTabIDs.isEmpty || !result.removedTabIDs.isEmpty
+        NSLog("[iCloud] mergeCloudTabs: new=%d, updated=%d, removed=%d", result.newTabIDs.count, result.updatedTabIDs.count, result.removedTabIDs.count)
         lastICloudSync = Date()
 
         if changed {

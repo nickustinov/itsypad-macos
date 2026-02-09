@@ -855,8 +855,19 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             state.textView.setSelectedRange(NSRange(location: clampedPos, length: 0))
             state.highlightCoordinator.language = tab.language
             state.highlightCoordinator.scheduleHighlightIfNeeded()
+            state.gutterView.needsDisplay = true
             controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
             NSLog("[iCloud] Updated Bonsplit tab for '%@'", tab.name)
+        }
+
+        // Close tabs removed from cloud
+        for tabID in result.removedTabIDs {
+            guard let bonsplitID = tabIDMap[tabID] else { continue }
+            NSLog("[iCloud] Closing Bonsplit tab for removed cloud tab %@", tabID.uuidString)
+            editorStates.removeValue(forKey: bonsplitID)
+            tabIDMap.removeValue(forKey: tabID)
+            reverseMap.removeValue(forKey: bonsplitID)
+            _ = controller.closeTab(bonsplitID)
         }
     }
 
