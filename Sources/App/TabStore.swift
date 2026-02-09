@@ -49,6 +49,7 @@ class TabStore: ObservableObject {
 
     @Published var tabs: [TabData] = []
     @Published var selectedTabID: UUID?
+    @Published private(set) var lastICloudSync: Date?
     private(set) var savedLayout: LayoutNode?
     var currentLayout: LayoutNode?
 
@@ -85,6 +86,7 @@ class TabStore: ObservableObject {
             addNewTab()
         }
 
+        NSLog("[iCloud] TabStore init — icloudSync setting: %@", SettingsStore.shared.icloudSync ? "true" : "false")
         if SettingsStore.shared.icloudSync {
             startICloudSync()
         }
@@ -278,38 +280,73 @@ class TabStore: ObservableObject {
     // MARK: - iCloud sync
 
     func startICloudSync() {
-        guard icloudObserver == nil else { return }
-        cloudStore.synchronize()
+        guard icloudObserver == nil else {
+            NSLog("[iCloud] startICloudSync: already observing, skipping")
+            return
+        }
+        NSLog("[iCloud] Starting iCloud sync")
+        let synced = cloudStore.synchronize()
+        NSLog("[iCloud] Initial synchronize returned %@", synced ? "true" : "false")
+        if synced { lastICloudSync = Date() }
         icloudObserver = NotificationCenter.default.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
             object: cloudStore, queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
+            let reason = (notification.userInfo?[NSUbiquitousKeyValueStoreChangeReasonKey] as? Int)
+                .map(String.init) ?? "unknown"
+            let keys = (notification.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String])
+                ?? []
+            NSLog("[iCloud] Received external change notification — reason: %@, keys: %@", reason, keys as CVarArg)
             self?.mergeCloudTabs()
         }
+        NSLog("[iCloud] Registered for didChangeExternallyNotification")
     }
 
     func stopICloudSync() {
+        NSLog("[iCloud] Stopping iCloud sync")
         if let observer = icloudObserver {
             NotificationCenter.default.removeObserver(observer)
             icloudObserver = nil
+            NSLog("[iCloud] Removed observer")
         }
         cloudStore.removeObject(forKey: Self.cloudTabsKey)
         cloudStore.synchronize()
+        NSLog("[iCloud] Cleared cloud data")
     }
 
     private func saveToICloud() {
-        guard SettingsStore.shared.icloudSync else { return }
+        guard SettingsStore.shared.icloudSync else {
+            NSLog("[iCloud] saveToICloud: sync disabled, skipping")
+            return
+        }
         let scratchTabs = tabs.filter { $0.fileURL == nil }
-        guard let data = try? JSONEncoder().encode(scratchTabs) else { return }
+        NSLog("[iCloud] Saving %d scratch tabs to iCloud", scratchTabs.count)
+        guard let data = try? JSONEncoder().encode(scratchTabs) else {
+            NSLog("[iCloud] Failed to encode scratch tabs")
+            return
+        }
+        NSLog("[iCloud] Encoded %d bytes", data.count)
         cloudStore.setData(data, forKey: Self.cloudTabsKey)
-        cloudStore.synchronize()
+        let synced = cloudStore.synchronize()
+        NSLog("[iCloud] synchronize after save returned %@", synced ? "true" : "false")
+        lastICloudSync = Date()
     }
 
     private func mergeCloudTabs() {
-        guard SettingsStore.shared.icloudSync,
-              let data = cloudStore.data(forKey: Self.cloudTabsKey),
-              let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data)
-        else { return }
+        guard SettingsStore.shared.icloudSync else {
+            NSLog("[iCloud] mergeCloudTabs: sync disabled, skipping")
+            return
+        }
+        guard let data = cloudStore.data(forKey: Self.cloudTabsKey) else {
+            NSLog("[iCloud] mergeCloudTabs: no cloud data found for key '%@'", Self.cloudTabsKey)
+            return
+        }
+        NSLog("[iCloud] mergeCloudTabs: got %d bytes from cloud", data.count)
+        guard let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data) else {
+            NSLog("[iCloud] mergeCloudTabs: failed to decode cloud data")
+            return
+        }
+        NSLog("[iCloud] mergeCloudTabs: decoded %d cloud tabs, %d local tabs", cloudTabs.count, tabs.count)
 
         var changed = false
         for cloudTab in cloudTabs {
@@ -317,17 +354,21 @@ class TabStore: ObservableObject {
                 if tabs[localIndex].content != cloudTab.content
                     || tabs[localIndex].name != cloudTab.name
                     || tabs[localIndex].language != cloudTab.language {
+                    NSLog("[iCloud] Updating local tab '%@' (%@) from cloud", tabs[localIndex].name, cloudTab.id.uuidString)
                     tabs[localIndex].content = cloudTab.content
                     tabs[localIndex].name = cloudTab.name
                     tabs[localIndex].language = cloudTab.language
                     changed = true
                 }
             } else {
+                NSLog("[iCloud] Appending new tab '%@' (%@) from cloud", cloudTab.name, cloudTab.id.uuidString)
                 tabs.append(cloudTab)
                 changed = true
             }
         }
 
+        NSLog("[iCloud] mergeCloudTabs: changed=%@", changed ? "true" : "false")
+        lastICloudSync = Date()
         if changed {
             scheduleSave()
         }

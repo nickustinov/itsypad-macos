@@ -76,6 +76,9 @@ struct SettingsView: View {
 
 struct GeneralSettingsView: View {
     @ObservedObject var store: SettingsStore
+    @ObservedObject private var tabStore = TabStore.shared
+    @State private var now = Date()
+    private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Form {
@@ -98,6 +101,12 @@ struct GeneralSettingsView: View {
                     Text("Only syncs scratch tabs and their content. Tabs backed by files on disk are not transferred.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if store.icloudSync {
+                        Text(lastSyncLabel)
+                            .font(.footnote)
+                            .foregroundStyle(.tertiary)
+                            .onReceive(timer) { now = $0 }
+                    }
                 }
             }
 
@@ -132,6 +141,21 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    private var lastSyncLabel: String {
+        guard let date = tabStore.lastICloudSync else {
+            return "Not yet synced"
+        }
+        let seconds = Int(now.timeIntervalSince(date))
+        if seconds < 5 {
+            return "Last synced: just now"
+        } else if seconds < 60 {
+            return "Last synced: \(seconds)s ago"
+        } else {
+            let minutes = seconds / 60
+            return "Last synced: \(minutes) min ago"
+        }
     }
 }
 
