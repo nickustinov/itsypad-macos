@@ -4,7 +4,7 @@ set -e
 # Configuration
 APP_NAME="itsypad"
 VERSION=$(grep 'MARKETING_VERSION:' project.yml | grep -v CFBundle | sed 's/.*: *"\(.*\)"/\1/')
-SIGNING_IDENTITY="Developer ID Application"
+SIGNING_IDENTITY="Developer ID Application: Nikolajs Ustinovs (R892A93W42)"
 
 # Paths
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
