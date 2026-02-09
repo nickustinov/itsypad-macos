@@ -35,6 +35,16 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSPrincipalClass: NSApplication
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: All Files
+            CFBundleTypeRole: Editor
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.data
+              - public.plain-text
+              - public.source-code
+              - public.text
+              - public.content
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nickustinov.itsypad

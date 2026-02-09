@@ -4,10 +4,14 @@
 
 Improvements:
 - Replaced Highlightr and tree-sitter with a lightweight custom highlight.js wrapper — fixes broken syntax coloring from compound CSS selectors in highlight.js v11, now correctly highlights all 185+ languages
+- Language detection now uses highlight.js auto-detect as the primary content-based detector, replacing brittle hand-written scoring heuristics
 - Added zoom preview for clipboard tiles — hover a tile and click the magnifying glass icon to view full content in a near-fullscreen overlay with rounded corners, scrollable text, and a copy button
 - Added promotion section for other macOS apps
 
 Bug fixes:
+- Fixed drag-and-drop files to dock icon not opening them (missing document type declarations)
+- Fixed plain text being misdetected as code when mentioning keywords like `#include` or `:=`
+- Fixed Python code starting with `import` not being detected as Python
 - Fixed I-beam cursor appearing on clipboard tiles
 
 ## 1.0.5 (unreleased)
