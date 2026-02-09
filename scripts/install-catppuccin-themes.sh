@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copies Catppuccin highlight.js themes into the Highlightr checkout.
+# Copies custom highlight.js themes into the Highlightr checkout.
 # Run this after `swift package resolve` or `swift package reset`.
 
 set -euo pipefail
@@ -13,4 +13,5 @@ if [ ! -d "$DEST" ]; then
 fi
 
 cp "$DIR/Sources/Resources/catppuccin-"*.min.css "$DEST/"
-echo "Catppuccin themes installed into Highlightr."
+cp "$DIR/Sources/Resources/itsypad-"*.min.css "$DEST/"
+echo "Custom themes installed into Highlightr."

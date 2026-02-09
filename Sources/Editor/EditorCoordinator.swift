@@ -307,7 +307,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         setupEditorContent(textView: textView, highlighter: highlighter, tab: tab)
         wireUpTextChanges(textView: textView, tabID: tab.id)
 
-        applyThemeToEditor(textView: textView, gutter: gutter, theme: highlighter.theme)
+        applyThemeToEditor(textView: textView, gutter: gutter, coordinator: highlighter)
         highlighter.applyWrapIndent(to: textView, font: settings.editorFont)
         highlighter.scheduleHighlightIfNeeded()
 
@@ -953,7 +953,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         let font = settings.editorFont
         let showGutter = settings.showLineNumbers
 
-        applyBonsplitTheme()
         applyClipboardEnabled(settings.clipboardEnabled)
 
         for (_, state) in editorStates {
@@ -964,9 +963,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             state.highlightCoordinator.font = font
             state.highlightCoordinator.updateTheme()
 
-            let theme = state.highlightCoordinator.theme
-            applyThemeToEditor(textView: state.textView, gutter: state.gutterView, theme: theme)
+            applyThemeToEditor(textView: state.textView, gutter: state.gutterView, coordinator: state.highlightCoordinator)
         }
+
+        applyBonsplitTheme()
     }
 
     @MainActor
@@ -990,17 +990,26 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     private func applyBonsplitTheme() {
-        let theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
-        let blendTarget: NSColor = theme.isDark ? .white : .black
+        let bg: NSColor
+        let isDark: Bool
+        if let first = editorStates.values.first {
+            bg = first.highlightCoordinator.themeBackgroundColor
+            isDark = first.highlightCoordinator.themeIsDark
+        } else {
+            let theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
+            bg = theme.background
+            isDark = theme.isDark
+        }
+        let blendTarget: NSColor = isDark ? .white : .black
 
         // Active tab = editor background
-        BonsplitTheme.shared.activeTabBackground = theme.background
+        BonsplitTheme.shared.activeTabBackground = bg
 
         // Tab bar background = slightly lighter/darker than editor
-        BonsplitTheme.shared.barBackground = theme.background.blended(withFraction: 0.06, of: blendTarget) ?? theme.background
+        BonsplitTheme.shared.barBackground = bg.blended(withFraction: 0.06, of: blendTarget) ?? bg
 
         // Separator blends into the bar
-        BonsplitTheme.shared.separator = theme.background.blended(withFraction: 0.12, of: blendTarget) ?? theme.background
+        BonsplitTheme.shared.separator = bg.blended(withFraction: 0.12, of: blendTarget) ?? bg
     }
 
     private func applyGutterVisibility(state: EditorState, showGutter: Bool) {
@@ -1008,15 +1017,17 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         state.gutterView.updateVisibility(showGutter, lineCount: lineCount)
     }
 
-    private func applyThemeToEditor(textView: EditorTextView, gutter: LineNumberGutterView, theme: EditorTheme) {
+    private func applyThemeToEditor(textView: EditorTextView, gutter: LineNumberGutterView, coordinator: SyntaxHighlightCoordinator) {
         let settings = SettingsStore.shared
+        let bg = coordinator.themeBackgroundColor
+        let isDark = coordinator.themeIsDark
 
-        textView.backgroundColor = theme.background
+        textView.backgroundColor = bg
         textView.drawsBackground = true
-        textView.insertionPointColor = theme.isDark ? .white : .black
+        textView.insertionPointColor = isDark ? .white : .black
 
-        gutter.bgColor = theme.background
-        gutter.lineColor = theme.isDark
+        gutter.bgColor = bg
+        gutter.lineColor = isDark
             ? NSColor.white.withAlphaComponent(0.3)
             : NSColor.black.withAlphaComponent(0.3)
         gutter.lineFont = NSFont.monospacedSystemFont(

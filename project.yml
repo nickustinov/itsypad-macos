@@ -13,9 +13,6 @@ settings:
     CODE_SIGN_IDENTITY: "Apple Development"
 
 packages:
-  CodeEditLanguages:
-    url: https://github.com/CodeEditApp/CodeEditLanguages
-    from: "0.1.20"
   Bonsplit:
     path: Packages/Bonsplit
 
@@ -30,8 +27,6 @@ targets:
           - itsypad.entitlements
       - path: Executable
     dependencies:
-      - package: CodeEditLanguages
-        product: CodeEditLanguages
       - package: Bonsplit
         product: Bonsplit
     info:
@@ -45,8 +40,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.nickustinov.itsypad
         PRODUCT_NAME: Itsypad
         PRODUCT_MODULE_NAME: ItsypadCore
-        MARKETING_VERSION: "1.0.5"
-        CURRENT_PROJECT_VERSION: "105"
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "110"
         CODE_SIGN_ENTITLEMENTS: Sources/itsypad.entitlements
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: true
         SWIFT_VERSION: "5.9"

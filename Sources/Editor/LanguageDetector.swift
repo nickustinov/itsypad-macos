@@ -1,4 +1,3 @@
-import CodeEditLanguages
 import Foundation
 
 struct LanguageDetector {
@@ -159,21 +158,16 @@ struct LanguageDetector {
         return extensionMap[String(ext).lowercased()]
     }
 
-    // MARK: - Tree-sitter language mapping
+    // MARK: - Highlightr language mapping
 
-    private static let codeLanguageMap: [String: CodeLanguage] = [
-        "swift": .swift, "python": .python, "javascript": .javascript,
-        "typescript": .typescript, "html": .html, "css": .css,
-        "c": .c, "cpp": .cpp, "csharp": .cSharp,
-        "json": .json, "markdown": .markdown, "bash": .bash,
-        "zsh": .bash, "java": .java, "kotlin": .kotlin,
-        "go": .go, "ruby": .ruby, "rust": .rust,
-        "sql": .sql, "xml": .html, "yaml": .yaml,
-        "toml": .toml, "objective-c": .objc, "powershell": .default,
-        "plain": .default,
+    private static let highlightrMap: [String: String] = [
+        "objective-c": "objectivec",
+        "zsh": "bash",
+        "plain": "",
     ]
 
-    func codeLanguage(for lang: String) -> CodeLanguage {
-        Self.codeLanguageMap[lang] ?? .default
+    func highlightrLanguage(for lang: String) -> String? {
+        if lang == "plain" { return nil }
+        return Self.highlightrMap[lang] ?? lang
     }
 }

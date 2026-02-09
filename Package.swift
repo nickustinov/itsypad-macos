@@ -5,14 +5,12 @@ let package = Package(
     name: "itsypad",
     platforms: [.macOS(.v14)],
     dependencies: [
-        .package(url: "https://github.com/CodeEditApp/CodeEditLanguages", from: "0.1.20"),
         .package(path: "Packages/Bonsplit"),
     ],
     targets: [
         .target(
             name: "ItsypadCore",
             dependencies: [
-                .product(name: "CodeEditLanguages", package: "CodeEditLanguages"),
                 .product(name: "Bonsplit", package: "Bonsplit"),
             ],
             path: "Sources",

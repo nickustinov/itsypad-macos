@@ -167,20 +167,27 @@ final class LanguageDetectorTests: XCTestCase {
         XCTAssertNil(detector.detectFromExtension(name: "Makefile"))
     }
 
-    // MARK: - codeLanguage
+    // MARK: - highlightrLanguage
 
-    func testCodeLanguageKnownMapping() {
-        let lang = detector.codeLanguage(for: "swift")
-        XCTAssertEqual(lang.id.rawValue, "swift")
+    func testHighlightrLanguageSwift() {
+        XCTAssertEqual(detector.highlightrLanguage(for: "swift"), "swift")
     }
 
-    func testCodeLanguageUnknown() {
-        let lang = detector.codeLanguage(for: "brainfuck")
-        XCTAssertEqual(lang.id.rawValue, "plainText")
+    func testHighlightrLanguageObjectiveC() {
+        XCTAssertEqual(detector.highlightrLanguage(for: "objective-c"), "objectivec")
     }
 
-    func testCodeLanguagePlain() {
-        let lang = detector.codeLanguage(for: "plain")
-        XCTAssertEqual(lang.id.rawValue, "plainText")
+    func testHighlightrLanguageZsh() {
+        XCTAssertEqual(detector.highlightrLanguage(for: "zsh"), "bash")
+    }
+
+    func testHighlightrLanguagePlain() {
+        XCTAssertNil(detector.highlightrLanguage(for: "plain"))
+    }
+
+    func testHighlightrLanguagePassthrough() {
+        XCTAssertEqual(detector.highlightrLanguage(for: "python"), "python")
+        XCTAssertEqual(detector.highlightrLanguage(for: "javascript"), "javascript")
+        XCTAssertEqual(detector.highlightrLanguage(for: "rust"), "rust")
     }
 }
