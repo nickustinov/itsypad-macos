@@ -139,6 +139,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         tabIDMap = result.tabIDMap
         reverseMap = result.reverseMap
         editorStates = result.editorStates
+        refreshCSSTheme()
 
         // Create clipboard tab in the pane it was saved in (or last pane as fallback)
         if SettingsStore.shared.clipboardEnabled {
@@ -690,6 +691,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             EditorStateFactory.applyTheme(textView: state.textView, gutter: state.gutterView, coordinator: state.highlightCoordinator)
         }
 
+        refreshCSSTheme()
         applyBonsplitTheme()
     }
 
@@ -713,17 +715,19 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         }
     }
 
-    private func applyBonsplitTheme() {
-        let bg: NSColor
-        let isDark: Bool
+    private(set) var cssTheme: EditorTheme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
+
+    private func refreshCSSTheme() {
         if let first = editorStates.values.first {
-            bg = first.highlightCoordinator.themeBackgroundColor
-            isDark = first.highlightCoordinator.themeIsDark
+            cssTheme = first.highlightCoordinator.theme
         } else {
-            let theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
-            bg = theme.background
-            isDark = theme.isDark
+            cssTheme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
         }
+    }
+
+    private func applyBonsplitTheme() {
+        let bg = cssTheme.background
+        let isDark = cssTheme.isDark
         let blendTarget: NSColor = isDark ? .white : .black
 
         // Active tab = editor background

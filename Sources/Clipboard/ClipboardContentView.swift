@@ -135,9 +135,6 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         ) { [weak self] _ in
             guard let self else { return }
             self.lastLayoutWidth = 0
-            let theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
-            self.themeBackground = theme.background
-            self.isDark = theme.isDark
         }
 
         shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in

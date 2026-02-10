@@ -7,28 +7,13 @@ struct EditorTheme {
 
     var insertionPointColor: NSColor { isDark ? .white : .black }
 
-    // MARK: - Cached CSS-derived themes
-
-    private static var activeDark: EditorTheme?
-    private static var activeLight: EditorTheme?
-
-    static func setCurrent(_ theme: EditorTheme) {
-        if theme.isDark {
-            activeDark = theme
-        } else {
-            activeLight = theme
-        }
-    }
-
     // MARK: - Resolve theme for current appearance setting
 
     static func current(for appearance: String) -> EditorTheme {
         switch appearance {
-        case "light": return activeLight ?? light
-        case "dark": return activeDark ?? dark
-        default:
-            let systemIsDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            return systemIsDark ? (activeDark ?? dark) : (activeLight ?? light)
+        case "light": return light
+        case "dark": return dark
+        default: return NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
         }
     }
 

@@ -25,6 +25,6 @@ struct BonsplitRootView: View {
     }
 
     private var clipboardTheme: EditorTheme {
-        EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
+        coordinator.cssTheme
     }
 }

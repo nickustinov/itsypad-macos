@@ -33,6 +33,20 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     func updateTheme() {
         theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
         applyTheme()
+
+        // Immediately replace stale per-character background/foreground attributes
+        // so the editor doesn't flash the old theme while async rehighlight runs.
+        if let tv = textView, let storage = tv.textStorage {
+            let len = storage.length
+            if len > 0 {
+                let fullRange = NSRange(location: 0, length: len)
+                storage.beginEditing()
+                storage.removeAttribute(.backgroundColor, range: fullRange)
+                storage.addAttribute(.foregroundColor, value: theme.foreground, range: fullRange)
+                storage.endEditing()
+            }
+        }
+
         lastAppearance = nil
         rehighlight()
     }
@@ -60,13 +74,11 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
             themeIsDark = isDark
         }
 
-        let cssTheme = EditorTheme(
+        theme = EditorTheme(
             isDark: themeIsDark,
             background: themeBackgroundColor,
             foreground: Self.highlightJS.foregroundColor
         )
-        EditorTheme.setCurrent(cssTheme)
-        theme = cssTheme
     }
 
     private func setLanguage(_ lang: String) {
@@ -111,8 +123,9 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
         let highlightJS = Self.highlightJS
 
-        let work = DispatchWorkItem { [weak self] in
-            guard let self else { return }
+        var work: DispatchWorkItem!
+        work = DispatchWorkItem { [weak self] in
+            guard let self, !work.isCancelled else { return }
             highlightJS.setCodeFont(userFont)
             let highlighted = highlightJS.highlight(textSnapshot, as: hlLang)
             if highlighted == nil {
@@ -120,7 +133,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
             }
 
             DispatchQueue.main.async { [weak self] in
-                guard let self, let tv = self.textView else { return }
+                guard let self, !work.isCancelled, let tv = self.textView else { return }
                 guard tv.string == textSnapshot else { return }
 
                 let ns = textSnapshot as NSString
