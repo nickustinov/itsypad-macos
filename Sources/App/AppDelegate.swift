@@ -489,6 +489,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         editorCoordinator?.selectTab(atIndex: sender.tag - 1)
     }
 
+    @objc func splitRight() {
+        editorCoordinator?.splitRight()
+    }
+
+    @objc func splitDown() {
+        editorCoordinator?.splitDown()
+    }
+
     @objc func increaseFontSize() {
         SettingsStore.shared.editorFontSize = min(36, SettingsStore.shared.editorFontSize + 1)
     }

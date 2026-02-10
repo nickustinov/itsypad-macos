@@ -17,7 +17,6 @@ struct SplitContainerView<Content: View, EmptyContent: View>: NSViewRepresentabl
     }
 
     func makeNSView(context: Context) -> NSSplitView {
-
         let splitView = NSSplitView()
         splitView.isVertical = splitState.orientation == .horizontal
         splitView.dividerStyle = .thin
@@ -91,7 +90,6 @@ struct SplitContainerView<Content: View, EmptyContent: View>: NSViewRepresentabl
     }
 
     func updateNSView(_ splitView: NSSplitView, context: Context) {
-
         // Update orientation if changed
         splitView.isVertical = splitState.orientation == .horizontal
 
@@ -112,7 +110,7 @@ struct SplitContainerView<Content: View, EmptyContent: View>: NSViewRepresentabl
 
     private func makeHostingView(for node: SplitNode) -> NSView {
         let hostingView = CursorPassthroughHostingView(rootView: AnyView(makeView(for: node)))
-        hostingView.translatesAutoresizingMaskIntoConstraints = false
+        hostingView.autoresizingMask = [.width, .height]
         return hostingView
     }
 

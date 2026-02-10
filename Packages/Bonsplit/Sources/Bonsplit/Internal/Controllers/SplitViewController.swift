@@ -84,13 +84,11 @@ final class SplitViewController {
                     newPane = PaneState(tabs: [])
                 }
 
-                // Start with divider at the edge so there's no flash before animation
                 let splitState = SplitState(
                     orientation: orientation,
                     first: .pane(paneState),
                     second: .pane(newPane),
-                    dividerPosition: 1.0,  // Start at edge (will animate to 0.5)
-                    animationOrigin: .fromSecond  // New pane slides in from right/bottom
+                    dividerPosition: 0.5
                 )
 
                 // Focus the new pane
@@ -141,25 +139,20 @@ final class SplitViewController {
                 // Create new pane with the tab
                 let newPane = PaneState(tabs: [tab])
 
-                // Start with divider at the edge so there's no flash before animation
                 let splitState: SplitState
                 if insertFirst {
-                    // New pane goes first (left or top) - starts at 0, animates to 0.5
                     splitState = SplitState(
                         orientation: orientation,
                         first: .pane(newPane),
                         second: .pane(paneState),
-                        dividerPosition: 0.0,
-                        animationOrigin: .fromFirst
+                        dividerPosition: 0.5
                     )
                 } else {
-                    // New pane goes second (right or bottom) - starts at 1, animates to 0.5
                     splitState = SplitState(
                         orientation: orientation,
                         first: .pane(paneState),
                         second: .pane(newPane),
-                        dividerPosition: 1.0,
-                        animationOrigin: .fromSecond
+                        dividerPosition: 0.5
                     )
                 }
 

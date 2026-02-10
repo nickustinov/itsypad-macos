@@ -475,6 +475,16 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     @MainActor
+    func splitRight() {
+        controller.splitPane(orientation: .horizontal)
+    }
+
+    @MainActor
+    func splitDown() {
+        controller.splitPane(orientation: .vertical)
+    }
+
+    @MainActor
     func selectTab(atIndex index: Int) {
         guard let focusedPaneId = controller.focusedPaneId else { return }
         let tabs = controller.tabs(inPane: focusedPaneId).filter { $0.id != clipboardTabID }
@@ -575,6 +585,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 reverseMap[bonsplitTabID] = newTab.id
                 editorStates[bonsplitTabID] = createEditorState(for: newTab)
                 controller.selectTab(bonsplitTabID)
+
+                // The new text view isn't in the window yet; defer first responder
+                let newState = editorStates[bonsplitTabID]
+                DispatchQueue.main.async {
+                    newState?.textView.window?.makeFirstResponder(newState?.textView)
+                }
             }
         }
     }

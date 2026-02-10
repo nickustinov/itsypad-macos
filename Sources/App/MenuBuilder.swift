@@ -167,6 +167,18 @@ class MenuBuilder {
 
         menu.addItem(.separator())
 
+        let splitRightItem = NSMenuItem(title: "Split right", action: #selector(AppDelegate.splitRight), keyEquivalent: "D")
+        splitRightItem.keyEquivalentModifierMask = [.command, .shift]
+        splitRightItem.target = target
+        menu.addItem(splitRightItem)
+
+        let splitDownItem = NSMenuItem(title: "Split down", action: #selector(AppDelegate.splitDown), keyEquivalent: "d")
+        splitDownItem.keyEquivalentModifierMask = [.command, .control, .shift]
+        splitDownItem.target = target
+        menu.addItem(splitDownItem)
+
+        menu.addItem(.separator())
+
         for i in 1...9 {
             let tabItem = NSMenuItem(title: "Tab \(i)", action: #selector(AppDelegate.selectTabByNumber(_:)), keyEquivalent: "\(i)")
             tabItem.tag = i

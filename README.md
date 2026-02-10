@@ -101,6 +101,8 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⌥⌘↑ | Move line up |
 | ⌥⌘↓ | Move line down |
 | ⌘1–9 | Switch to tab by position |
+| ⇧⌘D | Split right |
+| ⇧⌃⌘D | Split down |
 | ⌘+ | Increase font size |
 | ⌘- | Decrease font size |
 | ⌘0 | Reset font size |
