@@ -209,11 +209,24 @@ final class EditorTextView: NSTextView {
             let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
             if listsAllowed, let listMatch = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(listMatch.kind) {
                 let indent = SettingsStore.shared.indentString
-                let insertRange = NSRange(location: lineRange.location, length: 0)
-                if shouldChangeText(in: insertRange, replacementString: indent) {
-                    textStorage?.replaceCharacters(in: insertRange, with: indent)
-                    didChangeText()
-                    setSelectedRange(NSRange(location: sel.location + indent.count, length: 0))
+                if case .ordered(let n) = listMatch.kind, n != 1 {
+                    // Indent and reset number to 1 (new sub-list)
+                    let numStr = "\(n)"
+                    let prefixLen = listMatch.indent.count + numStr.count
+                    let replaceRange = NSRange(location: lineRange.location, length: prefixLen)
+                    let replacement = listMatch.indent + indent + "1"
+                    if shouldChangeText(in: replaceRange, replacementString: replacement) {
+                        textStorage?.replaceCharacters(in: replaceRange, with: replacement)
+                        didChangeText()
+                        setSelectedRange(NSRange(location: sel.location + replacement.count - prefixLen, length: 0))
+                    }
+                } else {
+                    let insertRange = NSRange(location: lineRange.location, length: 0)
+                    if shouldChangeText(in: insertRange, replacementString: indent) {
+                        textStorage?.replaceCharacters(in: insertRange, with: indent)
+                        didChangeText()
+                        setSelectedRange(NSRange(location: sel.location + indent.count, length: 0))
+                    }
                 }
                 return
             }

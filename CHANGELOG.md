@@ -6,6 +6,11 @@ Features:
 - Syntax theme picker — choose from 9 curated highlight.js themes in Settings → Appearance: Atom One, Catppuccin, GitHub, Gruvbox, IntelliJ / Darcula, Itsypad (default), Stack Overflow, Tokyo Night, Visual Studio
 - Each theme has dark and light variants that switch automatically with system appearance
 
+Fixes:
+- Theme switching — appearance changes (dark → light) now update editor content immediately instead of requiring a manual theme re-select
+- Clipboard background now matches the active syntax theme
+- Indenting a numbered list item with Tab resets the number to 1 (new sub-list)
+
 ## 1.3.0
 
 Features:
