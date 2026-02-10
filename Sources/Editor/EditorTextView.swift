@@ -11,11 +11,17 @@ final class EditorTextView: NSTextView {
     var onTextChange: ((String) -> Void)?
     var isActiveTab: Bool = true
 
+    private var listsAllowed: Bool {
+        guard let coordinator = delegate as? SyntaxHighlightCoordinator else { return true }
+        let lang = coordinator.language
+        return lang == "plain" || lang == "markdown"
+    }
+
     override func mouseDown(with event: NSEvent) {
         NotificationCenter.default.post(name: Self.didReceiveClickNotification, object: self)
 
         // Check if click lands on a checkbox region
-        if SettingsStore.shared.checklistsEnabled, handleCheckboxClick(event: event) { return }
+        if listsAllowed, SettingsStore.shared.checklistsEnabled, handleCheckboxClick(event: event) { return }
 
         super.mouseDown(with: event)
     }
@@ -131,7 +137,7 @@ final class EditorTextView: NSTextView {
                 length: max(0, sel.location - lineRange.location)
             ))
 
-            if let match = ListHelper.parseLine(currentLine), ListHelper.isKindEnabled(match.kind) {
+            if listsAllowed, let match = ListHelper.parseLine(currentLine), ListHelper.isKindEnabled(match.kind) {
                 if ListHelper.isEmptyItem(currentLine, match: match) {
                     // Empty list item — remove prefix, exit list mode
                     let prefixRange = NSRange(location: lineRange.location, length: currentLine.count)
@@ -165,7 +171,7 @@ final class EditorTextView: NSTextView {
             let lineRange = ns.lineRange(for: NSRange(location: sel.location, length: 0))
             let lineText = ns.substring(with: lineRange)
             let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
-            if let listMatch = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(listMatch.kind) {
+            if listsAllowed, let listMatch = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(listMatch.kind) {
                 let indent = SettingsStore.shared.indentString
                 let insertRange = NSRange(location: lineRange.location, length: 0)
                 if shouldChangeText(in: insertRange, replacementString: indent) {
@@ -211,7 +217,7 @@ final class EditorTextView: NSTextView {
         // Check if cursor is at content start of a list item — remove the prefix
         let lineText = ns.substring(with: lineRange)
         let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
-        if let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind), columnOffset == match.contentStart {
+        if listsAllowed, let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind), columnOffset == match.contentStart {
             let prefixRange = NSRange(location: lineRange.location, length: match.contentStart)
             if shouldChangeText(in: prefixRange, replacementString: match.indent) {
                 textStorage?.replaceCharacters(in: prefixRange, with: match.indent)
@@ -372,13 +378,13 @@ final class EditorTextView: NSTextView {
         }
 
         // Cmd+Return — toggle checkbox
-        if mods == .command, event.keyCode == 36, SettingsStore.shared.checklistsEnabled {
+        if mods == .command, event.keyCode == 36, listsAllowed, SettingsStore.shared.checklistsEnabled {
             toggleCheckbox()
             return
         }
 
         // Cmd+Shift+L — toggle checklist
-        if mods == [.command, .shift], key.lowercased() == "l", SettingsStore.shared.checklistsEnabled {
+        if mods == [.command, .shift], key.lowercased() == "l", listsAllowed, SettingsStore.shared.checklistsEnabled {
             toggleChecklist()
             return
         }
@@ -447,7 +453,7 @@ final class EditorTextView: NSTextView {
     }
 
     func toggleChecklist() {
-        guard SettingsStore.shared.checklistsEnabled else { return }
+        guard listsAllowed, SettingsStore.shared.checklistsEnabled else { return }
         let ns = string as NSString
         let sel = selectedRange()
         let lineRange = ns.lineRange(for: sel)

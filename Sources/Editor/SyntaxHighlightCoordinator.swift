@@ -192,6 +192,8 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     )
 
     private func applyListMarkers(tv: EditorTextView, text: String, theme: EditorTheme) {
+        guard language == "plain" || language == "markdown" else { return }
+
         let ns = text as NSString
         let fullRange = NSRange(location: 0, length: ns.length)
         let dashColor = theme.bulletDashColor
@@ -270,7 +272,8 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
             // For list lines, indent wrapped text to content start (past the prefix)
             var headIndent = indent
             let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
-            if let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind) {
+            if (language == "plain" || language == "markdown"),
+               let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind) {
                 headIndent = CGFloat(match.contentStart) * spaceWidth
             }
 
