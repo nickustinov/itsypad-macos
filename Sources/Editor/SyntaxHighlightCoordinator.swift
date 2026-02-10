@@ -64,9 +64,9 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         scheduleHighlightIfNeeded()
     }
 
-    func scheduleHighlightIfNeeded() {
+    func scheduleHighlightIfNeeded(text: String? = nil) {
         guard let tv = textView else { return }
-        let text = tv.string
+        let text = text ?? tv.string
         let lang = language
         let appearance = SettingsStore.shared.appearanceOverride
 
@@ -321,17 +321,10 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
     func textDidChange(_ notification: Notification) {
         guard let tv = notification.object as? EditorTextView else { return }
-        let t0 = CFAbsoluteTimeGetCurrent()
-        tv.onTextChange?(tv.string)
-        let t1 = CFAbsoluteTimeGetCurrent()
+        let text = tv.string
+        tv.onTextChange?(text)
         updateCaretStatusAndHighlight()
-        let t2 = CFAbsoluteTimeGetCurrent()
-        scheduleHighlightIfNeeded()
-        let total = (t2 - t0) * 1000
-        if total > 4 {
-            NSLog("[Perf] textDidChange: onTextChange=%.1fms caretHighlight=%.1fms total=%.1fms",
-                  (t1 - t0) * 1000, (t2 - t1) * 1000, total)
-        }
+        scheduleHighlightIfNeeded(text: text)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {

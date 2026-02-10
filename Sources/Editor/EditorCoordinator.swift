@@ -280,11 +280,20 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private func wireUpTextChanges(textView: EditorTextView, tabID: UUID) {
         textView.onTextChange = { [weak self] text in
             guard let self else { return }
+            guard let tabIndex = self.tabStore.tabs.firstIndex(where: { $0.id == tabID }) else { return }
+
+            let oldName = self.tabStore.tabs[tabIndex].name
+            let oldDirty = self.tabStore.tabs[tabIndex].isDirty
+
             self.tabStore.updateContent(id: tabID, content: text)
-            if let bonsplitID = self.tabIDMap[tabID],
-               let updatedTab = self.tabStore.tabs.first(where: { $0.id == tabID }) {
-                self.controller.updateTab(bonsplitID, title: updatedTab.name, isDirty: updatedTab.isDirty)
-                self.highlighterForTab(bonsplitID)?.language = updatedTab.language
+
+            if let bonsplitID = self.tabIDMap[tabID] {
+                let tab = self.tabStore.tabs[tabIndex]
+                // Only update Bonsplit tab bar when visible properties changed
+                if tab.name != oldName || tab.isDirty != oldDirty {
+                    self.controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
+                }
+                self.highlighterForTab(bonsplitID)?.language = tab.language
             }
         }
     }

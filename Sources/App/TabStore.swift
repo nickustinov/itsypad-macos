@@ -151,20 +151,26 @@ class TabStore: ObservableObject {
     func updateContent(id: UUID, content: String) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         guard tabs[index].content != content else { return }
-        tabs[index].content = content
-        tabs[index].isDirty = true
-        tabs[index].lastModified = Date()
+
+        // Batch mutations into a single array setter to fire @Published once
+        var tab = tabs[index]
+        tab.content = content
+        tab.isDirty = true
+        tab.lastModified = Date()
 
         // Auto-name from first line when no file
-        if tabs[index].fileURL == nil {
+        if tab.fileURL == nil {
             let firstLine = content.prefix(while: { $0 != "\n" && $0 != "\r" })
             let trimmed = firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            tabs[index].name = trimmed.isEmpty ? "Untitled" : String(trimmed.prefix(30))
+            let newName = trimmed.isEmpty ? "Untitled" : String(trimmed.prefix(30))
+            tab.name = newName
         }
 
+        tabs[index] = tab
+
         // Auto-detect language if not locked (debounced to avoid per-keystroke cost)
-        if !tabs[index].languageLocked {
-            scheduleLanguageDetection(id: tabs[index].id, content: content, name: tabs[index].name, fileURL: tabs[index].fileURL)
+        if !tab.languageLocked {
+            scheduleLanguageDetection(id: tab.id, content: content, name: tab.name, fileURL: tab.fileURL)
         }
 
         scheduleSave()

@@ -108,13 +108,14 @@ public final class BonsplitController {
     ) {
         guard let (pane, tabIndex) = findTabInternal(tabId) else { return }
 
-        if let title = title {
+        // Guard each mutation to avoid @Observable fires when values haven't changed
+        if let title = title, pane.tabs[tabIndex].title != title {
             pane.tabs[tabIndex].title = title
         }
-        if let icon = icon {
+        if let icon = icon, pane.tabs[tabIndex].icon != icon {
             pane.tabs[tabIndex].icon = icon
         }
-        if let isDirty = isDirty {
+        if let isDirty = isDirty, pane.tabs[tabIndex].isDirty != isDirty {
             pane.tabs[tabIndex].isDirty = isDirty
         }
     }
