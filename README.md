@@ -26,7 +26,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.ap
 - **Auto-save** — content is continuously saved to session, never lose your work
 - **Clickable links** — URLs in plain text and markdown tabs are highlighted and underlined; click to open in browser
 - **Always on top** — pin the window above all other apps (⇧⌘T)
-- **Monokai-inspired theme** — dark and light variants with system appearance support
+- **Syntax themes** — 9 curated themes (Atom One, Catppuccin, GitHub, Gruvbox, IntelliJ / Darcula, Itsypad, Stack Overflow, Tokyo Night, Visual Studio) with dark and light variants
 
 ## Lists and checklists
 
@@ -147,9 +147,10 @@ Sources/
 │   ├── EditorTextView.swift             # NSTextView subclass with editing helpers and file drops
 │   ├── EditorContentView.swift          # NSViewRepresentable wrapping text view, scroll view, and gutter
 │   ├── EditorCoordinator.swift          # Tab/pane orchestrator bridging TabStore, Bonsplit, and iCloud
-│   ├── EditorTheme.swift                # Monokai-inspired dark/light color palettes
+│   ├── EditorTheme.swift                # Dark/light color palettes with CSS-derived theme cache
 │   ├── HighlightJS.swift                # JSContext wrapper for highlight.js with CSS/HTML parsing
 │   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
+│   ├── SyntaxThemeRegistry.swift        # Curated syntax theme definitions with dark/light CSS mapping
 │   ├── LanguageDetector.swift           # File extension → language mapping for highlight.js
 │   ├── LineNumberGutterView.swift       # Line number gutter drawn alongside the text view
 │   ├── ListHelper.swift                 # List/checklist parsing, continuation, and toggling
@@ -192,6 +193,7 @@ Tests/
 ├── ModifierKeyDetectionTests.swift
 ├── SettingsStoreTests.swift
 ├── ShortcutKeysTests.swift
+├── SyntaxThemeRegistryTests.swift
 └── TabStoreTests.swift
 ```
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+Features:
+- Syntax theme picker — choose from 9 curated highlight.js themes in Settings → Appearance: Atom One, Catppuccin, GitHub, Gruvbox, IntelliJ / Darcula, Itsypad (default), Stack Overflow, Tokyo Night, Visual Studio
+- Each theme has dark and light variants that switch automatically with system appearance
+
 ## 1.3.0
 
 Features:

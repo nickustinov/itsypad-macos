@@ -39,7 +39,8 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
     private func applyTheme() {
         let isDark = theme.isDark
-        let themeName = isDark ? "itsypad-dark.min" : "itsypad-light.min"
+        let themeId = SettingsStore.shared.syntaxTheme
+        let themeName = SyntaxThemeRegistry.cssResource(for: themeId, isDark: isDark)
         let currentFont = font
 
         Self.highlightQueue.sync {
@@ -58,6 +59,14 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         } else {
             themeIsDark = isDark
         }
+
+        let cssTheme = EditorTheme(
+            isDark: themeIsDark,
+            background: themeBackgroundColor,
+            foreground: Self.highlightJS.foregroundColor
+        )
+        EditorTheme.setCurrent(cssTheme)
+        theme = cssTheme
     }
 
     private func setLanguage(_ lang: String) {

@@ -195,6 +195,11 @@ struct AppearanceSettingsView: View {
                     Text("Light").tag("light")
                     Text("Dark").tag("dark")
                 }
+                Picker("Syntax theme", selection: $store.syntaxTheme) {
+                    ForEach(SyntaxThemeRegistry.themes, id: \.id) { theme in
+                        Text(theme.displayName).tag(theme.id)
+                    }
+                }
             }
 
             Section("Font") {

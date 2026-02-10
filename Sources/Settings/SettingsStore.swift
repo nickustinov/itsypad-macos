@@ -65,6 +65,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var syntaxTheme: String = "itsypad" {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(syntaxTheme, forKey: "syntaxTheme")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     @Published var showInDock: Bool = true {
         didSet {
             guard !isLoading else { return }
@@ -265,6 +273,7 @@ class SettingsStore: ObservableObject {
         let savedSize = defaults.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
         appearanceOverride = defaults.string(forKey: "appearanceOverride") ?? "system"
+        syntaxTheme = defaults.string(forKey: "syntaxTheme") ?? "itsypad"
         showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
         showInMenuBar = defaults.object(forKey: "showInMenuBar") as? Bool ?? true
         showLineNumbers = defaults.object(forKey: "showLineNumbers") as? Bool ?? true
