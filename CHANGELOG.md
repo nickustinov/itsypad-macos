@@ -11,6 +11,7 @@ Improvements:
 - Added standard Hide (Cmd+H), Hide others (Option+Cmd+H), and Show all menu items
 
 Bug fixes:
+- Fixed dock icon appearing when window is active even with "show in dock" disabled
 - Fixed drag-and-drop files to dock icon not opening them (missing document type declarations)
 - Fixed plain text being misdetected as code when mentioning keywords like `#include` or `:=`
 - Fixed Python code starting with `import` not being detected as Python

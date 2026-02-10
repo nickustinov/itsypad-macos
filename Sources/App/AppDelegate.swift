@@ -307,9 +307,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     private func updateDockVisibility() {
-        let alwaysShow = SettingsStore.shared.showInDock
-        let windowVisible = editorWindow?.isVisible ?? false
-        NSApp.setActivationPolicy((alwaysShow || windowVisible) ? .regular : .accessory)
+        NSApp.setActivationPolicy(SettingsStore.shared.showInDock ? .regular : .accessory)
     }
 
     private func updateMenuBarVisibility() {
