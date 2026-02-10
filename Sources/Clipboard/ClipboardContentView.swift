@@ -2,7 +2,6 @@ import Cocoa
 
 private let cardCellID = NSUserInterfaceItemIdentifier("ClipboardCard")
 private let tileMinWidth: CGFloat = 200
-private let tileHeight: CGFloat = 110
 private let tileSpacing: CGFloat = 8
 private let sectionInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
 
@@ -134,8 +133,11 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.lastLayoutWidth = 0
-            self?.reloadEntries()
+            guard let self else { return }
+            self.lastLayoutWidth = 0
+            let theme = EditorTheme.current(for: SettingsStore.shared.appearanceOverride)
+            self.themeBackground = theme.background
+            self.isDark = theme.isDark
         }
 
         shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -246,15 +248,18 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     ) -> NSSize {
         let availableWidth = collectionView.bounds.width - sectionInsets.left - sectionInsets.right
 
+        let previewLines = SettingsStore.shared.clipboardPreviewLines
+        let font = NSFont.monospacedSystemFont(ofSize: CGFloat(SettingsStore.shared.clipboardFontSize), weight: .regular)
+        let lineHeight = ceil(font.ascender - font.descender + font.leading) + 2
+        let dynamicHeight = CGFloat(previewLines) * lineHeight + 28
+
         if SettingsStore.shared.clipboardViewMode == "panels" {
-            let previewLines = SettingsStore.shared.clipboardPreviewLines
-            let dynamicHeight = CGFloat(previewLines) * 22 + 28
             return NSSize(width: availableWidth, height: dynamicHeight)
         }
 
         let columns = max(1, floor((availableWidth + tileSpacing) / (tileMinWidth + tileSpacing)))
         let tileWidth = floor((availableWidth - tileSpacing * (columns - 1)) / columns)
-        return NSSize(width: tileWidth, height: tileHeight)
+        return NSSize(width: tileWidth, height: dynamicHeight)
     }
 
     // MARK: - NSSearchFieldDelegate
