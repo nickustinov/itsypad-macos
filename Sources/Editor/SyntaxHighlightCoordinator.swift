@@ -22,6 +22,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private var lastHighlightedText: String = ""
     private var lastLanguage: String?
     private var lastAppearance: String?
+    private var previousHighlightedLineRange: NSRange?
 
     override init() {
         super.init()
@@ -141,6 +142,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 let safeLength = min(sel.length, ns.length - safeLocation)
                 tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
 
+                self.previousHighlightedLineRange = nil
                 self.lastHighlightedText = textSnapshot
                 self.lastLanguage = self.language
                 self.lastAppearance = SettingsStore.shared.appearanceOverride
@@ -171,6 +173,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let safeLength = min(sel.length, ns.length - safeLocation)
         tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
 
+        previousHighlightedLineRange = nil
         lastHighlightedText = text
         lastLanguage = language
         lastAppearance = SettingsStore.shared.appearanceOverride
@@ -241,6 +244,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let ns = storage.string as NSString
         let totalLength = ns.length
         guard totalLength > 0 else { return }
+        let wrapStart = CFAbsoluteTimeGetCurrent()
 
         let tabWidth = SettingsStore.shared.tabWidth
         let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
@@ -277,15 +281,27 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
             pos = lineRange.location + lineRange.length
         }
         storage.endEditing()
+        let wrapElapsed = (CFAbsoluteTimeGetCurrent() - wrapStart) * 1000
+        if wrapElapsed > 4 {
+            NSLog("[Perf] applyWrapIndent: %.1fms (%d chars)", wrapElapsed, totalLength)
+        }
     }
 
     // MARK: - NSTextViewDelegate
 
     func textDidChange(_ notification: Notification) {
         guard let tv = notification.object as? EditorTextView else { return }
+        let t0 = CFAbsoluteTimeGetCurrent()
         tv.onTextChange?(tv.string)
+        let t1 = CFAbsoluteTimeGetCurrent()
         updateCaretStatusAndHighlight()
+        let t2 = CFAbsoluteTimeGetCurrent()
         scheduleHighlightIfNeeded()
+        let total = (t2 - t0) * 1000
+        if total > 4 {
+            NSLog("[Perf] textDidChange: onTextChange=%.1fms caretHighlight=%.1fms total=%.1fms",
+                  (t1 - t0) * 1000, (t2 - t1) * 1000, total)
+        }
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {
@@ -295,10 +311,13 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private func updateCaretStatusAndHighlight() {
         guard let tv = textView else { return }
         let ns = tv.string as NSString
-        let fullRange = NSRange(location: 0, length: ns.length)
 
         tv.textStorage?.beginEditing()
-        tv.textStorage?.removeAttribute(.backgroundColor, range: fullRange)
+
+        // Only clear the previously highlighted line, not the entire document
+        if let prev = previousHighlightedLineRange, prev.location + prev.length <= ns.length {
+            tv.textStorage?.removeAttribute(.backgroundColor, range: prev)
+        }
 
         if SettingsStore.shared.highlightCurrentLine {
             let sel = tv.selectedRange()
@@ -309,6 +328,9 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12),
                 range: lineRange
             )
+            previousHighlightedLineRange = lineRange
+        } else {
+            previousHighlightedLineRange = nil
         }
 
         tv.textStorage?.endEditing()

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.0
+
+Features:
+- Clipboard settings tab — dedicated settings pane for all clipboard options, moved out of General
+- Grid/panels toggle — switch between grid tiles and full-width panel rows in clipboard view
+- Configurable preview lines — adjust how many lines of text are shown in clipboard cards (1–20)
+- Configurable font size — adjust clipboard card text size (8–24pt)
+- Keyboard navigation — arrow keys to move between clipboard items, Enter to copy, Space to preview, Escape to deselect
+- Preview navigation — arrow keys change the previewed item while the overlay is open, Space toggles it closed
+
+Improvements:
+- Editor performance — reduced input lag by limiting layout recalculation to visible range, tracking line highlight range instead of full-document attribute removal, and debouncing language detection
+
 ## 1.2.0
 
 Features:

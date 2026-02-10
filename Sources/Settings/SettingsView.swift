@@ -4,6 +4,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case general
     case editor
     case appearance
+    case clipboard
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: return "General"
         case .editor: return "Editor"
         case .appearance: return "Appearance"
+        case .clipboard: return "Clipboard"
         }
     }
 
@@ -20,6 +22,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .general: return "gearshape"
         case .editor: return "square.and.pencil"
         case .appearance: return "paintbrush"
+        case .clipboard: return "paperclip"
         }
     }
 }
@@ -63,6 +66,8 @@ struct SettingsView: View {
                     EditorSettingsView(store: store)
                 case .appearance:
                     AppearanceSettingsView(store: store)
+                case .clipboard:
+                    ClipboardSettingsView(store: store)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -82,7 +87,7 @@ struct GeneralSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Itsypad") {
+            Section {
                 Toggle("Open at login", isOn: $store.launchAtLogin)
                 ShortcutRecorderView(
                     label: "Show Itsypad",
@@ -110,21 +115,6 @@ struct GeneralSettingsView: View {
                             .foregroundStyle(.tertiary)
                             .onReceive(timer) { now = $0 }
                     }
-                }
-            }
-
-            Section("Clipboard manager") {
-                Toggle("Enable clipboard manager", isOn: $store.clipboardEnabled)
-                if store.clipboardEnabled {
-                    ShortcutRecorderView(
-                        label: "Show clipboard",
-                        shortcut: $store.clipboardShortcut,
-                        shortcutKeys: Binding(
-                            get: { store.clipboardShortcutKeys },
-                            set: { store.clipboardShortcutKeys = $0 }
-                        )
-                    )
-
                 }
             }
 
@@ -221,6 +211,59 @@ struct AppearanceSettingsView: View {
                         .textFieldStyle(.roundedBorder)
                     Stepper("", value: $store.editorFontSize, in: 8...36, step: 1)
                         .labelsHidden()
+                        .controlSize(.small)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+struct ClipboardSettingsView: View {
+    @ObservedObject var store: SettingsStore
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Enable clipboard manager", isOn: $store.clipboardEnabled)
+                if store.clipboardEnabled {
+                    ShortcutRecorderView(
+                        label: "Show clipboard",
+                        shortcut: $store.clipboardShortcut,
+                        shortcutKeys: Binding(
+                            get: { store.clipboardShortcutKeys },
+                            set: { store.clipboardShortcutKeys = $0 }
+                        )
+                    )
+                }
+            }
+
+            if store.clipboardEnabled {
+                Section("Display") {
+                    Picker("View mode", selection: $store.clipboardViewMode) {
+                        Text("Grid").tag("grid")
+                        Text("Panels").tag("panels")
+                    }
+                    HStack {
+                        Text("Preview lines")
+                        Spacer()
+                        TextField("", value: $store.clipboardPreviewLines, format: .number)
+                            .frame(width: 50)
+                            .textFieldStyle(.roundedBorder)
+                        Stepper("", value: $store.clipboardPreviewLines, in: 1...20)
+                            .labelsHidden()
+                            .controlSize(.small)
+                    }
+                    HStack {
+                        Text("Font size")
+                        Spacer()
+                        TextField("", value: $store.clipboardFontSize, format: .number)
+                            .frame(width: 50)
+                            .textFieldStyle(.roundedBorder)
+                        Stepper("", value: $store.clipboardFontSize, in: 8...24, step: 1)
+                            .labelsHidden()
+                            .controlSize(.small)
+                    }
                 }
             }
         }

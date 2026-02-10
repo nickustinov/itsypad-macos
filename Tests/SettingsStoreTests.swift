@@ -80,6 +80,18 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(store.icloudSync)
     }
 
+    func testDefaultClipboardViewMode() {
+        XCTAssertEqual(store.clipboardViewMode, "grid")
+    }
+
+    func testDefaultClipboardPreviewLines() {
+        XCTAssertEqual(store.clipboardPreviewLines, 5)
+    }
+
+    func testDefaultClipboardFontSize() {
+        XCTAssertEqual(store.clipboardFontSize, 11)
+    }
+
     // MARK: - Setting persistence
 
     func testShortcutPersistsToDefaults() {
@@ -100,6 +112,21 @@ final class SettingsStoreTests: XCTestCase {
     func testIcloudSyncPersistsToDefaults() {
         store.setICloudSync(true)
         XCTAssertTrue(defaults.bool(forKey: "icloudSync"))
+    }
+
+    func testClipboardViewModePersistsToDefaults() {
+        store.clipboardViewMode = "panels"
+        XCTAssertEqual(defaults.string(forKey: "clipboardViewMode"), "panels")
+    }
+
+    func testClipboardPreviewLinesPersistsToDefaults() {
+        store.clipboardPreviewLines = 10
+        XCTAssertEqual(defaults.integer(forKey: "clipboardPreviewLines"), 10)
+    }
+
+    func testClipboardFontSizePersistsToDefaults() {
+        store.clipboardFontSize = 14
+        XCTAssertEqual(defaults.double(forKey: "clipboardFontSize"), 14)
     }
 
     // MARK: - editorFont computed property
@@ -128,6 +155,9 @@ final class SettingsStoreTests: XCTestCase {
         preDefaults.set(false, forKey: "showLineNumbers")
         preDefaults.set(2, forKey: "tabWidth")
         preDefaults.set(false, forKey: "wordWrap")
+        preDefaults.set("panels", forKey: "clipboardViewMode")
+        preDefaults.set(12, forKey: "clipboardPreviewLines")
+        preDefaults.set(16.0, forKey: "clipboardFontSize")
 
         let preStore = SettingsStore(defaults: preDefaults)
         XCTAssertEqual(preStore.editorFontName, "Menlo")
@@ -136,6 +166,9 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(preStore.showLineNumbers)
         XCTAssertEqual(preStore.tabWidth, 2)
         XCTAssertFalse(preStore.wordWrap)
+        XCTAssertEqual(preStore.clipboardViewMode, "panels")
+        XCTAssertEqual(preStore.clipboardPreviewLines, 12)
+        XCTAssertEqual(preStore.clipboardFontSize, 16)
 
         preDefaults.removePersistentDomain(forName: preSuiteName)
     }

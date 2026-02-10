@@ -97,9 +97,19 @@ final class EditorTextView: NSTextView {
 
     override func didChangeText() {
         super.didChangeText()
-        if wrapsLines {
-            layoutManager?.ensureLayout(forCharacterRange: NSRange(location: 0, length: (string as NSString).length))
-            needsDisplay = true
+        if wrapsLines, let layoutManager, let textContainer {
+            let t0 = CFAbsoluteTimeGetCurrent()
+            // Only force layout for visible region — full-document ensureLayout is O(n) and blocks the main thread
+            let visibleRect = self.visibleRect.offsetBy(dx: -textContainerOrigin.x, dy: -textContainerOrigin.y)
+            let glyphRange = layoutManager.glyphRange(forBoundingRectWithoutAdditionalLayout: visibleRect, in: textContainer)
+            let charRange = layoutManager.characterRange(forGlyphRange: glyphRange, actualGlyphRange: nil)
+            // Extend slightly past visible to avoid flicker during fast scrolling
+            let end = min(charRange.location + charRange.length + 2000, (string as NSString).length)
+            layoutManager.ensureLayout(forCharacterRange: NSRange(location: charRange.location, length: end - charRange.location))
+            let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000
+            if elapsed > 4 {
+                NSLog("[Perf] didChangeText ensureLayout: %.1fms (range %d-%d of %d)", elapsed, charRange.location, end, (string as NSString).length)
+            }
         }
     }
 

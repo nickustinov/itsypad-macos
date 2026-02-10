@@ -182,6 +182,30 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var clipboardViewMode: String = "grid" {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardViewMode, forKey: "clipboardViewMode")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var clipboardPreviewLines: Int = 5 {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardPreviewLines, forKey: "clipboardPreviewLines")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var clipboardFontSize: Double = 11 {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardFontSize, forKey: "clipboardFontSize")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     var editorFont: NSFont {
         if editorFontName == "System Mono" {
             return NSFont.monospacedSystemFont(ofSize: CGFloat(editorFontSize), weight: .regular)
@@ -247,5 +271,11 @@ class SettingsStore: ObservableObject {
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             clipboardShortcutKeys = keys
         }
+
+        clipboardViewMode = defaults.string(forKey: "clipboardViewMode") ?? "grid"
+        let savedPreviewLines = defaults.integer(forKey: "clipboardPreviewLines")
+        clipboardPreviewLines = savedPreviewLines > 0 ? savedPreviewLines : 5
+        let savedClipboardFontSize = defaults.double(forKey: "clipboardFontSize")
+        clipboardFontSize = savedClipboardFontSize > 0 ? savedClipboardFontSize : 11
     }
 }

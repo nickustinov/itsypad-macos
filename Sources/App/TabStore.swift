@@ -72,6 +72,7 @@ class TabStore: ObservableObject {
     var currentLayout: LayoutNode?
 
     private var saveDebounceWork: DispatchWorkItem?
+    private var languageDetectWork: DispatchWorkItem?
     private let sessionURL: URL
     private let cloudStore: KeyValueStoreProtocol
     private var icloudObserver: NSObjectProtocol?
@@ -165,21 +166,28 @@ class TabStore: ObservableObject {
             tabs[index].name = trimmed.isEmpty ? "Untitled" : String(trimmed.prefix(30))
         }
 
-        // Auto-detect language if not locked
+        // Auto-detect language if not locked (debounced to avoid per-keystroke cost)
         if !tabs[index].languageLocked {
-            let result = LanguageDetector.shared.detect(
-                text: content,
-                name: tabs[index].name,
-                fileURL: tabs[index].fileURL
-            )
-            if result.confidence > 5 {
-                tabs[index].language = result.lang
-            } else if tabs[index].language != "plain" && result.lang == "plain" {
-                tabs[index].language = "plain"
-            }
+            scheduleLanguageDetection(id: tabs[index].id, content: content, name: tabs[index].name, fileURL: tabs[index].fileURL)
         }
 
         scheduleSave()
+    }
+
+    private func scheduleLanguageDetection(id: UUID, content: String, name: String?, fileURL: URL?) {
+        languageDetectWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, let index = self.tabs.firstIndex(where: { $0.id == id }),
+                  !self.tabs[index].languageLocked else { return }
+            let result = LanguageDetector.shared.detect(text: content, name: name, fileURL: fileURL)
+            if result.confidence > 5 {
+                self.tabs[index].language = result.lang
+            } else if self.tabs[index].language != "plain" && result.lang == "plain" {
+                self.tabs[index].language = "plain"
+            }
+        }
+        languageDetectWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0, execute: work)
     }
 
     func updateLanguage(id: UUID, language: String) {

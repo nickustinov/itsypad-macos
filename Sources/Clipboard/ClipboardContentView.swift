@@ -42,6 +42,7 @@ private class ClipboardCardView: NSView {
 
     var themeBackground: NSColor = .windowBackgroundColor { didSet { updateBackground() } }
     var isDark: Bool = false { didSet { updateAppearance() } }
+    var isCardSelected: Bool = false { didSet { updateBackground() } }
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -58,9 +59,9 @@ private class ClipboardCardView: NSView {
         layer?.cornerRadius = 6
 
         previewLabel.translatesAutoresizingMaskIntoConstraints = false
-        previewLabel.maximumNumberOfLines = 5
+        previewLabel.maximumNumberOfLines = SettingsStore.shared.clipboardPreviewLines
         previewLabel.lineBreakMode = .byTruncatingTail
-        previewLabel.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        previewLabel.font = NSFont.monospacedSystemFont(ofSize: CGFloat(SettingsStore.shared.clipboardFontSize), weight: .regular)
         previewLabel.isSelectable = false
         previewLabel.cell?.truncatesLastVisibleLine = true
 
@@ -158,6 +159,7 @@ private class ClipboardCardView: NSView {
 
     func configure(with entry: ClipboardEntry, searchQuery: String = "") {
         self.entry = entry
+        previewLabel.maximumNumberOfLines = SettingsStore.shared.clipboardPreviewLines
 
         switch entry.kind {
         case .text:
@@ -180,7 +182,8 @@ private class ClipboardCardView: NSView {
     }
 
     private func configureTextPreview(text: String, searchQuery: String) {
-        let font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        let fontSize = CGFloat(SettingsStore.shared.clipboardFontSize)
+        let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
         let textColor: NSColor = isDark ? .white : .black
 
         let lines = text.prefix(2000).components(separatedBy: .newlines)
@@ -207,7 +210,8 @@ private class ClipboardCardView: NSView {
             let matchLine = beforeMatch.components(separatedBy: "\n").count - 1
 
             // If match is beyond line 2, offset the preview to show it
-            if matchLine > 2, trimmed.count > 5 {
+            let previewLines = SettingsStore.shared.clipboardPreviewLines
+            if matchLine > 2, trimmed.count > previewLines {
                 let startLine = max(0, matchLine - 1)
                 displayText = trimmed[startLine...].joined(separator: "\n")
             }
@@ -241,6 +245,7 @@ private class ClipboardCardView: NSView {
         deleteButton.isHidden = true
         zoomButton.isHidden = true
         isHovered = false
+        isCardSelected = false
         imageView.image = nil
         imageView.isHidden = true
         previewLabel.isHidden = false
@@ -259,6 +264,12 @@ private class ClipboardCardView: NSView {
         let fraction: CGFloat = isDark ? (isHovered ? 0.12 : 0.07) : (isHovered ? 0.20 : 0.15)
         let cardBg = themeBackground.blended(withFraction: fraction, of: blend) ?? themeBackground
         layer?.backgroundColor = cardBg.cgColor
+        if isCardSelected {
+            layer?.borderWidth = 2
+            layer?.borderColor = NSColor.controlAccentColor.cgColor
+        } else {
+            layer?.borderWidth = 0
+        }
     }
 
     @objc private func cardClicked() {
@@ -266,6 +277,8 @@ private class ClipboardCardView: NSView {
         ClipboardStore.shared.copyToClipboard(entry)
         showCopiedFlash()
     }
+
+    func flashCopied() { showCopiedFlash() }
 
     private func showCopiedFlash() {
         copiedFlashWork?.cancel()
@@ -337,6 +350,7 @@ private class ClipboardPreviewOverlay: NSView {
     private var eventMonitor: Any?
     private var entry: ClipboardEntry?
     var onDismiss: (() -> Void)?
+    var onNavigate: ((UInt16) -> Void)?
 
     override init(frame: NSRect) {
         super.init(frame: frame)
@@ -446,11 +460,16 @@ private class ClipboardPreviewOverlay: NSView {
 
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.superview != nil else { return event }
-            if event.keyCode == 53 {
+            switch event.keyCode {
+            case 53: // escape
                 self.onDismiss?()
                 return nil
+            case 123, 124, 125, 126, 49: // arrows + space
+                self.onNavigate?(event.keyCode)
+                return nil
+            default:
+                return event
             }
-            return event
         }
     }
 
@@ -569,20 +588,54 @@ private class ClipboardCardItem: NSCollectionViewItem {
     }
 }
 
+// MARK: - Collection view subclass (forwards key events to delegate)
+
+protocol ClipboardCollectionViewKeyDelegate: AnyObject {
+    func collectionViewKeyDown(with event: NSEvent) -> Bool
+}
+
+private class ClipboardCollectionView: NSCollectionView {
+    weak var keyDelegate: ClipboardCollectionViewKeyDelegate?
+
+    override func keyDown(with event: NSEvent) {
+        if keyDelegate?.collectionViewKeyDown(with: event) == true {
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    override func moveUp(_ sender: Any?) { _ = keyDelegate?.collectionViewKeyDown(with: syntheticEvent(keyCode: 126)) }
+    override func moveDown(_ sender: Any?) { _ = keyDelegate?.collectionViewKeyDown(with: syntheticEvent(keyCode: 125)) }
+    override func moveLeft(_ sender: Any?) { _ = keyDelegate?.collectionViewKeyDown(with: syntheticEvent(keyCode: 123)) }
+    override func moveRight(_ sender: Any?) { _ = keyDelegate?.collectionViewKeyDown(with: syntheticEvent(keyCode: 124)) }
+
+    private func syntheticEvent(keyCode: UInt16) -> NSEvent {
+        NSEvent.keyEvent(
+            with: .keyDown, location: .zero, modifierFlags: [],
+            timestamp: 0, windowNumber: window?.windowNumber ?? 0,
+            context: nil, characters: "", charactersIgnoringModifiers: "",
+            isARepeat: false, keyCode: keyCode
+        ) ?? NSEvent()
+    }
+}
+
 // MARK: - Clipboard content view
 
-class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout {
+class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout,
+    NSSearchFieldDelegate, ClipboardCollectionViewKeyDelegate {
     private let searchField = NSSearchField()
     private let clearAllButton = NSButton()
     private let scrollView = NSScrollView()
-    private let collectionView = NSCollectionView()
+    private let collectionView = ClipboardCollectionView()
     private let emptyLabel = NSTextField(labelWithString: "")
     private var filteredEntries: [ClipboardEntry] = []
     private var clipboardObserver: Any?
     private var tabSelectedObserver: Any?
+    private var settingsObserver: Any?
     private var lastLayoutWidth: CGFloat = 0
     private var currentSearchQuery: String = ""
     private var previewOverlay: ClipboardPreviewOverlay?
+    private var selectedIndex: Int?
 
     var themeBackground: NSColor = .windowBackgroundColor {
         didSet { applyTheme() }
@@ -611,6 +664,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         searchField.action = #selector(searchChanged)
         searchField.sendsSearchStringImmediately = true
         searchField.font = NSFont.systemFont(ofSize: 12)
+        searchField.delegate = self
 
         // Clear all button
         clearAllButton.translatesAutoresizingMaskIntoConstraints = false
@@ -632,7 +686,8 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         collectionView.delegate = self
         collectionView.register(ClipboardCardItem.self, forItemWithIdentifier: cardCellID)
         collectionView.backgroundColors = [.clear]
-        collectionView.isSelectable = false
+        collectionView.isSelectable = true
+        collectionView.keyDelegate = self
 
         // Scroll view
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -686,6 +741,15 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             self?.focusSearchField()
         }
 
+        settingsObserver = NotificationCenter.default.addObserver(
+            forName: .settingsChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.lastLayoutWidth = 0
+            self?.reloadEntries()
+        }
+
         reloadEntries()
     }
 
@@ -694,6 +758,9 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = tabSelectedObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = settingsObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -737,6 +804,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         let query = searchField.stringValue
         currentSearchQuery = query
         filteredEntries = ClipboardStore.shared.search(query: query)
+        selectedIndex = nil
 
         let isEmpty = filteredEntries.isEmpty
         emptyLabel.isHidden = !isEmpty
@@ -763,6 +831,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             cardItem.cardView?.onZoom = { [weak self] entry in
                 self?.showPreview(for: entry)
             }
+            cardItem.cardView?.isCardSelected = (selectedIndex == indexPath.item)
             cardItem.cardView?.configure(with: filteredEntries[indexPath.item], searchQuery: currentSearchQuery)
         }
         return item
@@ -776,9 +845,153 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         sizeForItemAt indexPath: IndexPath
     ) -> NSSize {
         let availableWidth = collectionView.bounds.width - sectionInsets.left - sectionInsets.right
+
+        if SettingsStore.shared.clipboardViewMode == "panels" {
+            let previewLines = SettingsStore.shared.clipboardPreviewLines
+            let dynamicHeight = CGFloat(previewLines) * 22 + 28
+            return NSSize(width: availableWidth, height: dynamicHeight)
+        }
+
         let columns = max(1, floor((availableWidth + tileSpacing) / (tileMinWidth + tileSpacing)))
         let tileWidth = floor((availableWidth - tileSpacing * (columns - 1)) / columns)
         return NSSize(width: tileWidth, height: tileHeight)
+    }
+
+    // MARK: - NSSearchFieldDelegate
+
+    func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+        if commandSelector == #selector(NSResponder.moveDown(_:)) {
+            guard !filteredEntries.isEmpty else { return false }
+            selectItem(at: 0)
+            window?.makeFirstResponder(collectionView)
+            return true
+        }
+        return false
+    }
+
+    // MARK: - Keyboard navigation
+
+    func collectionViewKeyDown(with event: NSEvent) -> Bool {
+        switch event.keyCode {
+        case 126: // up arrow
+            return handleUpArrow()
+        case 125: // down arrow
+            return handleDownArrow()
+        case 123: // left arrow
+            return handleLeftArrow()
+        case 124: // right arrow
+            return handleRightArrow()
+        case 36: // return/enter
+            return handleReturn()
+        case 49: // space
+            return handleSpace()
+        case 53: // escape
+            return handleEscape()
+        default:
+            return false
+        }
+    }
+
+    private func handleUpArrow() -> Bool {
+        guard let index = selectedIndex else { return false }
+        let columns = currentColumnCount()
+        let newIndex = index - columns
+        if newIndex < 0 {
+            deselectAndFocusSearch()
+        } else {
+            selectItem(at: newIndex)
+        }
+        return true
+    }
+
+    private func handleDownArrow() -> Bool {
+        guard let index = selectedIndex else { return false }
+        let columns = currentColumnCount()
+        let newIndex = index + columns
+        if newIndex < filteredEntries.count {
+            selectItem(at: newIndex)
+        }
+        return true
+    }
+
+    private func handleLeftArrow() -> Bool {
+        guard let index = selectedIndex, index > 0 else { return false }
+        if SettingsStore.shared.clipboardViewMode == "panels" { return true }
+        selectItem(at: index - 1)
+        return true
+    }
+
+    private func handleRightArrow() -> Bool {
+        guard let index = selectedIndex else { return false }
+        if SettingsStore.shared.clipboardViewMode == "panels" { return true }
+        let newIndex = index + 1
+        if newIndex < filteredEntries.count {
+            selectItem(at: newIndex)
+        }
+        return true
+    }
+
+    private func handleReturn() -> Bool {
+        guard let index = selectedIndex, index < filteredEntries.count else { return false }
+        let entry = filteredEntries[index]
+        ClipboardStore.shared.copyToClipboard(entry)
+        if let item = collectionView.item(at: index) as? ClipboardCardItem {
+            item.cardView?.flashCopied()
+        }
+        return true
+    }
+
+    private func handleSpace() -> Bool {
+        guard let index = selectedIndex, index < filteredEntries.count else { return false }
+        if previewOverlay != nil {
+            dismissPreview()
+        } else {
+            showPreview(for: filteredEntries[index])
+        }
+        return true
+    }
+
+    private func handleEscape() -> Bool {
+        if previewOverlay != nil {
+            dismissPreview()
+            return true
+        }
+        if selectedIndex != nil {
+            deselectAndFocusSearch()
+            return true
+        }
+        return false
+    }
+
+    private func selectItem(at index: Int) {
+        let previousIndex = selectedIndex
+        selectedIndex = index
+
+        if let prev = previousIndex, let item = collectionView.item(at: prev) as? ClipboardCardItem {
+            item.cardView?.isCardSelected = false
+        }
+        if let item = collectionView.item(at: index) as? ClipboardCardItem {
+            item.cardView?.isCardSelected = true
+        }
+
+        let indexPath = IndexPath(item: index, section: 0)
+        collectionView.selectionIndexPaths = [indexPath]
+        collectionView.scrollToItems(at: [indexPath], scrollPosition: .nearestHorizontalEdge)
+    }
+
+    private func deselectAndFocusSearch() {
+        if let prev = selectedIndex, let item = collectionView.item(at: prev) as? ClipboardCardItem {
+            item.cardView?.isCardSelected = false
+        }
+        selectedIndex = nil
+        collectionView.selectionIndexPaths = []
+        focusSearchField()
+    }
+
+    private func currentColumnCount() -> Int {
+        if SettingsStore.shared.clipboardViewMode == "panels" { return 1 }
+        let availableWidth = collectionView.bounds.width - sectionInsets.left - sectionInsets.right
+        return max(1, Int(floor((availableWidth + tileSpacing) / (tileMinWidth + tileSpacing))))
     }
 
     // MARK: - Preview
@@ -791,9 +1004,39 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         overlay.onDismiss = { [weak self] in
             self?.dismissPreview()
         }
+        overlay.onNavigate = { [weak self] keyCode in
+            self?.handlePreviewNavigation(keyCode: keyCode)
+        }
         addSubview(overlay)
         previewOverlay = overlay
         overlay.animateIn()
+    }
+
+    private func handlePreviewNavigation(keyCode: UInt16) {
+        switch keyCode {
+        case 49: // space — toggle preview
+            dismissPreview()
+        case 126: // up
+            _ = handleUpArrow()
+            updatePreviewContent()
+        case 125: // down
+            _ = handleDownArrow()
+            updatePreviewContent()
+        case 123: // left
+            _ = handleLeftArrow()
+            updatePreviewContent()
+        case 124: // right
+            _ = handleRightArrow()
+            updatePreviewContent()
+        default:
+            break
+        }
+    }
+
+    private func updatePreviewContent() {
+        guard let overlay = previewOverlay,
+              let index = selectedIndex, index < filteredEntries.count else { return }
+        overlay.configure(with: filteredEntries[index], themeBackground: themeBackground, isDark: isDark)
     }
 
     private func dismissPreview() {

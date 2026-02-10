@@ -9,7 +9,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 ## Features
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace, lists and checklists
-- **Clipboard manager** — 500-item history, searchable, click to copy
+- **Clipboard manager** — 500-item history, searchable, keyboard navigable, grid or panels layout
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **No AI, no telemetry** — your data stays on your machine
@@ -62,6 +62,9 @@ Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines ali
 - **Searchable** — filter history with highlighted search matches
 - **Click to copy** — click any entry to copy it back to clipboard
 - **Zoom preview** — hover a tile and click the magnifying glass to view full content in a near-fullscreen overlay
+- **Keyboard navigation** — arrow keys to browse items, Enter to copy, Space to preview/unpreview, Escape to deselect
+- **Grid or panels** — switch between a multi-column grid and full-width panel rows
+- **Configurable cards** — adjust preview line count and font size in settings
 - **Delete entries** — remove individual items on hover
 - **Separate hotkey** — assign a dedicated global hotkey to show/hide
 
@@ -101,6 +104,16 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⇧Tab | Unindent line/selection |
 | Fn↓ / Fn↑ | Page down / up (moves cursor) |
 
+### Clipboard
+
+| Shortcut | Action |
+|----------|--------|
+| ↓ | Move focus from search to first item |
+| ↑↓←→ | Navigate between items |
+| Return | Copy selected item to clipboard |
+| Space | Toggle preview overlay |
+| Escape | Deselect item / close preview |
+
 ## Also by me
 
 If you like Itsypad, check out my other macOS apps - same philosophy of native, lightweight, no-bloat design.
@@ -136,7 +149,7 @@ Sources/
 │   └── ClipboardTabView.swift          # NSViewRepresentable wrapper for ClipboardContentView
 ├── Settings/
 │   ├── SettingsStore.swift             # UserDefaults-backed settings with change notifications
-│   ├── SettingsView.swift              # SwiftUI settings window (general, editor, appearance)
+│   ├── SettingsView.swift              # SwiftUI settings window (general, editor, appearance, clipboard)
 │   └── ShortcutRecorder.swift          # SwiftUI hotkey recorder control
 ├── Hotkey/
 │   ├── HotkeyManager.swift             # Global hotkeys and triple-tap modifier detection
