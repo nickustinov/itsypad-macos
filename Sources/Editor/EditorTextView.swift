@@ -52,6 +52,7 @@ final class EditorTextView: NSTextView {
     }
 
     private func isOverLink(at point: NSPoint) -> Bool {
+        guard SettingsStore.shared.clickableLinks else { return false }
         let charIndex = characterIndexForInsertion(at: point)
         guard let storage = textStorage, charIndex < storage.length else { return false }
         return storage.attribute(SyntaxHighlightCoordinator.linkURLKey, at: charIndex, effectiveRange: nil) != nil

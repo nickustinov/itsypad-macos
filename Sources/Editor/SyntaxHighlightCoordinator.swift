@@ -252,6 +252,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     }
 
     private func applyLinkHighlighting(tv: EditorTextView, text: String, theme: EditorTheme) {
+        guard SettingsStore.shared.clickableLinks else { return }
         guard language == "plain" || language == "markdown" else { return }
 
         let ns = text as NSString

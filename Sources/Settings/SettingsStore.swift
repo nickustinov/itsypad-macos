@@ -145,6 +145,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var clickableLinks: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clickableLinks, forKey: "clickableLinks")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     @Published var icloudSync: Bool = false
 
     func setICloudSync(_ enabled: Bool) {
@@ -268,6 +276,7 @@ class SettingsStore: ObservableObject {
         bulletListsEnabled = defaults.object(forKey: "bulletListsEnabled") as? Bool ?? true
         numberedListsEnabled = defaults.object(forKey: "numberedListsEnabled") as? Bool ?? true
         checklistsEnabled = defaults.object(forKey: "checklistsEnabled") as? Bool ?? true
+        clickableLinks = defaults.object(forKey: "clickableLinks") as? Bool ?? true
         icloudSync = defaults.bool(forKey: "icloudSync")
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: shortcutKeysKey),

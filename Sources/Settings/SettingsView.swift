@@ -161,6 +161,7 @@ struct EditorSettingsView: View {
                 Toggle("Word wrap", isOn: $store.wordWrap)
                 Toggle("Show line numbers", isOn: $store.showLineNumbers)
                 Toggle("Highlight current line", isOn: $store.highlightCurrentLine)
+                Toggle("Clickable links", isOn: $store.clickableLinks)
             }
 
             Section("Indentation") {
