@@ -129,45 +129,53 @@ If you like Itsypad, check out my other macOS apps - same philosophy of native, 
 ```
 Sources/
 ├── App/
-│   ├── Launch.swift                    # App entry point
-│   ├── AppDelegate.swift               # Menu bar, toolbar, window, and menu setup
-│   ├── BonsplitRootView.swift          # SwiftUI root view rendering editor and clipboard tabs
-│   ├── Models.swift                    # ShortcutKeys and shared data types
-│   └── TabStore.swift                  # Tab data model with persistence and iCloud sync
+│   ├── Launch.swift                     # App entry point
+│   ├── AppDelegate.swift                # Menu bar, toolbar, window, and panel setup
+│   ├── MenuBuilder.swift                # Main menu bar construction
+│   ├── BonsplitRootView.swift           # SwiftUI root view rendering editor and clipboard tabs
+│   ├── Models.swift                     # ShortcutKeys and shared data types
+│   └── TabStore.swift                   # Tab data model with persistence and iCloud sync
 ├── Editor/
-│   ├── EditorTextView.swift            # NSTextView subclass with editing helpers and file drops
-│   ├── EditorContentView.swift         # NSViewRepresentable wrapping text view, scroll view, and gutter
-│   ├── EditorCoordinator.swift         # Tab/pane orchestrator bridging TabStore, Bonsplit, and iCloud
-│   ├── EditorTheme.swift               # Monokai-inspired dark/light color palettes
-│   ├── HighlightJS.swift               # JSContext wrapper for highlight.js with CSS/HTML parsing
+│   ├── EditorTextView.swift             # NSTextView subclass with editing helpers and file drops
+│   ├── EditorContentView.swift          # NSViewRepresentable wrapping text view, scroll view, and gutter
+│   ├── EditorCoordinator.swift          # Tab/pane orchestrator bridging TabStore, Bonsplit, and iCloud
+│   ├── EditorTheme.swift                # Monokai-inspired dark/light color palettes
+│   ├── HighlightJS.swift                # JSContext wrapper for highlight.js with CSS/HTML parsing
 │   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
-│   ├── LanguageDetector.swift          # File extension → language mapping for highlight.js
-│   ├── LineNumberGutterView.swift      # Line number gutter drawn alongside the text view
-│   ├── ListHelper.swift                # List/checklist parsing, continuation, and toggling
+│   ├── LanguageDetector.swift           # File extension → language mapping for highlight.js
+│   ├── LineNumberGutterView.swift       # Line number gutter drawn alongside the text view
+│   ├── ListHelper.swift                 # List/checklist parsing, continuation, and toggling
+│   ├── SessionRestorer.swift            # Session restore logic for tabs and editor state
 │   └── FileWatcher.swift                # DispatchSource-based file change monitoring
 ├── Clipboard/
-│   ├── ClipboardStore.swift            # Clipboard monitoring and history persistence
-│   ├── ClipboardContentView.swift      # NSCollectionView grid of clipboard cards with search
-│   └── ClipboardTabView.swift          # NSViewRepresentable wrapper for ClipboardContentView
+│   ├── ClipboardStore.swift             # Clipboard monitoring and history persistence
+│   ├── ClipboardContentView.swift       # NSCollectionView grid with search, keyboard nav, and layout
+│   ├── ClipboardCollectionView.swift    # NSCollectionView subclass with key event delegation
+│   ├── ClipboardCardItem.swift          # NSCollectionViewItem wrapper for card views
+│   ├── ClipboardCardView.swift          # Individual clipboard card with preview, delete, and zoom
+│   ├── ClipboardPreviewOverlay.swift    # Near-fullscreen zoom preview overlay
+│   ├── ClipboardTabView.swift           # NSViewRepresentable wrapper for ClipboardContentView
+│   └── CardTextField.swift              # Non-interactive text field (suppresses I-beam cursor)
 ├── Settings/
-│   ├── SettingsStore.swift             # UserDefaults-backed settings with change notifications
-│   ├── SettingsView.swift              # SwiftUI settings window (general, editor, appearance, clipboard)
-│   └── ShortcutRecorder.swift          # SwiftUI hotkey recorder control
+│   ├── SettingsStore.swift              # UserDefaults-backed settings with change notifications
+│   ├── SettingsView.swift               # SwiftUI settings window (general, editor, appearance, clipboard)
+│   └── ShortcutRecorder.swift           # SwiftUI hotkey recorder control
 ├── Hotkey/
-│   ├── HotkeyManager.swift             # Global hotkeys and triple-tap modifier detection
-│   └── ModifierKeyDetection.swift      # Left/right modifier key identification from key codes
+│   ├── HotkeyManager.swift              # Global hotkeys and triple-tap modifier detection
+│   └── ModifierKeyDetection.swift       # Left/right modifier key identification from key codes
 ├── Resources/
-│   └── Assets.xcassets                 # App icon and custom images
-├── Info.plist                          # Bundle metadata and document types
-└── itsypad.entitlements                # Entitlements (unsigned executable memory for highlight.js)
+│   └── Assets.xcassets                  # App icon and custom images
+├── Info.plist                           # Bundle metadata and document types
+└── itsypad.entitlements                 # Entitlements (unsigned executable memory for highlight.js)
 Executable/
-└── main.swift                          # Executable target entry point
+└── main.swift                           # Executable target entry point
 Packages/
-└── Bonsplit/                           # Local package: split pane and tab bar framework
+└── Bonsplit/                            # Local package: split pane and tab bar framework
 Tests/
 ├── ClipboardStoreTests.swift
 ├── EditorThemeTests.swift
 ├── FileWatcherTests.swift
+├── HighlightJSTests.swift
 ├── LanguageDetectorTests.swift
 ├── LineNumberGutterViewTests.swift
 ├── ListHelperTests.swift
