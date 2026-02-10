@@ -2,13 +2,6 @@ import Cocoa
 import SwiftUI
 import Bonsplit
 
-struct EditorState {
-    let textView: EditorTextView
-    let scrollView: NSScrollView
-    let gutterView: LineNumberGutterView
-    let highlightCoordinator: SyntaxHighlightCoordinator
-}
-
 @Observable
 final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     let controller: BonsplitController
@@ -149,7 +142,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         // Create clipboard tab in the pane it was saved in (or last pane as fallback)
         if SettingsStore.shared.clipboardEnabled {
-            let clipboardPane = findClipboardPane(in: tabStore.savedLayout) ?? controller.allPaneIds.last
+            let clipboardPane = LayoutSerializer.findClipboardPane(in: tabStore.savedLayout, controller: controller) ?? controller.allPaneIds.last
             if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false, inPane: clipboardPane) {
                 clipboardTabID = clipTabID
             }
@@ -172,108 +165,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     @MainActor
     private func createEditorState(for tab: TabData) -> EditorState {
-        let settings = SettingsStore.shared
-        let scrollView = createScrollView()
-        let textView = createTextView(settings: settings)
-
-        // Word wrap initial state (no-wrap needs explicit setup)
-        if !settings.wordWrap {
-            textView.isHorizontallyResizable = true
-            scrollView.hasHorizontalScroller = true
-            textView.textContainer?.widthTracksTextView = false
-            textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        }
-
-        scrollView.documentView = textView
-
-        let gutter = createGutter()
-        let highlighter = createHighlighter(for: textView, settings: settings)
-        setupEditorContent(textView: textView, highlighter: highlighter, tab: tab)
-        wireUpTextChanges(textView: textView, tabID: tab.id)
-
-        applyThemeToEditor(textView: textView, gutter: gutter, coordinator: highlighter)
-        highlighter.applyWrapIndent(to: textView, font: settings.editorFont)
-        highlighter.scheduleHighlightIfNeeded()
-
+        let state = EditorStateFactory.create(for: tab)
+        wireUpTextChanges(textView: state.textView, tabID: tab.id)
         if let fileURL = tab.fileURL {
             startWatching(url: fileURL, tabID: tab.id)
         }
-
-        return EditorState(
-            textView: textView,
-            scrollView: scrollView,
-            gutterView: gutter,
-            highlightCoordinator: highlighter
-        )
-    }
-
-    @MainActor
-    private func createScrollView() -> NSScrollView {
-        let scrollView = NSScrollView()
-        scrollView.drawsBackground = false
-        scrollView.autohidesScrollers = true
-        scrollView.hasVerticalScroller = true
-        scrollView.contentView.postsBoundsChangedNotifications = true
-        return scrollView
-    }
-
-    @MainActor
-    private func createTextView(settings: SettingsStore) -> EditorTextView {
-        let textView = EditorTextView(frame: .zero)
-        textView.isEditable = true
-        textView.isRichText = false
-        textView.usesFindBar = true
-        textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = false
-        textView.font = settings.editorFont
-        textView.drawsBackground = true
-        textView.textContainerInset = NSSize(width: settings.showLineNumbers ? 4 : 12, height: 12)
-        textView.minSize = NSSize(width: 0, height: 0)
-        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
-        textView.isSelectable = true
-        textView.allowsUndo = true
-        textView.textColor = .labelColor
-        textView.insertionPointColor = .controlAccentColor
-
-        textView.isAutomaticTextCompletionEnabled = false
-        textView.isAutomaticQuoteSubstitutionEnabled = false
-        textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticDataDetectionEnabled = false
-        textView.isAutomaticLinkDetectionEnabled = false
-        textView.isGrammarCheckingEnabled = false
-        textView.isContinuousSpellCheckingEnabled = false
-        textView.smartInsertDeleteEnabled = false
-
-        textView.autoresizingMask = [.width, .height]
-        textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
-        return textView
-    }
-
-    private func createGutter() -> LineNumberGutterView {
-        let gutter = LineNumberGutterView()
-        gutter.translatesAutoresizingMaskIntoConstraints = false
-        gutter.wantsLayer = true
-        gutter.layer?.masksToBounds = true
-        return gutter
-    }
-
-    @MainActor
-    private func createHighlighter(for textView: EditorTextView, settings: SettingsStore) -> SyntaxHighlightCoordinator {
-        let highlighter = SyntaxHighlightCoordinator()
-        highlighter.textView = textView
-        highlighter.font = settings.editorFont
-        textView.delegate = highlighter
-        return highlighter
-    }
-
-    @MainActor
-    private func setupEditorContent(textView: EditorTextView, highlighter: SyntaxHighlightCoordinator, tab: TabData) {
-        textView.string = tab.content
-        highlighter.language = tab.language
-
-        let pos = min(tab.cursorPosition, (textView.string as NSString).length)
-        textView.setSelectedRange(NSRange(location: pos, length: 0))
-        textView.scrollRangeToVisible(NSRange(location: pos, length: 0))
+        return state
     }
 
     @MainActor
@@ -315,40 +212,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
               selectedTab.id != clipboardTabID,
               let state = editorStates[selectedTab.id] else { return nil }
         return state.textView
-    }
-
-    // MARK: - Clipboard pane restore
-
-    @MainActor
-    private func findClipboardPane(in layout: LayoutNode?) -> PaneID? {
-        guard let layout else { return nil }
-        let paneIndex = clipboardPaneIndex(in: layout, currentIndex: 0)?.index
-        guard let idx = paneIndex else { return nil }
-        let panes = controller.allPaneIds
-        return idx < panes.count ? panes[idx] : nil
-    }
-
-    private func clipboardPaneIndex(in node: LayoutNode, currentIndex: Int) -> (index: Int, nextIndex: Int)? {
-        switch node {
-        case .pane(let data):
-            if data.hasClipboard {
-                return (index: currentIndex, nextIndex: currentIndex + 1)
-            }
-            return nil
-        case .split(let data):
-            if let found = clipboardPaneIndex(in: data.first, currentIndex: currentIndex) {
-                return found
-            }
-            let firstCount = paneCount(in: data.first)
-            return clipboardPaneIndex(in: data.second, currentIndex: currentIndex + firstCount)
-        }
-    }
-
-    private func paneCount(in node: LayoutNode) -> Int {
-        switch node {
-        case .pane: return 1
-        case .split(let data): return paneCount(in: data.first) + paneCount(in: data.second)
-        }
     }
 
     // MARK: - Editor focus → pane focus
@@ -669,63 +532,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     @MainActor
     func saveActiveTabCursor() {
         saveCursorForSelectedTab()
-        tabStore.currentLayout = captureLayout()
-    }
-
-    // MARK: - Layout capture
-
-    @MainActor
-    func captureLayout() -> LayoutNode? {
-        let tree = controller.treeSnapshot()
-        let bonsplitToStore = buildExternalIDToStoreIDMap()
-        let clipExternalID = clipboardTabID.flatMap { tabID -> String? in
-            guard let data = try? JSONEncoder().encode(tabID),
-                  let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String] else { return nil }
-            return dict["id"]
-        }
-        return convertNode(tree, mapping: bonsplitToStore, clipboardExternalID: clipExternalID)
-    }
-
-    private func buildExternalIDToStoreIDMap() -> [String: UUID] {
-        var map: [String: UUID] = [:]
-        for (tabStoreID, bonsplitTabID) in tabIDMap {
-            // TabID is Codable with a single `id: UUID` field.
-            // Encode to extract the UUID string that matches ExternalTab.id.
-            if let data = try? JSONEncoder().encode(bonsplitTabID),
-               let dict = try? JSONSerialization.jsonObject(with: data) as? [String: String],
-               let uuidString = dict["id"] {
-                map[uuidString] = tabStoreID
-            }
-        }
-        return map
-    }
-
-    private func convertNode(_ node: ExternalTreeNode, mapping: [String: UUID], clipboardExternalID: String?) -> LayoutNode? {
-        switch node {
-        case .pane(let paneNode):
-            let tabIDs = paneNode.tabs.compactMap { mapping[$0.id] }
-            let hasClipboard = clipboardExternalID.map { clipID in
-                paneNode.tabs.contains { $0.id == clipID }
-            } ?? false
-            guard !tabIDs.isEmpty || hasClipboard else { return nil }
-            let selectedID: UUID? = paneNode.selectedTabId.flatMap { mapping[$0] }
-            return .pane(PaneNodeData(tabIDs: tabIDs, selectedTabID: selectedID, hasClipboard: hasClipboard))
-
-        case .split(let splitNode):
-            guard let first = convertNode(splitNode.first, mapping: mapping, clipboardExternalID: clipboardExternalID),
-                  let second = convertNode(splitNode.second, mapping: mapping, clipboardExternalID: clipboardExternalID) else {
-                // If one side has no tabs (e.g. only clipboard), return the other
-                let first = convertNode(splitNode.first, mapping: mapping, clipboardExternalID: clipboardExternalID)
-                let second = convertNode(splitNode.second, mapping: mapping, clipboardExternalID: clipboardExternalID)
-                return first ?? second
-            }
-            return .split(SplitNodeData(
-                orientation: splitNode.orientation,
-                dividerPosition: splitNode.dividerPosition,
-                first: first,
-                second: second
-            ))
-        }
+        tabStore.currentLayout = LayoutSerializer.captureLayout(controller: controller, tabIDMap: tabIDMap, clipboardTabID: clipboardTabID)
     }
 
     // MARK: - Private helpers
@@ -880,7 +687,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             state.highlightCoordinator.font = font
             state.highlightCoordinator.updateTheme()
 
-            applyThemeToEditor(textView: state.textView, gutter: state.gutterView, coordinator: state.highlightCoordinator)
+            EditorStateFactory.applyTheme(textView: state.textView, gutter: state.gutterView, coordinator: state.highlightCoordinator)
         }
 
         applyBonsplitTheme()
@@ -934,23 +741,4 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         state.gutterView.updateVisibility(showGutter, lineCount: lineCount)
     }
 
-    private func applyThemeToEditor(textView: EditorTextView, gutter: LineNumberGutterView, coordinator: SyntaxHighlightCoordinator) {
-        let settings = SettingsStore.shared
-        let bg = coordinator.themeBackgroundColor
-        let isDark = coordinator.themeIsDark
-
-        textView.backgroundColor = bg
-        textView.drawsBackground = true
-        textView.insertionPointColor = isDark ? .white : .black
-
-        gutter.bgColor = bg
-        gutter.lineColor = isDark
-            ? NSColor.white.withAlphaComponent(0.3)
-            : NSColor.black.withAlphaComponent(0.3)
-        gutter.lineFont = NSFont.monospacedSystemFont(
-            ofSize: settings.editorFont.pointSize * 0.85,
-            weight: .regular
-        )
-        gutter.needsDisplay = true
-    }
 }
