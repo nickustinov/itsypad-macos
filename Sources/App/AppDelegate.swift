@@ -214,6 +214,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        let updateItem = NSMenuItem(title: "Check for updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        menu.addItem(updateItem)
+
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit Itsypad", action: #selector(quitApp), keyEquivalent: "q")
@@ -426,6 +430,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc private func showItsypad() {
         toggleWindow()
+    }
+
+    @objc func checkForUpdates() {
+        UpdateChecker.check()
     }
 
     @objc private func quitApp() {

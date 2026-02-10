@@ -14,6 +14,9 @@ class MenuBuilder {
         let settingsMenuItem = NSMenuItem(title: "Settings...", action: #selector(AppDelegate.openSettings), keyEquivalent: ",")
         settingsMenuItem.target = target
         menu.addItem(settingsMenuItem)
+        let updateItem = NSMenuItem(title: "Check for updates...", action: #selector(AppDelegate.checkForUpdates), keyEquivalent: "")
+        updateItem.target = target
+        menu.addItem(updateItem)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Hide Itsypad", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
         let hideOthersItem = NSMenuItem(title: "Hide others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
