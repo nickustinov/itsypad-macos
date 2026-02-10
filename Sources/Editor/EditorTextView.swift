@@ -20,6 +20,9 @@ final class EditorTextView: NSTextView {
     override func mouseDown(with event: NSEvent) {
         NotificationCenter.default.post(name: Self.didReceiveClickNotification, object: self)
 
+        // Click on a highlighted link — open in browser
+        if handleLinkClick(event: event) { return }
+
         // Check if click lands on a checkbox region
         if listsAllowed, SettingsStore.shared.checklistsEnabled, handleCheckboxClick(event: event) { return }
 
@@ -29,6 +32,38 @@ final class EditorTextView: NSTextView {
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         registerForDraggedTypes([.fileURL])
+        updateLinkTrackingArea()
+    }
+
+    // MARK: - Link hover cursor
+
+    private var linkTrackingArea: NSTrackingArea?
+
+    private func updateLinkTrackingArea() {
+        if let existing = linkTrackingArea { removeTrackingArea(existing) }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseMoved, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        linkTrackingArea = area
+    }
+
+    private func isOverLink(at point: NSPoint) -> Bool {
+        let charIndex = characterIndexForInsertion(at: point)
+        guard let storage = textStorage, charIndex < storage.length else { return false }
+        return storage.attribute(SyntaxHighlightCoordinator.linkURLKey, at: charIndex, effectiveRange: nil) != nil
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if isOverLink(at: point) {
+            NSCursor.pointingHand.set()
+        } else {
+            super.mouseMoved(with: event)
+        }
     }
 
     // MARK: - Word wrap
@@ -405,6 +440,18 @@ final class EditorTextView: NSTextView {
     }
 
     // MARK: - List helpers
+
+    private func handleLinkClick(event: NSEvent) -> Bool {
+        let point = convert(event.locationInWindow, from: nil)
+        let charIndex = characterIndexForInsertion(at: point)
+        guard let storage = textStorage, charIndex < storage.length else { return false }
+
+        guard let urlString = storage.attribute(SyntaxHighlightCoordinator.linkURLKey, at: charIndex, effectiveRange: nil) as? String,
+              let url = URL(string: urlString) else { return false }
+
+        NSWorkspace.shared.open(url)
+        return true
+    }
 
     private func handleCheckboxClick(event: NSEvent) -> Bool {
         let point = convert(event.locationInWindow, from: nil)

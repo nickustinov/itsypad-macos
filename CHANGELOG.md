@@ -3,6 +3,7 @@
 ## 1.3.0
 
 Features:
+- Clickable links — URLs in plain text and markdown tabs are highlighted and underlined; click to open in browser
 - Clipboard settings tab — dedicated settings pane for all clipboard options, moved out of General
 - Grid/panels toggle — switch between grid tiles and full-width panel rows in clipboard view
 - Configurable preview lines — adjust how many lines of text are shown in clipboard cards (1–20)

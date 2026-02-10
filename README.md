@@ -8,7 +8,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 
 ## Features
 
-- **Text editor** — syntax highlighting, multi-tab, split view, find and replace, lists and checklists
+- **Text editor** — syntax highlighting, multi-tab, split view, find and replace, clickable links, lists and checklists
 - **Clipboard manager** — 500-item history, searchable, keyboard navigable, grid or panels layout
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
@@ -24,6 +24,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 - **Find and replace** — built-in find bar with next/previous match and use selection for find
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts
 - **Auto-save** — content is continuously saved to session, never lose your work
+- **Clickable links** — URLs in plain text and markdown tabs are highlighted and underlined; click to open in browser
 - **Monokai-inspired theme** — dark and light variants with system appearance support
 
 ## Lists and checklists
@@ -56,6 +57,7 @@ Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines ali
 | Ordered numbers `1.` | 🔴 Magenta/red (`bulletDashColor`) |
 | Checkbox brackets `[ ]`, `[x]` | 🟣 Purple |
 | Checked item content | ~~Strikethrough~~ + dimmed |
+| URLs `https://...` | 🔵 Blue underlined (`linkColor`) |
 
 ## Clipboard manager
 - **Text and images** — stores clipboard content

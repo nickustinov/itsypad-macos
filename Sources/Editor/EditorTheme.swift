@@ -39,6 +39,9 @@ struct EditorTheme {
     // Checkbox bracket color
     var checkboxColor: NSColor { isDark ? Self.hex(0xab9df2) : Self.hex(0x7c6bb7) }
 
+    // Link color
+    var linkColor: NSColor { isDark ? Self.hex(0x78b9f2) : Self.hex(0x0969b2) }
+
     // MARK: - Hex color helper
 
     private static func hex(_ value: UInt32) -> NSColor {

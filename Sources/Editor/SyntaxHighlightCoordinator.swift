@@ -134,6 +134,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
                 // Apply bullet dash highlighting on top
                 self.applyListMarkers(tv: tv, text: textSnapshot, theme: currentTheme)
+                self.applyLinkHighlighting(tv: tv, text: textSnapshot, theme: currentTheme)
 
                 tv.textStorage?.endEditing()
                 self.applyWrapIndent(to: tv, font: userFont)
@@ -165,6 +166,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         ], range: fullRange)
 
         applyListMarkers(tv: tv, text: text, theme: theme)
+        applyLinkHighlighting(tv: tv, text: text, theme: theme)
 
         tv.textStorage?.endEditing()
         applyWrapIndent(to: tv, font: font)
@@ -178,6 +180,14 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         lastLanguage = language
         lastAppearance = SettingsStore.shared.appearanceOverride
     }
+
+    // Custom attribute key for clickable link URLs
+    static let linkURLKey = NSAttributedString.Key("ItsypadLinkURL")
+
+    // Pre-compiled regex for URL highlighting
+    private static let urlRegex = try! NSRegularExpression(
+        pattern: "https?://\\S+", options: []
+    )
 
     // Pre-compiled regex for list marker highlighting
     private static let bulletMarkerRegex = try! NSRegularExpression(
@@ -238,6 +248,23 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                     tv.textStorage?.addAttribute(.strikethroughColor, value: theme.foreground.withAlphaComponent(0.4), range: contentRange)
                 }
             }
+        }
+    }
+
+    private func applyLinkHighlighting(tv: EditorTextView, text: String, theme: EditorTheme) {
+        guard language == "plain" || language == "markdown" else { return }
+
+        let ns = text as NSString
+        let fullRange = NSRange(location: 0, length: ns.length)
+        let linkColor = theme.linkColor
+
+        for match in Self.urlRegex.matches(in: text, range: fullRange) {
+            let r = match.range
+            tv.textStorage?.addAttribute(.foregroundColor, value: linkColor, range: r)
+            tv.textStorage?.addAttribute(.underlineStyle, value: NSUnderlineStyle.single.rawValue, range: r)
+            tv.textStorage?.addAttribute(.underlineColor, value: linkColor, range: r)
+            let urlString = ns.substring(with: r)
+            tv.textStorage?.addAttribute(Self.linkURLKey, value: urlString, range: r)
         }
     }
 
