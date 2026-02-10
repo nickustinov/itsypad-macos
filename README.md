@@ -62,7 +62,8 @@ Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines ali
 ## Clipboard manager
 - **Text and images** — stores clipboard content
 - **Searchable** — filter history with highlighted search matches
-- **Click to copy** — click any entry to copy it back to clipboard
+- **Click to copy** — click any entry to copy it back to clipboard (or paste directly — configurable in settings)
+- **Quick-access shortcuts** — ⌘1–9 to copy the Nth item, ⌥1–9 to paste it into the previously active app
 - **Zoom preview** — hover a tile and click the magnifying glass to view full content in a near-fullscreen overlay
 - **Keyboard navigation** — arrow keys to browse items, Enter to copy, Space to preview/unpreview, Escape to deselect
 - **Grid or panels** — switch between a multi-column grid and full-width panel rows
@@ -112,9 +113,11 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 |----------|--------|
 | ↓ | Move focus from search to first item |
 | ↑↓←→ | Navigate between items |
-| Return | Copy selected item to clipboard |
+| Return | Copy selected item (or paste — see settings) |
 | Space | Toggle preview overlay |
 | Escape | Deselect item / close preview |
+| ⌘1–9 | Copy Nth visible item to clipboard |
+| ⌥1–9 | Copy Nth item and paste into active app |
 
 ## Also by me
 
@@ -155,7 +158,8 @@ Sources/
 │   ├── ClipboardCardView.swift          # Individual clipboard card with preview, delete, and zoom
 │   ├── ClipboardPreviewOverlay.swift    # Near-fullscreen zoom preview overlay
 │   ├── ClipboardTabView.swift           # NSViewRepresentable wrapper for ClipboardContentView
-│   └── CardTextField.swift              # Non-interactive text field (suppresses I-beam cursor)
+│   ├── CardTextField.swift              # Non-interactive text field (suppresses I-beam cursor)
+│   └── AccessibilityHelper.swift        # Accessibility check and CGEvent paste simulation
 ├── Settings/
 │   ├── SettingsStore.swift              # UserDefaults-backed settings with change notifications
 │   ├── SettingsView.swift               # SwiftUI settings window (general, editor, appearance, clipboard)
@@ -172,6 +176,7 @@ Executable/
 Packages/
 └── Bonsplit/                            # Local package: split pane and tab bar framework
 Tests/
+├── ClipboardShortcutTests.swift
 ├── ClipboardStoreTests.swift
 ├── EditorThemeTests.swift
 ├── FileWatcherTests.swift

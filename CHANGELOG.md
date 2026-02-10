@@ -10,6 +10,8 @@ Features:
 - Configurable font size — adjust clipboard card text size (8–24pt)
 - Keyboard navigation — arrow keys to move between clipboard items, Enter to copy, Space to preview, Escape to deselect
 - Preview navigation — arrow keys change the previewed item while the overlay is open, Space toggles it closed
+- Quick-access shortcuts — ⌘1–9 to copy the Nth visible item, ⌥1–9 to copy and paste it into the previously active app
+- Default action setting — choose whether clicking or pressing Enter copies to clipboard (default) or pastes into the active app
 
 Improvements:
 - Editor performance — reduced input lag by limiting layout recalculation to visible range, tracking line highlight range instead of full-document attribute removal, and debouncing language detection

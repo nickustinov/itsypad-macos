@@ -5,6 +5,7 @@ class ClipboardCardView: NSView {
     private let imageView = NSImageView()
     private let timestampLabel = CardTextField(label: "")
     private let deleteButton = NSButton()
+    private let shortcutBadgeLabel = CardTextField(label: "")
     private let copiedBadge = CardTextField(label: "Copied")
     private let zoomButton = NSButton()
     private var trackingArea: NSTrackingArea?
@@ -13,6 +14,7 @@ class ClipboardCardView: NSView {
     private var copiedFlashWork: DispatchWorkItem?
     var onDelete: ((UUID) -> Void)?
     var onZoom: ((ClipboardEntry) -> Void)?
+    var onActivate: ((ClipboardEntry) -> Void)?
 
     var themeBackground: NSColor = .windowBackgroundColor { didSet { updateBackground() } }
     var isDark: Bool = false { didSet { updateAppearance() } }
@@ -61,6 +63,12 @@ class ClipboardCardView: NSView {
         deleteButton.isHidden = true
         deleteButton.contentTintColor = .secondaryLabelColor
 
+        shortcutBadgeLabel.translatesAutoresizingMaskIntoConstraints = false
+        shortcutBadgeLabel.font = NSFont.systemFont(ofSize: 10)
+        shortcutBadgeLabel.textColor = .secondaryLabelColor
+        shortcutBadgeLabel.isSelectable = false
+        shortcutBadgeLabel.isHidden = true
+
         copiedBadge.translatesAutoresizingMaskIntoConstraints = false
         copiedBadge.font = NSFont.systemFont(ofSize: 10, weight: .medium)
         copiedBadge.textColor = .secondaryLabelColor
@@ -82,6 +90,7 @@ class ClipboardCardView: NSView {
         addSubview(imageView)
         addSubview(previewLabel)
         addSubview(timestampLabel)
+        addSubview(shortcutBadgeLabel)
         addSubview(deleteButton)
         addSubview(zoomButton)
         addSubview(copiedBadge)
@@ -110,6 +119,10 @@ class ClipboardCardView: NSView {
             zoomButton.widthAnchor.constraint(equalToConstant: 12),
             zoomButton.heightAnchor.constraint(equalToConstant: 12),
 
+            shortcutBadgeLabel.leadingAnchor.constraint(equalTo: timestampLabel.trailingAnchor, constant: 6),
+            shortcutBadgeLabel.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
+            shortcutBadgeLabel.trailingAnchor.constraint(lessThanOrEqualTo: zoomButton.leadingAnchor, constant: -6),
+
             copiedBadge.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -6),
             copiedBadge.centerYAnchor.constraint(equalTo: timestampLabel.centerYAnchor),
         ])
@@ -131,7 +144,7 @@ class ClipboardCardView: NSView {
         onZoom?(entry)
     }
 
-    func configure(with entry: ClipboardEntry, searchQuery: String = "") {
+    func configure(with entry: ClipboardEntry, searchQuery: String = "", shortcutIndex: Int? = nil) {
         self.entry = entry
         previewLabel.maximumNumberOfLines = SettingsStore.shared.clipboardPreviewLines
 
@@ -152,6 +165,15 @@ class ClipboardCardView: NSView {
         }
 
         timestampLabel.stringValue = clipboardRelativeTime(from: entry.timestamp)
+
+        if let index = shortcutIndex {
+            let n = index + 1
+            shortcutBadgeLabel.stringValue = "\u{2318}\(n)  \u{2325}\(n)"
+            shortcutBadgeLabel.isHidden = false
+        } else {
+            shortcutBadgeLabel.isHidden = true
+        }
+
         updateBackground()
     }
 
@@ -216,6 +238,7 @@ class ClipboardCardView: NSView {
     func resetState() {
         copiedFlashWork?.cancel()
         copiedBadge.isHidden = true
+        shortcutBadgeLabel.isHidden = true
         deleteButton.isHidden = true
         zoomButton.isHidden = true
         isHovered = false
@@ -227,9 +250,11 @@ class ClipboardCardView: NSView {
 
     private func updateAppearance() {
         previewLabel.textColor = isDark ? .white : .black
-        timestampLabel.textColor = isDark
+        let secondaryColor = isDark
             ? NSColor.white.withAlphaComponent(0.5)
             : NSColor.black.withAlphaComponent(0.5)
+        timestampLabel.textColor = secondaryColor
+        shortcutBadgeLabel.textColor = secondaryColor
         updateBackground()
     }
 
@@ -248,8 +273,12 @@ class ClipboardCardView: NSView {
 
     @objc private func cardClicked() {
         guard let entry else { return }
-        ClipboardStore.shared.copyToClipboard(entry)
-        showCopiedFlash()
+        if let onActivate {
+            onActivate(entry)
+        } else {
+            ClipboardStore.shared.copyToClipboard(entry)
+            showCopiedFlash()
+        }
     }
 
     func flashCopied() { showCopiedFlash() }

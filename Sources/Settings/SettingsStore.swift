@@ -206,6 +206,13 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var clipboardClickAction: String = "copy" {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardClickAction, forKey: "clipboardClickAction")
+        }
+    }
+
     var indentString: String {
         indentUsingSpaces ? String(repeating: " ", count: tabWidth) : "\t"
     }
@@ -281,5 +288,6 @@ class SettingsStore: ObservableObject {
         clipboardPreviewLines = savedPreviewLines > 0 ? savedPreviewLines : 5
         let savedClipboardFontSize = defaults.double(forKey: "clipboardFontSize")
         clipboardFontSize = savedClipboardFontSize > 0 ? savedClipboardFontSize : 11
+        clipboardClickAction = defaults.string(forKey: "clipboardClickAction") ?? "copy"
     }
 }

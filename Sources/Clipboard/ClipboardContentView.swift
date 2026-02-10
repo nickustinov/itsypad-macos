@@ -23,6 +23,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     private var currentSearchQuery: String = ""
     private var previewOverlay: ClipboardPreviewOverlay?
     private var selectedIndex: Int?
+    private var shortcutMonitor: Any?
 
     var themeBackground: NSColor = .windowBackgroundColor {
         didSet { applyTheme() }
@@ -137,6 +138,11 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             self?.reloadEntries()
         }
 
+        shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, self.isClipboardTabVisible else { return event }
+            return self.handleShortcutKeyEvent(event) ? nil : event
+        }
+
         reloadEntries()
     }
 
@@ -149,6 +155,9 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         }
         if let observer = settingsObserver {
             NotificationCenter.default.removeObserver(observer)
+        }
+        if let monitor = shortcutMonitor {
+            NSEvent.removeMonitor(monitor)
         }
     }
 
@@ -218,8 +227,12 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             cardItem.cardView?.onZoom = { [weak self] entry in
                 self?.showPreview(for: entry)
             }
+            cardItem.cardView?.onActivate = { [weak self] entry in
+                self?.activateEntry(entry, at: indexPath.item)
+            }
             cardItem.cardView?.isCardSelected = (selectedIndex == indexPath.item)
-            cardItem.cardView?.configure(with: filteredEntries[indexPath.item], searchQuery: currentSearchQuery)
+            let shortcutIndex: Int? = indexPath.item < 9 ? indexPath.item : nil
+            cardItem.cardView?.configure(with: filteredEntries[indexPath.item], searchQuery: currentSearchQuery, shortcutIndex: shortcutIndex)
         }
         return item
     }
@@ -320,11 +333,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
 
     private func handleReturn() -> Bool {
         guard let index = selectedIndex, index < filteredEntries.count else { return false }
-        let entry = filteredEntries[index]
-        ClipboardStore.shared.copyToClipboard(entry)
-        if let item = collectionView.item(at: index) as? ClipboardCardItem {
-            item.cardView?.flashCopied()
-        }
+        activateEntry(filteredEntries[index], at: index)
         return true
     }
 
@@ -431,6 +440,68 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         previewOverlay = nil
         overlay.animateOut {
             overlay.removeFromSuperview()
+        }
+    }
+
+    // MARK: - Clipboard shortcuts (⌘1–9 / ⌥1–9)
+
+    private var isClipboardTabVisible: Bool {
+        guard let window, window.isKeyWindow else { return false }
+        return !isHiddenOrHasHiddenAncestor && visibleRect.height > 0
+    }
+
+    private func handleShortcutKeyEvent(_ event: NSEvent) -> Bool {
+        let flags = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard let number = clipboardNumberFromKeyCode(event.keyCode) else { return false }
+        let index = number - 1
+        guard index < filteredEntries.count else { return false }
+
+        if flags == .command {
+            copyItem(at: index)
+            return true
+        } else if flags == .option {
+            pasteItem(at: index)
+            return true
+        }
+        return false
+    }
+
+    private func activateEntry(_ entry: ClipboardEntry, at index: Int) {
+        if SettingsStore.shared.clipboardClickAction == "paste" {
+            pasteItem(at: index)
+        } else {
+            copyItem(at: index)
+        }
+    }
+
+    private func copyItem(at index: Int) {
+        let entry = filteredEntries[index]
+        ClipboardStore.shared.copyToClipboard(entry)
+        if let item = collectionView.item(at: index) as? ClipboardCardItem {
+            item.cardView?.flashCopied()
+        }
+    }
+
+    private func pasteItem(at index: Int) {
+        let entry = filteredEntries[index]
+        ClipboardStore.shared.copyToClipboard(entry)
+        if let item = collectionView.item(at: index) as? ClipboardCardItem {
+            item.cardView?.flashCopied()
+        }
+        guard AccessibilityHelper.isTrusted() else {
+            AccessibilityHelper.requestPermission()
+            return
+        }
+        hideWindowAndPaste()
+    }
+
+    private func hideWindowAndPaste() {
+        if let delegate = NSApp.delegate as? AppDelegate {
+            delegate.toggleWindow()
+        }
+        NSApp.hide(nil)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            AccessibilityHelper.simulatePaste()
         }
     }
 

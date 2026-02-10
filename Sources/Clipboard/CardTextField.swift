@@ -18,6 +18,17 @@ class CardTextField: NSTextField {
     }
 }
 
+// MARK: - Key code to number mapping
+
+func clipboardNumberFromKeyCode(_ keyCode: UInt16) -> Int? {
+    switch keyCode {
+    case 18: return 1  case 19: return 2  case 20: return 3
+    case 21: return 4  case 23: return 5  case 22: return 6
+    case 26: return 7  case 28: return 8  case 25: return 9
+    default: return nil
+    }
+}
+
 // MARK: - Shared clipboard helpers
 
 func clipboardRelativeTime(from date: Date) -> String {

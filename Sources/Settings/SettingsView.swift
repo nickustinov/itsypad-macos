@@ -239,6 +239,13 @@ struct ClipboardSettingsView: View {
             }
 
             if store.clipboardEnabled {
+                Section("Behaviour") {
+                    Picker("Default action", selection: $store.clipboardClickAction) {
+                        Text("Copy to clipboard").tag("copy")
+                        Text("Paste into active app").tag("paste")
+                    }
+                }
+
                 Section("Display") {
                     Picker("View mode", selection: $store.clipboardViewMode) {
                         Text("Grid").tag("grid")
