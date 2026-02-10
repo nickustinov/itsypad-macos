@@ -3,6 +3,8 @@
 ## 1.3.0
 
 Features:
+- Check for updates — "Check for updates..." in the app menu and status bar menu checks GitHub releases and shows an alert when a new version is available
+- Tab switching shortcuts — ⌘1–9 to jump to tabs by position in the editor (excludes clipboard tab)
 - Clickable links — URLs in plain text and markdown tabs are highlighted and underlined; click to open in browser
 - Clipboard settings tab — dedicated settings pane for all clipboard options, moved out of General
 - Grid/panels toggle — switch between grid tiles and full-width panel rows in clipboard view

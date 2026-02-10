@@ -475,6 +475,14 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     @MainActor
+    func selectTab(atIndex index: Int) {
+        guard let focusedPaneId = controller.focusedPaneId else { return }
+        let tabs = controller.tabs(inPane: focusedPaneId).filter { $0.id != clipboardTabID }
+        guard index >= 0, index < tabs.count else { return }
+        controller.selectTab(tabs[index].id)
+    }
+
+    @MainActor
     func selectClipboardTab() {
         guard let clipID = clipboardTabID else { return }
         controller.selectTab(clipID)

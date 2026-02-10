@@ -165,6 +165,15 @@ class MenuBuilder {
         prevTabItem.target = target
         menu.addItem(prevTabItem)
 
+        menu.addItem(.separator())
+
+        for i in 1...9 {
+            let tabItem = NSMenuItem(title: "Tab \(i)", action: #selector(AppDelegate.selectTabByNumber(_:)), keyEquivalent: "\(i)")
+            tabItem.tag = i
+            tabItem.target = target
+            menu.addItem(tabItem)
+        }
+
         let item = NSMenuItem()
         item.submenu = menu
         return item

@@ -485,6 +485,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         editorCoordinator?.selectPreviousTab()
     }
 
+    @objc func selectTabByNumber(_ sender: NSMenuItem) {
+        editorCoordinator?.selectTab(atIndex: sender.tag - 1)
+    }
+
     @objc func increaseFontSize() {
         SettingsStore.shared.editorFontSize = min(36, SettingsStore.shared.editorFontSize + 1)
     }

@@ -100,6 +100,7 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⇧⌘L | Toggle checklist |
 | ⌥⌘↑ | Move line up |
 | ⌥⌘↓ | Move line down |
+| ⌘1–9 | Switch to tab by position |
 | ⌘+ | Increase font size |
 | ⌘- | Decrease font size |
 | ⌘0 | Reset font size |
