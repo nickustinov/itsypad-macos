@@ -36,6 +36,9 @@ struct EditorTheme {
     // Bullet-dash color (matches punctuation.special from old captures)
     var bulletDashColor: NSColor { isDark ? Self.hex(0xff6188) : Self.hex(0xd3284e) }
 
+    // Checkbox bracket color
+    var checkboxColor: NSColor { isDark ? Self.hex(0xab9df2) : Self.hex(0x7c6bb7) }
+
     // MARK: - Hex color helper
 
     private static func hex(_ value: UInt32) -> NSColor {

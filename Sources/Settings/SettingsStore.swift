@@ -121,6 +121,30 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var bulletListsEnabled: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(bulletListsEnabled, forKey: "bulletListsEnabled")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var numberedListsEnabled: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(numberedListsEnabled, forKey: "numberedListsEnabled")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
+    @Published var checklistsEnabled: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(checklistsEnabled, forKey: "checklistsEnabled")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     @Published var icloudSync: Bool = false
 
     func setICloudSync(_ enabled: Bool) {
@@ -206,6 +230,9 @@ class SettingsStore: ObservableObject {
         let savedTabWidth = defaults.integer(forKey: "tabWidth")
         tabWidth = savedTabWidth > 0 ? savedTabWidth : 4
         wordWrap = defaults.object(forKey: "wordWrap") as? Bool ?? true
+        bulletListsEnabled = defaults.object(forKey: "bulletListsEnabled") as? Bool ?? true
+        numberedListsEnabled = defaults.object(forKey: "numberedListsEnabled") as? Bool ?? true
+        checklistsEnabled = defaults.object(forKey: "checklistsEnabled") as? Bool ?? true
         icloudSync = defaults.bool(forKey: "icloudSync")
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: shortcutKeysKey),

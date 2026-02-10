@@ -8,7 +8,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 
 ## Features
 
-- **Text editor** — syntax highlighting, multi-tab, split view, find and replace
+- **Text editor** — syntax highlighting, multi-tab, split view, find and replace, lists and checklists
 - **Clipboard manager** — 500-item history, searchable, click to copy
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
@@ -25,6 +25,37 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts
 - **Auto-save** — content is continuously saved to session, never lose your work
 - **Monokai-inspired theme** — dark and light variants with system appearance support
+
+## Lists and checklists
+
+Itsypad supports markdown-compatible lists and checklists directly in the editor. All state lives in the text itself — no hidden metadata, fully portable.
+
+### Syntax
+
+```
+- bullet item
+* also a bullet
+1. numbered item
+- [ ] unchecked task
+- [x] completed task
+```
+
+### How it works
+
+Type a list prefix and start writing. Press **Enter** to auto-continue with the next item. Press **Enter** on an empty item to exit list mode. Use **Tab** / **Shift+Tab** to indent and outdent list items.
+
+For checklists, press **⇧⌘L** to convert any line(s) to a checklist, or type `- [ ] ` manually. Toggle checkboxes with **⌘Return** or by clicking directly on the `[ ]` / `[x]` brackets. Checked items appear with ~~strikethrough~~ and dimmed text.
+
+Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines align to the content start, not the bullet.
+
+### Visual styling
+
+| Element | Appearance |
+|---|---|
+| Bullet dashes `-`, `*` | 🔴 Magenta/red (`bulletDashColor`) |
+| Ordered numbers `1.` | 🔴 Magenta/red (`bulletDashColor`) |
+| Checkbox brackets `[ ]`, `[x]` | 🟣 Purple |
+| Checked item content | ~~Strikethrough~~ + dimmed |
 
 ## Clipboard manager
 - **Text and images** — stores clipboard content
@@ -59,12 +90,15 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⇧⌘G | Find previous |
 | ⌘E | Use selection for find |
 | ⌘D | Duplicate line |
+| ⌘Return | Toggle checkbox |
+| ⇧⌘L | Toggle checklist |
+| ⌥⌘↑ | Move line up |
+| ⌥⌘↓ | Move line down |
 | ⌘+ | Increase font size |
 | ⌘- | Decrease font size |
 | ⌘0 | Reset font size |
-| ⇧⌘L | Toggle line numbers |
-| Tab | Indent selection |
-| ⇧Tab | Unindent selection |
+| Tab | Indent line/selection |
+| ⇧Tab | Unindent line/selection |
 | Fn↓ / Fn↑ | Page down / up (moves cursor) |
 
 ## Also by me
@@ -94,6 +128,7 @@ Sources/
 │   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
 │   ├── LanguageDetector.swift          # File extension → language mapping for highlight.js
 │   ├── LineNumberGutterView.swift      # Line number gutter drawn alongside the text view
+│   ├── ListHelper.swift                # List/checklist parsing, continuation, and toggling
 │   └── FileWatcher.swift                # DispatchSource-based file change monitoring
 ├── Clipboard/
 │   ├── ClipboardStore.swift            # Clipboard monitoring and history persistence
@@ -120,6 +155,7 @@ Tests/
 ├── FileWatcherTests.swift
 ├── LanguageDetectorTests.swift
 ├── LineNumberGutterViewTests.swift
+├── ListHelperTests.swift
 ├── ModifierKeyDetectionTests.swift
 ├── SettingsStoreTests.swift
 ├── ShortcutKeysTests.swift

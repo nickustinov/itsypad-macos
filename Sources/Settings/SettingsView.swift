@@ -182,6 +182,12 @@ struct EditorSettingsView: View {
                 }
             }
 
+            Section("Lists") {
+                Toggle("Bullet lists", isOn: $store.bulletListsEnabled)
+                Toggle("Numbered lists", isOn: $store.numberedListsEnabled)
+                Toggle("Checklists", isOn: $store.checklistsEnabled)
+            }
+
         }
         .formStyle(.grouped)
     }

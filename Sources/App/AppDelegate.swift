@@ -513,6 +513,25 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         findMenuItem.submenu = findMenu
         menu.addItem(findMenuItem)
 
+        menu.addItem(.separator())
+
+        let toggleChecklistItem = NSMenuItem(title: "Toggle checklist", action: #selector(toggleChecklistAction), keyEquivalent: "l")
+        toggleChecklistItem.keyEquivalentModifierMask = [.command, .shift]
+        toggleChecklistItem.target = self
+        menu.addItem(toggleChecklistItem)
+
+        let moveUpItem = NSMenuItem(title: "Move line up", action: #selector(moveLineUpAction), keyEquivalent: "")
+        moveUpItem.keyEquivalent = String(UnicodeScalar(NSUpArrowFunctionKey)!)
+        moveUpItem.keyEquivalentModifierMask = [.command, .option]
+        moveUpItem.target = self
+        menu.addItem(moveUpItem)
+
+        let moveDownItem = NSMenuItem(title: "Move line down", action: #selector(moveLineDownAction), keyEquivalent: "")
+        moveDownItem.keyEquivalent = String(UnicodeScalar(NSDownArrowFunctionKey)!)
+        moveDownItem.keyEquivalentModifierMask = [.command, .option]
+        moveDownItem.target = self
+        menu.addItem(moveDownItem)
+
         let item = NSMenuItem()
         item.submenu = menu
         return item
@@ -539,8 +558,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         wordWrapItem.target = self
         menu.addItem(wordWrapItem)
 
-        let lineNumbersItem = NSMenuItem(title: "Show line numbers", action: #selector(toggleLineNumbers), keyEquivalent: "l")
-        lineNumbersItem.keyEquivalentModifierMask = [.command, .shift]
+        let lineNumbersItem = NSMenuItem(title: "Show line numbers", action: #selector(toggleLineNumbers), keyEquivalent: "")
         lineNumbersItem.target = self
         menu.addItem(lineNumbersItem)
 
@@ -590,6 +608,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc private func findAction(_ sender: NSMenuItem) {
         editorCoordinator?.activeTextView()?.performFindPanelAction(sender)
+    }
+
+    @objc private func toggleChecklistAction() {
+        editorCoordinator?.activeTextView()?.toggleChecklist()
+    }
+
+    @objc private func moveLineUpAction() {
+        editorCoordinator?.activeTextView()?.moveLine(.up)
+    }
+
+    @objc private func moveLineDownAction() {
+        editorCoordinator?.activeTextView()?.moveLine(.down)
     }
 
     @objc private func closeTabAction() {

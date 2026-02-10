@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0
+
+Features:
+- Lists and checklists — bullet lists (`- `, `* `), numbered lists (`1. `), and checklists (`- [ ] `, `- [x] `) with auto-continuation on Enter, empty-item exit, Tab/Shift+Tab indent/outdent, Cmd+Return to toggle checkboxes, clickable checkboxes, Cmd+Shift+L to convert lines to/from checklists, Cmd+Option+Up/Down to move lines, strikethrough+dimmed styling for checked items, and wrapped-line alignment past the bullet
+
 ## 1.1.0
 
 Improvements:

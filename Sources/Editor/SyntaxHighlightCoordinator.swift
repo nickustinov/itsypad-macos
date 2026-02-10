@@ -132,7 +132,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 }
 
                 // Apply bullet dash highlighting on top
-                self.applyBulletDashes(tv: tv, text: textSnapshot, theme: currentTheme)
+                self.applyListMarkers(tv: tv, text: textSnapshot, theme: currentTheme)
 
                 tv.textStorage?.endEditing()
                 self.applyWrapIndent(to: tv, font: userFont)
@@ -162,7 +162,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
             .foregroundColor: theme.foreground,
         ], range: fullRange)
 
-        applyBulletDashes(tv: tv, text: text, theme: theme)
+        applyListMarkers(tv: tv, text: text, theme: theme)
 
         tv.textStorage?.endEditing()
         applyWrapIndent(to: tv, font: font)
@@ -176,15 +176,62 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         lastAppearance = SettingsStore.shared.appearanceOverride
     }
 
-    private func applyBulletDashes(tv: EditorTextView, text: String, theme: EditorTheme) {
+    // Pre-compiled regex for list marker highlighting
+    private static let bulletMarkerRegex = try! NSRegularExpression(
+        pattern: "^[ \\t]*[-*](?= )", options: .anchorsMatchLines
+    )
+    private static let orderedMarkerRegex = try! NSRegularExpression(
+        pattern: "^[ \\t]*\\d+\\.(?= )", options: .anchorsMatchLines
+    )
+    private static let checkboxRegex = try! NSRegularExpression(
+        pattern: "^([ \\t]*[-*] )(\\[[ x]\\])( )(.*)",
+        options: .anchorsMatchLines
+    )
+
+    private func applyListMarkers(tv: EditorTextView, text: String, theme: EditorTheme) {
         let ns = text as NSString
         let fullRange = NSRange(location: 0, length: ns.length)
         let dashColor = theme.bulletDashColor
-        if let regex = try? NSRegularExpression(pattern: "^[ \\t]*-(?= )", options: .anchorsMatchLines) {
-            for match in regex.matches(in: text, range: fullRange) {
+        let checkboxColor = theme.checkboxColor
+
+        let store = SettingsStore.shared
+
+        // Bullet dashes and asterisks
+        if store.bulletListsEnabled {
+            for match in Self.bulletMarkerRegex.matches(in: text, range: fullRange) {
                 let r = match.range
-                let dashRange = NSRange(location: r.location + r.length - 1, length: 1)
-                tv.textStorage?.addAttribute(.foregroundColor, value: dashColor, range: dashRange)
+                let markerRange = NSRange(location: r.location + r.length - 1, length: 1)
+                tv.textStorage?.addAttribute(.foregroundColor, value: dashColor, range: markerRange)
+            }
+        }
+
+        // Ordered numbers
+        if store.numberedListsEnabled {
+            for match in Self.orderedMarkerRegex.matches(in: text, range: fullRange) {
+                let r = match.range
+                tv.textStorage?.addAttribute(.foregroundColor, value: dashColor, range: r)
+            }
+        }
+
+        // Checkbox styling
+        guard store.checklistsEnabled else { return }
+        for match in Self.checkboxRegex.matches(in: text, range: fullRange) {
+            let bracketRange = match.range(at: 2)
+            tv.textStorage?.addAttribute(.foregroundColor, value: checkboxColor, range: bracketRange)
+
+            let bracketText = ns.substring(with: bracketRange)
+            if bracketText == "[x]" {
+                // Dim the entire line (prefix + content) for checked items
+                let lineRange = match.range
+                tv.textStorage?.addAttribute(.foregroundColor, value: theme.foreground.withAlphaComponent(0.4), range: lineRange)
+                // Re-apply checkbox color on brackets so they stay visible
+                tv.textStorage?.addAttribute(.foregroundColor, value: checkboxColor.withAlphaComponent(0.4), range: bracketRange)
+                // Strikethrough on content
+                let contentRange = match.range(at: 4)
+                if contentRange.length > 0 {
+                    tv.textStorage?.addAttribute(.strikethroughStyle, value: NSUnderlineStyle.single.rawValue, range: contentRange)
+                    tv.textStorage?.addAttribute(.strikethroughColor, value: theme.foreground.withAlphaComponent(0.4), range: contentRange)
+                }
             }
         }
     }
@@ -203,6 +250,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         var pos = 0
         while pos < totalLength {
             let lineRange = ns.lineRange(for: NSRange(location: pos, length: 0))
+            let lineText = ns.substring(with: lineRange)
 
             var indent: CGFloat = 0
             var i = lineRange.location
@@ -215,8 +263,15 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 i += 1
             }
 
+            // For list lines, indent wrapped text to content start (past the prefix)
+            var headIndent = indent
+            let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
+            if let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind) {
+                headIndent = CGFloat(match.contentStart) * spaceWidth
+            }
+
             let para = NSMutableParagraphStyle()
-            para.headIndent = indent
+            para.headIndent = headIndent
             storage.addAttribute(.paragraphStyle, value: para, range: lineRange)
 
             pos = lineRange.location + lineRange.length
