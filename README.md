@@ -25,6 +25,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts
 - **Auto-save** — content is continuously saved to session, never lose your work
 - **Clickable links** — URLs in plain text and markdown tabs are highlighted and underlined; click to open in browser
+- **Always on top** — pin the window above all other apps (⇧⌘T)
 - **Monokai-inspired theme** — dark and light variants with system appearance support
 
 ## Lists and checklists
@@ -101,6 +102,7 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⌥⌘↑ | Move line up |
 | ⌥⌘↓ | Move line down |
 | ⌘1–9 | Switch to tab by position |
+| ⇧⌘T | Always on top |
 | ⇧⌘D | Split right |
 | ⇧⌃⌘D | Split down |
 | ⌘+ | Increase font size |

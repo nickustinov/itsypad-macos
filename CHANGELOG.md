@@ -3,6 +3,7 @@
 ## 1.3.0
 
 Features:
+- Always on top — pin the window above all other windows via View → Always on top (⇧⌘T)
 - Check for updates — "Check for updates..." in the app menu and status bar menu checks GitHub releases and shows an alert when a new version is available
 - Tab switching shortcuts — ⌘1–9 to jump to tabs by position in the editor (excludes clipboard tab)
 - Split pane shortcuts — ⇧⌘D to split right, ⇧⌃⌘D to split down

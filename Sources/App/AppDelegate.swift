@@ -29,6 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var workspaceObserver: Any?
     private var settingsObserver: Any?
     private var recentFilesMenu: NSMenu?
+    private var isPinned = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -517,6 +518,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         SettingsStore.shared.wordWrap.toggle()
     }
 
+    @objc func togglePin() {
+        isPinned.toggle()
+        editorWindow?.level = isPinned ? .floating : .normal
+    }
+
     private func buildTabSwitcherMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
@@ -616,6 +622,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         if menuItem.action == #selector(toggleWordWrap) {
             menuItem.state = SettingsStore.shared.wordWrap ? .on : .off
         }
+        if menuItem.action == #selector(togglePin) {
+            menuItem.state = isPinned ? .on : .off
+        }
         return true
     }
+
 }

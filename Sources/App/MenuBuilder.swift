@@ -153,6 +153,11 @@ class MenuBuilder {
         lineNumbersItem.target = target
         menu.addItem(lineNumbersItem)
 
+        let pinItem = NSMenuItem(title: "Always on top", action: #selector(AppDelegate.togglePin), keyEquivalent: "T")
+        pinItem.keyEquivalentModifierMask = [.command, .shift]
+        pinItem.target = target
+        menu.addItem(pinItem)
+
         menu.addItem(.separator())
 
         let nextTabItem = NSMenuItem(title: "Next tab", action: #selector(AppDelegate.nextTabAction), keyEquivalent: "\t")
