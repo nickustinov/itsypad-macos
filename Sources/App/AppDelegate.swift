@@ -374,7 +374,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     // MARK: - Settings
 
-    @objc private func openSettings() {
+    @objc func openSettings() {
         if let window = settingsWindow {
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -408,175 +408,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     // MARK: - Main menu
 
     private func setupMainMenu() {
-        let mainMenu = NSMenu()
-        mainMenu.addItem(buildAppMenuItem())
-        mainMenu.addItem(buildFileMenuItem())
-        mainMenu.addItem(buildEditMenuItem())
-        mainMenu.addItem(buildViewMenuItem())
-        NSApp.mainMenu = mainMenu
-    }
-
-    private func buildAppMenuItem() -> NSMenuItem {
-        let menu = NSMenu()
-        menu.addItem(NSMenuItem(title: "About Itsypad", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: ""))
-        menu.addItem(.separator())
-        let settingsMenuItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
-        settingsMenuItem.target = self
-        menu.addItem(settingsMenuItem)
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Hide Itsypad", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
-        let hideOthersItem = NSMenuItem(title: "Hide others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
-        hideOthersItem.keyEquivalentModifierMask = [.command, .option]
-        menu.addItem(hideOthersItem)
-        menu.addItem(NSMenuItem(title: "Show all", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: ""))
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Quit Itsypad", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
-
-        let item = NSMenuItem()
-        item.submenu = menu
-        return item
-    }
-
-    private func buildFileMenuItem() -> NSMenuItem {
-        let menu = NSMenu(title: "File")
-        menu.addItem(NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "t"))
-        let altNewTab = NSMenuItem(title: "New tab", action: #selector(newTabAction), keyEquivalent: "n")
-        altNewTab.isHidden = true
-        altNewTab.allowsKeyEquivalentWhenHidden = true
-        menu.addItem(altNewTab)
-        menu.addItem(NSMenuItem(title: "Open...", action: #selector(openFileAction), keyEquivalent: "o"))
+        let builder = MenuBuilder(target: self)
 
         let recentMenu = NSMenu(title: "Open recent")
         recentMenu.delegate = self
         recentFilesMenu = recentMenu
-        let recentItem = NSMenuItem(title: "Open recent", action: nil, keyEquivalent: "")
-        recentItem.submenu = recentMenu
-        menu.addItem(recentItem)
 
-        menu.addItem(NSMenuItem(title: "Save", action: #selector(saveFileAction), keyEquivalent: "s"))
-
-        let saveAsItem = NSMenuItem(title: "Save as...", action: #selector(saveFileAsAction), keyEquivalent: "S")
-        saveAsItem.keyEquivalentModifierMask = [.command, .shift]
-        menu.addItem(saveAsItem)
-
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Close tab", action: #selector(closeTabAction), keyEquivalent: "w"))
-
-        let item = NSMenuItem()
-        item.submenu = menu
-        return item
-    }
-
-    private func buildEditMenuItem() -> NSMenuItem {
-        let menu = NSMenu(title: "Edit")
-        menu.addItem(NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"))
-        let redoItem = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "Z")
-        redoItem.keyEquivalentModifierMask = [.command, .shift]
-        menu.addItem(redoItem)
-        menu.addItem(.separator())
-        menu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
-        menu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
-        menu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
-        menu.addItem(NSMenuItem(title: "Select all", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
-        menu.addItem(.separator())
-
-        let findMenu = NSMenu(title: "Find")
-
-        let findItem = NSMenuItem(title: "Find...", action: #selector(findAction(_:)), keyEquivalent: "f")
-        findItem.tag = Int(NSTextFinder.Action.showFindInterface.rawValue)
-        findItem.target = self
-        findMenu.addItem(findItem)
-
-        let replaceItem = NSMenuItem(title: "Find and replace...", action: #selector(findAction(_:)), keyEquivalent: "f")
-        replaceItem.keyEquivalentModifierMask = [.command, .option]
-        replaceItem.tag = Int(NSTextFinder.Action.showReplaceInterface.rawValue)
-        replaceItem.target = self
-        findMenu.addItem(replaceItem)
-
-        let findNextItem = NSMenuItem(title: "Find next", action: #selector(findAction(_:)), keyEquivalent: "g")
-        findNextItem.tag = Int(NSTextFinder.Action.nextMatch.rawValue)
-        findNextItem.target = self
-        findMenu.addItem(findNextItem)
-
-        let findPrevItem = NSMenuItem(title: "Find previous", action: #selector(findAction(_:)), keyEquivalent: "G")
-        findPrevItem.keyEquivalentModifierMask = [.command, .shift]
-        findPrevItem.tag = Int(NSTextFinder.Action.previousMatch.rawValue)
-        findPrevItem.target = self
-        findMenu.addItem(findPrevItem)
-
-        let useSelItem = NSMenuItem(title: "Use selection for find", action: #selector(findAction(_:)), keyEquivalent: "e")
-        useSelItem.tag = Int(NSTextFinder.Action.setSearchString.rawValue)
-        useSelItem.target = self
-        findMenu.addItem(useSelItem)
-
-        let findMenuItem = NSMenuItem(title: "Find", action: nil, keyEquivalent: "")
-        findMenuItem.submenu = findMenu
-        menu.addItem(findMenuItem)
-
-        menu.addItem(.separator())
-
-        let toggleChecklistItem = NSMenuItem(title: "Toggle checklist", action: #selector(toggleChecklistAction), keyEquivalent: "l")
-        toggleChecklistItem.keyEquivalentModifierMask = [.command, .shift]
-        toggleChecklistItem.target = self
-        menu.addItem(toggleChecklistItem)
-
-        let moveUpItem = NSMenuItem(title: "Move line up", action: #selector(moveLineUpAction), keyEquivalent: "")
-        moveUpItem.keyEquivalent = String(UnicodeScalar(NSUpArrowFunctionKey)!)
-        moveUpItem.keyEquivalentModifierMask = [.command, .option]
-        moveUpItem.target = self
-        menu.addItem(moveUpItem)
-
-        let moveDownItem = NSMenuItem(title: "Move line down", action: #selector(moveLineDownAction), keyEquivalent: "")
-        moveDownItem.keyEquivalent = String(UnicodeScalar(NSDownArrowFunctionKey)!)
-        moveDownItem.keyEquivalentModifierMask = [.command, .option]
-        moveDownItem.target = self
-        menu.addItem(moveDownItem)
-
-        let item = NSMenuItem()
-        item.submenu = menu
-        return item
-    }
-
-    private func buildViewMenuItem() -> NSMenuItem {
-        let menu = NSMenu(title: "View")
-
-        let zoomInItem = NSMenuItem(title: "Increase font size", action: #selector(increaseFontSize), keyEquivalent: "+")
-        zoomInItem.target = self
-        menu.addItem(zoomInItem)
-
-        let zoomOutItem = NSMenuItem(title: "Decrease font size", action: #selector(decreaseFontSize), keyEquivalent: "-")
-        zoomOutItem.target = self
-        menu.addItem(zoomOutItem)
-
-        let resetZoomItem = NSMenuItem(title: "Reset font size", action: #selector(resetFontSize), keyEquivalent: "0")
-        resetZoomItem.target = self
-        menu.addItem(resetZoomItem)
-
-        menu.addItem(.separator())
-
-        let wordWrapItem = NSMenuItem(title: "Word wrap", action: #selector(toggleWordWrap), keyEquivalent: "")
-        wordWrapItem.target = self
-        menu.addItem(wordWrapItem)
-
-        let lineNumbersItem = NSMenuItem(title: "Show line numbers", action: #selector(toggleLineNumbers), keyEquivalent: "")
-        lineNumbersItem.target = self
-        menu.addItem(lineNumbersItem)
-
-        menu.addItem(.separator())
-
-        let nextTabItem = NSMenuItem(title: "Next tab", action: #selector(nextTabAction), keyEquivalent: "\t")
-        nextTabItem.keyEquivalentModifierMask = [.control]
-        nextTabItem.target = self
-        menu.addItem(nextTabItem)
-
-        let prevTabItem = NSMenuItem(title: "Previous tab", action: #selector(previousTabAction), keyEquivalent: "\t")
-        prevTabItem.keyEquivalentModifierMask = [.control, .shift]
-        prevTabItem.target = self
-        menu.addItem(prevTabItem)
-
-        let item = NSMenuItem()
-        item.submenu = menu
-        return item
+        let mainMenu = NSMenu()
+        mainMenu.addItem(builder.buildAppMenuItem())
+        mainMenu.addItem(builder.buildFileMenuItem(recentFilesMenu: recentMenu))
+        mainMenu.addItem(builder.buildEditMenuItem())
+        mainMenu.addItem(builder.buildViewMenuItem())
+        NSApp.mainMenu = mainMenu
     }
 
     // MARK: - Menu actions
@@ -590,67 +433,67 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         NSApp.terminate(nil)
     }
 
-    @objc private func newTabAction() {
+    @objc func newTabAction() {
         editorCoordinator?.newTab()
     }
 
-    @objc private func openFileAction() {
+    @objc func openFileAction() {
         editorCoordinator?.openFile()
     }
 
-    @objc private func saveFileAction() {
+    @objc func saveFileAction() {
         editorCoordinator?.saveFile()
     }
 
-    @objc private func saveFileAsAction() {
+    @objc func saveFileAsAction() {
         editorCoordinator?.saveFileAs()
     }
 
-    @objc private func findAction(_ sender: NSMenuItem) {
+    @objc func findAction(_ sender: NSMenuItem) {
         editorCoordinator?.activeTextView()?.performFindPanelAction(sender)
     }
 
-    @objc private func toggleChecklistAction() {
+    @objc func toggleChecklistAction() {
         editorCoordinator?.activeTextView()?.toggleChecklist()
     }
 
-    @objc private func moveLineUpAction() {
+    @objc func moveLineUpAction() {
         editorCoordinator?.activeTextView()?.moveLine(.up)
     }
 
-    @objc private func moveLineDownAction() {
+    @objc func moveLineDownAction() {
         editorCoordinator?.activeTextView()?.moveLine(.down)
     }
 
-    @objc private func closeTabAction() {
+    @objc func closeTabAction() {
         editorCoordinator?.closeCurrentTab()
     }
 
-    @objc private func nextTabAction() {
+    @objc func nextTabAction() {
         editorCoordinator?.selectNextTab()
     }
 
-    @objc private func previousTabAction() {
+    @objc func previousTabAction() {
         editorCoordinator?.selectPreviousTab()
     }
 
-    @objc private func increaseFontSize() {
+    @objc func increaseFontSize() {
         SettingsStore.shared.editorFontSize = min(36, SettingsStore.shared.editorFontSize + 1)
     }
 
-    @objc private func decreaseFontSize() {
+    @objc func decreaseFontSize() {
         SettingsStore.shared.editorFontSize = max(8, SettingsStore.shared.editorFontSize - 1)
     }
 
-    @objc private func resetFontSize() {
+    @objc func resetFontSize() {
         SettingsStore.shared.editorFontSize = 14
     }
 
-    @objc private func toggleLineNumbers() {
+    @objc func toggleLineNumbers() {
         SettingsStore.shared.showLineNumbers.toggle()
     }
 
-    @objc private func toggleWordWrap() {
+    @objc func toggleWordWrap() {
         SettingsStore.shared.wordWrap.toggle()
     }
 

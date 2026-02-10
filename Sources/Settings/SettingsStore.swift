@@ -206,6 +206,10 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    var indentString: String {
+        indentUsingSpaces ? String(repeating: " ", count: tabWidth) : "\t"
+    }
+
     var editorFont: NSFont {
         if editorFontName == "System Mono" {
             return NSFont.monospacedSystemFont(ofSize: CGFloat(editorFontSize), weight: .regular)

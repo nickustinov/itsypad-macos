@@ -85,10 +85,6 @@ class TabStore: ObservableObject {
         tabs.first { $0.id == selectedTabID }
     }
 
-    var selectedTabIndex: Int? {
-        tabs.firstIndex { $0.id == selectedTabID }
-    }
-
     init(sessionURL: URL? = nil, cloudStore: KeyValueStoreProtocol = NSUbiquitousKeyValueStore.default) {
         self.cloudStore = cloudStore
 

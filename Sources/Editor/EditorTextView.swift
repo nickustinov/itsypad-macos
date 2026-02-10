@@ -166,8 +166,7 @@ final class EditorTextView: NSTextView {
             let lineText = ns.substring(with: lineRange)
             let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
             if let listMatch = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(listMatch.kind) {
-                let store2 = SettingsStore.shared
-                let indent = store2.indentUsingSpaces ? String(repeating: " ", count: store2.tabWidth) : "\t"
+                let indent = SettingsStore.shared.indentString
                 let insertRange = NSRange(location: lineRange.location, length: 0)
                 if shouldChangeText(in: insertRange, replacementString: indent) {
                     textStorage?.replaceCharacters(in: insertRange, with: indent)
@@ -258,8 +257,7 @@ final class EditorTextView: NSTextView {
     }
 
     private func indentSelectedLines() {
-        let store = SettingsStore.shared
-        let indent = store.indentUsingSpaces ? String(repeating: " ", count: store.tabWidth) : "\t"
+        let indent = SettingsStore.shared.indentString
         let ns = string as NSString
         let sel = selectedRange()
         let lineRange = ns.lineRange(for: sel)
