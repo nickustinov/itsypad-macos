@@ -7,10 +7,6 @@ private class EditorPanel: NSPanel {
         get { false }
         set { }
     }
-    override var canHide: Bool {
-        get { false }
-        set { }
-    }
 }
 
 // MARK: - Toolbar identifiers
@@ -240,7 +236,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         let panel = EditorPanel(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
-            styleMask: [.titled, .closable, .resizable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -429,6 +425,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         let settingsMenuItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
         settingsMenuItem.target = self
         menu.addItem(settingsMenuItem)
+        menu.addItem(.separator())
+        menu.addItem(NSMenuItem(title: "Hide Itsypad", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h"))
+        let hideOthersItem = NSMenuItem(title: "Hide others", action: #selector(NSApplication.hideOtherApplications(_:)), keyEquivalent: "h")
+        hideOthersItem.keyEquivalentModifierMask = [.command, .option]
+        menu.addItem(hideOthersItem)
+        menu.addItem(NSMenuItem(title: "Show all", action: #selector(NSApplication.unhideAllApplications(_:)), keyEquivalent: ""))
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Itsypad", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
 

@@ -7,6 +7,8 @@ Improvements:
 - Language detection now uses highlight.js auto-detect as the primary content-based detector, replacing brittle hand-written scoring heuristics
 - Added zoom preview for clipboard tiles — hover a tile and click the magnifying glass icon to view full content in a near-fullscreen overlay with rounded corners, scrollable text, and a copy button
 - Added promotion section for other macOS apps
+- Enabled window minimize (yellow traffic light button)
+- Added standard Hide (Cmd+H), Hide others (Option+Cmd+H), and Show all menu items
 
 Bug fixes:
 - Fixed drag-and-drop files to dock icon not opening them (missing document type declarations)
