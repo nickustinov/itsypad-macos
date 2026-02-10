@@ -186,6 +186,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         let menu = NSMenu()
 
         let showItem = NSMenuItem(title: "Show Itsypad", action: #selector(showItsypad), keyEquivalent: "")
+        showItem.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: nil)
         showItem.target = self
         if let keys = SettingsStore.shared.shortcutKeys {
             if keys.isTripleTap, let mod = keys.tapModifier {
@@ -212,16 +213,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         menu.addItem(.separator())
 
         let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
         settingsItem.target = self
         menu.addItem(settingsItem)
 
         let updateItem = NSMenuItem(title: "Check for updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
         updateItem.target = self
         menu.addItem(updateItem)
 
         menu.addItem(.separator())
 
         let quitItem = NSMenuItem(title: "Quit Itsypad", action: #selector(quitApp), keyEquivalent: "q")
+        quitItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         quitItem.target = self
         menu.addItem(quitItem)
 
@@ -322,11 +326,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .space, .findReplace, .flexibleSpace, .tabSwitcher]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .findReplace]
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .space, .findReplace, .flexibleSpace, .tabSwitcher]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .findReplace]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {

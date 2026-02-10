@@ -50,8 +50,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.nickustinov.itsypad
         PRODUCT_NAME: Itsypad
         PRODUCT_MODULE_NAME: ItsypadCore
-        MARKETING_VERSION: "1.3.0"
-        CURRENT_PROJECT_VERSION: "130"
+        MARKETING_VERSION: "1.3.1"
+        CURRENT_PROJECT_VERSION: "131"
         CODE_SIGN_ENTITLEMENTS: Sources/itsypad.entitlements
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: true
         SWIFT_VERSION: "5.9"
