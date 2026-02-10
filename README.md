@@ -9,7 +9,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever.
 ## Features
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace, clickable links, lists and checklists
-- **Clipboard manager** — 500-item history, searchable, keyboard navigable, grid or panels layout
+- **Clipboard manager** — 1,000-item history, searchable, keyboard navigable, grid or panels layout
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **No AI, no telemetry** — your data stays on your machine
@@ -60,7 +60,7 @@ Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines ali
 | URLs `https://...` | 🔵 Blue underlined (`linkColor`) |
 
 ## Clipboard manager
-- **Text and images** — stores clipboard content
+- **Text and images** — stores up to 1,000 clipboard entries
 - **Searchable** — filter history with highlighted search matches
 - **Click to copy** — click any entry to copy it back to clipboard (or paste directly — configurable in settings)
 - **Quick-access shortcuts** — ⌘1–9 to copy the Nth item, ⌥1–9 to paste it into the previously active app

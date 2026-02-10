@@ -41,7 +41,7 @@ class ClipboardStore {
     static let didChangeNotification = Notification.Name("clipboardStoreDidChange")
     static let clipboardTabSelectedNotification = Notification.Name("clipboardTabSelected")
 
-    private let maxEntries = 500
+    private let maxEntries = 1000
 
     init(storageURL: URL? = nil, imagesDirectory: URL? = nil) {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
