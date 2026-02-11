@@ -9,7 +9,6 @@ enum SyntaxThemeRegistry {
     static let themes: [SyntaxThemeDefinition] = [
         .init(id: "atom-one", displayName: "Atom One", darkResource: "atom-one-dark.min", lightResource: "atom-one-light.min"),
         .init(id: "catppuccin", displayName: "Catppuccin", darkResource: "catppuccin-mocha.min", lightResource: "catppuccin-latte.min"),
-        .init(id: "github", displayName: "GitHub", darkResource: "github-dark.min", lightResource: "github.min"),
         .init(id: "gruvbox", displayName: "Gruvbox", darkResource: "gruvbox-dark.min", lightResource: "gruvbox-light.min"),
         .init(id: "intellij", displayName: "IntelliJ / Darcula", darkResource: "androidstudio.min", lightResource: "intellij-light.min"),
         .init(id: "itsypad", displayName: "Itsypad", darkResource: "itsypad-dark.min", lightResource: "itsypad-light.min"),

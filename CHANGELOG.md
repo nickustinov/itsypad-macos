@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.2
+
+Fixes:
+- Clipboard view mode (grid/panels) now updates immediately when changed in settings
+- Removed GitHub syntax theme (rendering glitches)
+
 ## 1.4.1
 
 Fixes:
@@ -9,7 +15,7 @@ Fixes:
 ## 1.4.0
 
 Features:
-- Syntax theme picker — choose from 9 curated highlight.js themes in Settings → Appearance: Atom One, Catppuccin, GitHub, Gruvbox, IntelliJ / Darcula, Itsypad (default), Stack Overflow, Tokyo Night, Visual Studio
+- Syntax theme picker — choose from curated highlight.js themes in Settings → Appearance: Atom One, Catppuccin, Gruvbox, IntelliJ / Darcula, Itsypad (default), Stack Overflow, Tokyo Night, Visual Studio
 - Each theme has dark and light variants that switch automatically with system appearance
 
 Fixes:

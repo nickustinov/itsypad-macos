@@ -136,6 +136,8 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         ) { [weak self] _ in
             guard let self else { return }
             self.lastLayoutWidth = 0
+            self.collectionView.collectionViewLayout?.invalidateLayout()
+            self.collectionView.reloadData()
         }
 
         shortcutMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in

@@ -273,7 +273,8 @@ class SettingsStore: ObservableObject {
         let savedSize = defaults.double(forKey: "editorFontSize")
         editorFontSize = savedSize > 0 ? savedSize : 14
         appearanceOverride = defaults.string(forKey: "appearanceOverride") ?? "system"
-        syntaxTheme = defaults.string(forKey: "syntaxTheme") ?? "itsypad"
+        let savedTheme = defaults.string(forKey: "syntaxTheme") ?? "itsypad"
+        syntaxTheme = SyntaxThemeRegistry.themes.contains(where: { $0.id == savedTheme }) ? savedTheme : "itsypad"
         showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
         showInMenuBar = defaults.object(forKey: "showInMenuBar") as? Bool ?? true
         showLineNumbers = defaults.object(forKey: "showLineNumbers") as? Bool ?? true
