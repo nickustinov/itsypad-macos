@@ -5,6 +5,9 @@
 Features:
 - Configurable line spacing and letter spacing in Settings → Editor (#19)
 
+Fixes:
+- Fixed plain text (emails, notes) being false-positive syntax highlighted due to common English words overlapping programming keywords
+
 ## 1.4.3
 
 Fixes:
