@@ -230,11 +230,12 @@ xcrun notarytool submit dist/itsypad-<VERSION>.dmg \
 xcrun stapler staple dist/itsypad-<VERSION>.dmg
 ```
 
-4. Create the GitHub release:
+4. Create the GitHub release and fetch the tag locally:
 
 ```bash
 gh release create v<VERSION> dist/itsypad-<VERSION>.dmg \
     --title "v<VERSION>" --notes "Release notes here"
+git fetch --tags
 ```
 
 5. Update the Homebrew tap:
