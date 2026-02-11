@@ -186,7 +186,7 @@ class TabStore: ObservableObject {
                   !self.tabs[index].languageLocked else { return }
             let result = LanguageDetector.shared.detect(text: content, name: name, fileURL: fileURL)
             let oldLang = self.tabs[index].language
-            if result.confidence > 5 {
+            if result.confidence > 0 {
                 self.tabs[index].language = result.lang
             } else if oldLang != "plain" && result.lang == "plain" {
                 self.tabs[index].language = "plain"
@@ -477,7 +477,7 @@ class TabStore: ObservableObject {
                 name: tab.name,
                 fileURL: tab.fileURL
             )
-            if result.confidence > 5 {
+            if result.confidence > 0 {
                 tabs[index].language = result.lang
             } else if result.lang == "plain" && tab.language != "plain" {
                 tabs[index].language = "plain"

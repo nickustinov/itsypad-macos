@@ -89,6 +89,8 @@ final class AutoDetectTests: XCTestCase {
             "itsyhome.app – todo\n    – tomorrow\n        – HN post follow up\n        – No doorbell ring in HA\n    – fix streamdeck for HA\n\napps\n    – itsyhome\n    – itsytv\n    – itsypad\n        – global search",
             // Meeting notes with "key: value"-like patterns
             "Meeting notes\n\nAttendees: John, Sarah, Mike\nAction items:\n- Review the Q4 report by Friday\n- Send updated proposal to client\nBudget approved for $50,000.\nDeadline is March 15.",
+            // Email with words that overlap language keywords (in, is, if, any, open)
+            "Menu bar app to manage Homekit\n--\nHey Michael!\n\nBeen reading your indie app reviews, thought maybe mine fits – it got over 1000 upvotes in reddit in under 4 hours https://www.reddit.com/r/HomeKit/s/dz3l9FyyMR\n\nHere is the homepage https://itsyhome.app/ – now full HomeKit with full support for Home Assistant coming next week.\n\nThe app is free and open source (https://github.com/nickustinov/itsyhome-macos) but there are some advanced automation features for enthusiasts in the Pro version – here is the code to unlock it – 46JEWL4R7N4AYTJNP6\n\nLet me know if you have any questions!\n\nNick",
         ]
         for text in texts {
             let result = detector.detect(text: text, name: nil, fileURL: nil)

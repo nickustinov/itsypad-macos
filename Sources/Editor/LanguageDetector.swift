@@ -95,12 +95,26 @@ struct LanguageDetector {
 
         // Delegate to highlight.js auto-detection (restricted to our supported languages)
         if let auto = Self.hljs.highlightAuto(text, subset: Self.autoDetectSubset),
-           auto.relevance >= 5 {
+           auto.relevance >= 5,
+           !Self.looksLikeProse(text) {
             let canonical = Self.hljsToCanonical[auto.language] ?? auto.language
             return Result(lang: canonical, confidence: auto.relevance)
         }
 
         return Result(lang: "plain", confidence: 0)
+    }
+
+    /// Returns true when text is predominantly natural-language prose.
+    /// Prose lines tend to have many space-separated words (8+), while code lines
+    /// are short and punctuation-heavy.  If ≥ 30 % of non-empty lines are "long"
+    /// (8+ words), we treat the text as prose and skip highlight.js auto-detection.
+    private static func looksLikeProse(_ text: String) -> Bool {
+        let lines = text.components(separatedBy: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        guard lines.count >= 3 else { return false }
+        let longLines = lines.filter { $0.split(separator: " ").count >= 8 }.count
+        return Double(longLines) / Double(lines.count) >= 0.3
     }
 
     func detectFromExtension(name: String) -> String? {
