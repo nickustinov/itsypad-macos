@@ -19,6 +19,7 @@ struct TabData: Identifiable, Equatable {
     var content: String
     var language: String
     var fileURL: URL?
+    var bookmark: Data?
     var languageLocked: Bool
     var isDirty: Bool
     var cursorPosition: Int
@@ -30,6 +31,7 @@ struct TabData: Identifiable, Equatable {
         content: String = "",
         language: String = "plain",
         fileURL: URL? = nil,
+        bookmark: Data? = nil,
         languageLocked: Bool = false,
         isDirty: Bool = false,
         cursorPosition: Int = 0,
@@ -40,6 +42,7 @@ struct TabData: Identifiable, Equatable {
         self.content = content
         self.language = language
         self.fileURL = fileURL
+        self.bookmark = bookmark
         self.languageLocked = languageLocked
         self.isDirty = isDirty
         self.cursorPosition = cursorPosition
@@ -55,6 +58,7 @@ extension TabData: Codable {
         content = try c.decode(String.self, forKey: .content)
         language = try c.decode(String.self, forKey: .language)
         fileURL = try c.decodeIfPresent(URL.self, forKey: .fileURL)
+        bookmark = try c.decodeIfPresent(Data.self, forKey: .bookmark)
         languageLocked = try c.decode(Bool.self, forKey: .languageLocked)
         isDirty = try c.decode(Bool.self, forKey: .isDirty)
         cursorPosition = try c.decode(Int.self, forKey: .cursorPosition)
@@ -130,6 +134,9 @@ class TabStore: ObservableObject {
 
     func closeTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        if let url = tabs[index].fileURL {
+            url.stopAccessingSecurityScopedResource()
+        }
         // Record tombstone for scratch tabs so other devices don't re-add
         if tabs[index].fileURL == nil && SettingsStore.shared.icloudSync {
             deletedTabIDs.insert(id)
@@ -235,6 +242,7 @@ class TabStore: ObservableObject {
         do {
             try tabs[index].content.write(to: url, atomically: true, encoding: .utf8)
             tabs[index].fileURL = url
+            tabs[index].bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
             tabs[index].name = url.lastPathComponent
             tabs[index].isDirty = false
 
@@ -273,12 +281,14 @@ class TabStore: ObservableObject {
             let name = url.lastPathComponent
             let lang = LanguageDetector.shared.detectFromExtension(name: name)
                 ?? LanguageDetector.shared.detect(text: content, name: name, fileURL: url).lang
+            let bookmarkData = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
 
             let tab = TabData(
                 name: name,
                 content: content,
                 language: lang,
                 fileURL: url,
+                bookmark: bookmarkData,
                 languageLocked: true
             )
             tabs.append(tab)
@@ -460,6 +470,22 @@ class TabStore: ObservableObject {
         tabs = session.tabs
         selectedTabID = session.selectedTabID ?? tabs.first?.id
         savedLayout = session.layout
+
+        // Resolve security-scoped bookmarks for file tabs
+        for index in tabs.indices {
+            guard let bookmarkData = tabs[index].bookmark else { continue }
+            var isStale = false
+            guard let url = try? URL(resolvingBookmarkData: bookmarkData, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale) else {
+                tabs[index].fileURL = nil
+                tabs[index].bookmark = nil
+                continue
+            }
+            _ = url.startAccessingSecurityScopedResource()
+            tabs[index].fileURL = url
+            if isStale {
+                tabs[index].bookmark = try? url.bookmarkData(options: .withSecurityScope, includingResourceValuesForKeys: nil, relativeTo: nil)
+            }
+        }
 
         // Re-detect language for unlocked tabs to fix stale detection
         for index in tabs.indices where !tabs[index].languageLocked {
