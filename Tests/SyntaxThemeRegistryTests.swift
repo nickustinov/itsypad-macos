@@ -4,7 +4,7 @@ import XCTest
 final class SyntaxThemeRegistryTests: XCTestCase {
 
     func testThemeCount() {
-        XCTAssertEqual(SyntaxThemeRegistry.themes.count, 9)
+        XCTAssertEqual(SyntaxThemeRegistry.themes.count, 8)
     }
 
     func testItsypadDarkResource() {
@@ -25,16 +25,6 @@ final class SyntaxThemeRegistryTests: XCTestCase {
     func testAtomOneLightResource() {
         let resource = SyntaxThemeRegistry.cssResource(for: "atom-one", isDark: false)
         XCTAssertEqual(resource, "atom-one-light.min")
-    }
-
-    func testGitHubDarkResource() {
-        let resource = SyntaxThemeRegistry.cssResource(for: "github", isDark: true)
-        XCTAssertEqual(resource, "github-dark.min")
-    }
-
-    func testGitHubLightResource() {
-        let resource = SyntaxThemeRegistry.cssResource(for: "github", isDark: false)
-        XCTAssertEqual(resource, "github.min")
     }
 
     func testTokyoNightDarkResource() {
