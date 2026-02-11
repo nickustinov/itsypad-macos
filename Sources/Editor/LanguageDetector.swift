@@ -94,11 +94,15 @@ struct LanguageDetector {
         }
 
         // Delegate to highlight.js auto-detection (restricted to our supported languages)
-        if let auto = Self.hljs.highlightAuto(text, subset: Self.autoDetectSubset),
-           auto.relevance >= 5,
-           !Self.looksLikeProse(text) {
+        if let auto = Self.hljs.highlightAuto(text, subset: Self.autoDetectSubset) {
+            let isProse = Self.looksLikeProse(text)
             let canonical = Self.hljsToCanonical[auto.language] ?? auto.language
-            return Result(lang: canonical, confidence: auto.relevance)
+            let preview = String(text.prefix(80)).replacingOccurrences(of: "\n", with: "\\n")
+            NSLog("[AutoDetect] lang=%@ relevance=%d prose=%d ext=%@ text=\"%@\"",
+                  canonical, auto.relevance, isProse ? 1 : 0, ext ?? "(none)", preview)
+            if auto.relevance >= 7 && !isProse {
+                return Result(lang: canonical, confidence: auto.relevance)
+            }
         }
 
         return Result(lang: "plain", confidence: 0)

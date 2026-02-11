@@ -4,6 +4,7 @@
 
 Fixes:
 - Fixed ghost line appearing at the bottom of the editor when deleting text with backspace (word-wrap redraw regression)
+- Fixed email addresses triggering false syntax highlighting (e.g. `@domain` highlighted as Swift)
 
 ## 1.4.4
 
