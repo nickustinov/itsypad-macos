@@ -80,6 +80,14 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertTrue(store.clickableLinks)
     }
 
+    func testDefaultLineSpacing() {
+        XCTAssertEqual(store.lineSpacing, 1.0)
+    }
+
+    func testDefaultLetterSpacing() {
+        XCTAssertEqual(store.letterSpacing, 0.0)
+    }
+
     func testDefaultIcloudSync() {
         XCTAssertFalse(store.icloudSync)
     }
@@ -138,6 +146,16 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertFalse(defaults.bool(forKey: "clickableLinks"))
     }
 
+    func testLineSpacingPersistsToDefaults() {
+        store.lineSpacing = 1.5
+        XCTAssertEqual(defaults.double(forKey: "lineSpacing"), 1.5)
+    }
+
+    func testLetterSpacingPersistsToDefaults() {
+        store.letterSpacing = 2.0
+        XCTAssertEqual(defaults.double(forKey: "letterSpacing"), 2.0)
+    }
+
     // MARK: - editorFont computed property
 
     func testEditorFontSystemMono() {
@@ -165,6 +183,8 @@ final class SettingsStoreTests: XCTestCase {
         preDefaults.set(2, forKey: "tabWidth")
         preDefaults.set(false, forKey: "wordWrap")
         preDefaults.set(false, forKey: "clickableLinks")
+        preDefaults.set(1.4, forKey: "lineSpacing")
+        preDefaults.set(1.5, forKey: "letterSpacing")
         preDefaults.set("panels", forKey: "clipboardViewMode")
         preDefaults.set(12, forKey: "clipboardPreviewLines")
         preDefaults.set(16.0, forKey: "clipboardFontSize")
@@ -177,6 +197,8 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(preStore.tabWidth, 2)
         XCTAssertFalse(preStore.wordWrap)
         XCTAssertFalse(preStore.clickableLinks)
+        XCTAssertEqual(preStore.lineSpacing, 1.4)
+        XCTAssertEqual(preStore.letterSpacing, 1.5)
         XCTAssertEqual(preStore.clipboardViewMode, "panels")
         XCTAssertEqual(preStore.clipboardPreviewLines, 12)
         XCTAssertEqual(preStore.clipboardFontSize, 16)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.4
+
+Features:
+- Configurable line spacing and letter spacing in Settings → Editor (#19)
+
 ## 1.4.3
 
 Fixes:

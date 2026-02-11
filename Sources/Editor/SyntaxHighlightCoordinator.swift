@@ -142,16 +142,23 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
                 tv.textStorage?.beginEditing()
 
+                let kern = SettingsStore.shared.letterSpacing
                 if let highlighted {
                     tv.textStorage?.replaceCharacters(in: fullRange, with: highlighted)
                     // Override font uniformly
                     let newLength = (tv.textStorage?.length ?? ns.length)
-                    tv.textStorage?.addAttribute(.font, value: userFont, range: NSRange(location: 0, length: newLength))
+                    let newRange = NSRange(location: 0, length: newLength)
+                    tv.textStorage?.addAttribute(.font, value: userFont, range: newRange)
+                    if kern != 0 {
+                        tv.textStorage?.addAttribute(.kern, value: kern, range: newRange)
+                    }
                 } else {
-                    tv.textStorage?.setAttributes([
+                    var attrs: [NSAttributedString.Key: Any] = [
                         .font: userFont,
                         .foregroundColor: currentTheme.foreground,
-                    ], range: fullRange)
+                    ]
+                    if kern != 0 { attrs[.kern] = kern }
+                    tv.textStorage?.setAttributes(attrs, range: fullRange)
                 }
 
                 // Apply bullet dash highlighting on top
@@ -181,11 +188,14 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let fullRange = NSRange(location: 0, length: ns.length)
         let sel = tv.selectedRange()
 
+        let kern = SettingsStore.shared.letterSpacing
         tv.textStorage?.beginEditing()
-        tv.textStorage?.setAttributes([
+        var attrs: [NSAttributedString.Key: Any] = [
             .font: font,
             .foregroundColor: theme.foreground,
-        ], range: fullRange)
+        ]
+        if kern != 0 { attrs[.kern] = kern }
+        tv.textStorage?.setAttributes(attrs, range: fullRange)
 
         applyListMarkers(tv: tv, text: text, theme: theme)
         applyLinkHighlighting(tv: tv, text: text, theme: theme)
@@ -298,9 +308,14 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         guard totalLength > 0 else { return }
         let wrapStart = CFAbsoluteTimeGetCurrent()
 
-        let tabWidth = SettingsStore.shared.tabWidth
+        let settings = SettingsStore.shared
+        let tabWidth = settings.tabWidth
         let spaceWidth = (" " as NSString).size(withAttributes: [.font: font]).width
         let tabPixelWidth = spaceWidth * CGFloat(tabWidth)
+
+        let lineSpacingMultiplier = settings.lineSpacing
+        let naturalLineHeight = ceil(font.ascender - font.descender + font.leading)
+        let extraLineSpacing = (lineSpacingMultiplier - 1.0) * naturalLineHeight
 
         storage.beginEditing()
         var pos = 0
@@ -329,6 +344,9 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
             let para = NSMutableParagraphStyle()
             para.headIndent = headIndent
+            if extraLineSpacing > 0 {
+                para.lineSpacing = extraLineSpacing
+            }
             storage.addAttribute(.paragraphStyle, value: para, range: lineRange)
 
             pos = lineRange.location + lineRange.length

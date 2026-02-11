@@ -173,6 +173,31 @@ struct EditorSettingsView: View {
                 }
             }
 
+            Section("Spacing") {
+                HStack {
+                    Text("Line spacing")
+                    Spacer()
+                    TextField("", value: $store.lineSpacing, format: .number.precision(.fractionLength(1)))
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.roundedBorder)
+                    Stepper("", value: $store.lineSpacing, in: 1.0...2.0, step: 0.1)
+                        .labelsHidden()
+                        .controlSize(.small)
+                }
+                HStack {
+                    Text("Letter spacing")
+                    Spacer()
+                    TextField("", value: $store.letterSpacing, format: .number.precision(.fractionLength(1)))
+                        .frame(width: 60)
+                        .multilineTextAlignment(.trailing)
+                        .textFieldStyle(.roundedBorder)
+                    Stepper("", value: $store.letterSpacing, in: 0.0...5.0, step: 0.5)
+                        .labelsHidden()
+                        .controlSize(.small)
+                }
+            }
+
             Section("Lists") {
                 Toggle("Bullet lists", isOn: $store.bulletListsEnabled)
                 Toggle("Numbered lists", isOn: $store.numberedListsEnabled)
