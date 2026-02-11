@@ -4,6 +4,7 @@
 
 Fixes:
 - Clipboard search field now always receives focus when the clipboard is shown via hotkey (#16)
+- Window no longer pops to front when quitting another app while dock icon is visible (#17)
 
 ## 1.4.0
 

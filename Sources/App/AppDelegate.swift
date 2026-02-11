@@ -45,19 +45,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             ClipboardStore.shared.startMonitoring()
         }
 
-        // Track window visibility and re-show after other apps quit
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(windowDidBecomeVisible),
-            name: NSWindow.didBecomeKeyNotification,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(windowDidOrderOut),
-            name: NSWindow.didResignKeyNotification,
-            object: nil
-        )
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(editorWindowWillClose),
@@ -73,7 +60,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
                 self?.restoreWindowIfNeeded()
             }
         }
-
         // Apply theme to window when settings change
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .settingsChanged,
@@ -88,17 +74,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         }
     }
 
-    @objc private func windowDidBecomeVisible(_ note: Notification) {
-        if (note.object as? NSWindow) === editorWindow {
-            windowWasVisible = true
-        }
-    }
-
-    @objc private func windowDidOrderOut(_ note: Notification) {
-        // Only clear the flag if WE intentionally hid it (via toggleWindow)
-        // Don't clear on resign-key — that happens when another app activates
-    }
-
     @objc private func editorWindowWillClose(_ note: Notification) {
         windowWasVisible = false
         DispatchQueue.main.async { [weak self] in
@@ -107,7 +82,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     private func restoreWindowIfNeeded() {
+        // Only needed in accessory mode (no dock icon) where macOS won't
+        // automatically bring our window forward after the frontmost app quits.
+        guard !SettingsStore.shared.showInDock else { return }
         guard windowWasVisible, let window = editorWindow else { return }
+        guard window.isVisible, !window.isMiniaturized else { return }
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
