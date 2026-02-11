@@ -176,16 +176,24 @@ class TabStore: ObservableObject {
         scheduleSave()
     }
 
+    /// Fires when auto-detection changes a tab's language: (tabID, newLanguage).
+    var onLanguageDetected: ((UUID, String) -> Void)?
+
     private func scheduleLanguageDetection(id: UUID, content: String, name: String?, fileURL: URL?) {
         languageDetectWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             guard let self, let index = self.tabs.firstIndex(where: { $0.id == id }),
                   !self.tabs[index].languageLocked else { return }
             let result = LanguageDetector.shared.detect(text: content, name: name, fileURL: fileURL)
+            let oldLang = self.tabs[index].language
             if result.confidence > 5 {
                 self.tabs[index].language = result.lang
-            } else if self.tabs[index].language != "plain" && result.lang == "plain" {
+            } else if oldLang != "plain" && result.lang == "plain" {
                 self.tabs[index].language = "plain"
+            }
+            let newLang = self.tabs[index].language
+            if newLang != oldLang {
+                self.onLanguageDetected?(id, newLang)
             }
         }
         languageDetectWork = work

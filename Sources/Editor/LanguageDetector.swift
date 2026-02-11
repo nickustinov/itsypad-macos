@@ -4,6 +4,10 @@ struct LanguageDetector {
     static let shared = LanguageDetector()
     private init() {}
 
+    /// Dedicated HighlightJS instance for auto-detection (separate from the shared
+    /// instance used by SyntaxHighlightCoordinator, since JSContext isn't thread-safe).
+    private static let hljs = HighlightJS()
+
     private let extensionMap: [String: String] = [
         "swift": "swift",
         "py": "python",
@@ -51,6 +55,24 @@ struct LanguageDetector {
         "objective-c", "php", "powershell",
     ]
 
+    /// highlight.js names for auto-detect subset — maps back to our canonical names.
+    /// Most are identical; only list exceptions here.
+    private static let hljsToCanonical: [String: String] = [
+        "objectivec": "objective-c",
+    ]
+
+    /// Languages excluded from auto-detect (too many false positives on plain text).
+    /// These are still detected by file extension.
+    private static let autoDetectExcluded: Set<String> = ["plain", "zsh", "sql", "css", "markdown"]
+
+    /// Languages to pass as subset to highlightAuto (using highlight.js identifiers).
+    private static let autoDetectSubset: [String] = {
+        allLanguages.compactMap { lang in
+            if autoDetectExcluded.contains(lang) { return nil }
+            return hljsToCanonical.first(where: { $0.value == lang })?.key ?? lang
+        }
+    }()
+
     struct Result {
         let lang: String
         let confidence: Int
@@ -71,54 +93,11 @@ struct LanguageDetector {
             return Result(lang: lang, confidence: 100)
         }
 
-        // Content-based heuristic
-        let t = text.lowercased()
-
-        // Strong early returns
-        if t.contains("import swiftui") || t.contains("import appkit") || t.contains("import uikit") {
-            return Result(lang: "swift", confidence: 95)
-        }
-        if t.contains("@main") && (t.contains("struct ") || t.contains("class ")) {
-            return Result(lang: "swift", confidence: 90)
-        }
-        if t.contains("@published") || t.contains("@stateobject") || t.contains("guard ") || t.contains(" if let ") {
-            return Result(lang: "swift", confidence: 85)
-        }
-
-        // Quick checks
-        let trimmed = t.trimmingCharacters(in: .whitespacesAndNewlines)
-        if let first = trimmed.first, (first == "{" || first == "["), t.contains(":") {
-            return Result(lang: "json", confidence: 80)
-        }
-        if t.contains("<html") || t.contains("<!doctype html") {
-            return Result(lang: "html", confidence: 85)
-        }
-        if t.contains("<?php") {
-            return Result(lang: "php", confidence: 95)
-        }
-        if t.contains("#!/bin/bash") || t.contains("#!/usr/bin/env bash") {
-            return Result(lang: "bash", confidence: 90)
-        }
-        if t.contains("#!/bin/zsh") || t.contains("#!/usr/bin/env zsh") {
-            return Result(lang: "zsh", confidence: 90)
-        }
-
-        // Short-snippet heuristics (highlight.js auto-detect needs ~50+ chars to be reliable)
-        if t.contains("\ndef ") || t.hasPrefix("def ") { return Result(lang: "python", confidence: 15) }
-        if t.hasPrefix("import ") && t.contains(":\n") { return Result(lang: "python", confidence: 15) }
-        if t.hasPrefix("from ") && t.contains("import ") { return Result(lang: "python", confidence: 15) }
-        if t.contains("package ") && t.contains("func ") { return Result(lang: "go", confidence: 15) }
-        if t.hasPrefix("#include") || t.contains("\n#include") { return Result(lang: "cpp", confidence: 15) }
-        if t.contains("console.log") || (t.contains("function ") && t.contains("=>")) {
-            return Result(lang: "javascript", confidence: 15)
-        }
-
-        // Delegate to highlight.js auto-detection for longer/complex snippets
-        let knownLanguages = Set(Self.allLanguages)
-        if let auto = HighlightJS.shared.highlightAuto(text),
-           auto.relevance >= 7,
-           knownLanguages.contains(auto.language) {
-            return Result(lang: auto.language, confidence: auto.relevance)
+        // Delegate to highlight.js auto-detection (restricted to our supported languages)
+        if let auto = Self.hljs.highlightAuto(text, subset: Self.autoDetectSubset),
+           auto.relevance >= 5 {
+            let canonical = Self.hljsToCanonical[auto.language] ?? auto.language
+            return Result(lang: canonical, confidence: auto.relevance)
         }
 
         return Result(lang: "plain", confidence: 0)

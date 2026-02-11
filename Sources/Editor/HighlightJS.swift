@@ -86,9 +86,11 @@ class HighlightJS {
         let attributed: NSAttributedString
     }
 
-    func highlightAuto(_ code: String) -> AutoResult? {
+    func highlightAuto(_ code: String, subset: [String]? = nil) -> AutoResult? {
         guard let hljs = ensureLoaded() else { return nil }
-        let result = hljs.invokeMethod("highlightAuto", withArguments: [code])
+        var args: [Any] = [code]
+        if let subset { args.append(subset) }
+        let result = hljs.invokeMethod("highlightAuto", withArguments: args)
         if result?.isUndefined == true { return nil }
         guard let lang = result?.objectForKeyedSubscript("language")?.toString(),
               let html = result?.objectForKeyedSubscript("value")?.toString() else {

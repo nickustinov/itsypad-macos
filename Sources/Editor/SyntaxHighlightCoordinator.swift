@@ -208,7 +208,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
     // Pre-compiled regex for URL highlighting
     private static let urlRegex = try! NSRegularExpression(
-        pattern: "https?://\\S+", options: []
+        pattern: "https?://\\S*[a-zA-Z0-9/\\-_~=#%&]", options: []
     )
 
     // Pre-compiled regex for list marker highlighting

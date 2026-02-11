@@ -28,6 +28,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var windowWasVisible = false
     private var workspaceObserver: Any?
     private var settingsObserver: Any?
+    private var appearanceObservation: NSKeyValueObservation?
     private var recentFilesMenu: NSMenu?
     private var isPinned = false
 
@@ -70,6 +71,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
                 self?.applyWindowAppearance()
                 self?.updateDockVisibility()
                 self?.updateMenuBarVisibility()
+            }
+        }
+
+        // Re-apply theme when macOS appearance changes (affects "system" mode)
+        appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
+            MainActor.assumeIsolated {
+                guard SettingsStore.shared.appearanceOverride == "system" else { return }
+                NotificationCenter.default.post(name: .settingsChanged, object: nil)
             }
         }
     }

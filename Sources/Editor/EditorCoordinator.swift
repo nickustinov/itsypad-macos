@@ -46,6 +46,13 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         applyBonsplitTheme()
         restoreSession()
 
+        tabStore.onLanguageDetected = { [weak self] tabID, language in
+            MainActor.assumeIsolated {
+                guard let self, let bonsplitID = self.tabIDMap[tabID] else { return }
+                self.highlighterForTab(bonsplitID)?.language = language
+            }
+        }
+
         settingsObserver = NotificationCenter.default.addObserver(
             forName: .settingsChanged,
             object: nil,

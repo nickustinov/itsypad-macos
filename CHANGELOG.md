@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.3
+
+Fixes:
+- Theme now updates when switching macOS appearance while set to "system" (#20)
+- Clickable URLs no longer include trailing punctuation from markdown links (#18)
+- Language auto-detection on paste now works reliably — removed brittle custom heuristics in favour of highlight.js auto-detect restricted to supported languages
+- Detected language now propagates to the syntax highlighter (was silently dropped before)
+- Fixed thread safety issue between language detection and syntax highlighting
+
 ## 1.4.2
 
 Fixes:
