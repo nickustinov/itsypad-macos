@@ -148,6 +148,11 @@ final class EditorTextView: NSTextView {
             // Extend slightly past visible to avoid flicker during fast scrolling
             let end = min(charRange.location + charRange.length + 2000, (string as NSString).length)
             layoutManager.ensureLayout(forCharacterRange: NSRange(location: charRange.location, length: end - charRange.location))
+            // Invalidate from the top of the visible region downward so deleted-line
+            // ghost pixels are cleared without a full-view repaint.
+            let dirtyRect = NSRect(x: bounds.minX, y: visibleRect.minY + textContainerOrigin.y,
+                                   width: bounds.width, height: bounds.maxY - (visibleRect.minY + textContainerOrigin.y))
+            setNeedsDisplay(dirtyRect)
             let elapsed = (CFAbsoluteTimeGetCurrent() - t0) * 1000
             if elapsed > 4 {
                 NSLog("[Perf] didChangeText ensureLayout: %.1fms (range %d-%d of %d)", elapsed, charRange.location, end, (string as NSString).length)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.5
+
+Fixes:
+- Fixed ghost line appearing at the bottom of the editor when deleting text with backspace (word-wrap redraw regression)
+
 ## 1.4.4
 
 Features:
