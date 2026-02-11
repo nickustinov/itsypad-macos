@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.4.1
+
+Fixes:
+- Clipboard search field now always receives focus when the clipboard is shown via hotkey (#16)
+
 ## 1.4.0
 
 Features:

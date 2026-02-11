@@ -23,6 +23,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     private var previewOverlay: ClipboardPreviewOverlay?
     private var selectedIndex: Int?
     private var shortcutMonitor: Any?
+    private var windowKeyObserver: Any?
 
     var themeBackground: NSColor = .windowBackgroundColor {
         didSet { applyTheme() }
@@ -142,6 +143,18 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
             return self.handleShortcutKeyEvent(event) ? nil : event
         }
 
+        windowKeyObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didBecomeKeyNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let window = notification.object as? NSWindow,
+                  window === self.window,
+                  self.isClipboardTabVisible else { return }
+            window.makeFirstResponder(self.searchField)
+        }
+
         reloadEntries()
     }
 
@@ -158,11 +171,17 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         if let monitor = shortcutMonitor {
             NSEvent.removeMonitor(monitor)
         }
+        if let observer = windowKeyObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 
     func focusSearchField() {
-        // Use afterDelay to ensure SwiftUI has finished its layout pass
-        window?.perform(#selector(NSWindow.makeFirstResponder(_:)), with: searchField, afterDelay: 0.1)
+        // Defer to next run-loop pass so SwiftUI layout is settled
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window else { return }
+            window.makeFirstResponder(self.searchField)
+        }
     }
 
     override func resetCursorRects() {
