@@ -258,11 +258,14 @@ class ClipboardStore {
         }
 
         let existingIDs = Set(entries.map(\.id))
+        let existingTexts = Set(entries.compactMap(\.text))
         var inserted = false
 
         for cloudEntry in cloudEntries {
             guard !deletedEntryIDs.contains(cloudEntry.id) else { continue }
             guard !existingIDs.contains(cloudEntry.id) else { continue }
+            // Skip if identical text already exists locally (Universal Clipboard round-trip)
+            guard !existingTexts.contains(cloudEntry.text) else { continue }
             let entry = ClipboardEntry(
                 id: cloudEntry.id,
                 kind: .text,

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.2
+
+Features:
+- Cross-device clipboard delete/clear – deleting or clearing clipboard entries now syncs across devices via tombstones (`deletedClipboardIDs`), matching the existing tab tombstone pattern
+
+Fixes:
+- Fixed clipboard duplicates caused by Universal Clipboard round-trip – merge now skips cloud entries whose text already exists locally
+
 ## 1.5.1
 
 Fixes:
