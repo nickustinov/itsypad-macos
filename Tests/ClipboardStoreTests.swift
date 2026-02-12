@@ -272,7 +272,114 @@ final class ClipboardStoreTests: XCTestCase {
     func testClearCloudDataRemovesKey() {
         let cloud = MockKeyValueStore()
         cloud.storage["clipboard"] = Data()
+        cloud.storage["deletedClipboardIDs"] = Data()
         store.clearCloudData(from: cloud)
         XCTAssertNil(cloud.storage["clipboard"])
+        XCTAssertNil(cloud.storage["deletedClipboardIDs"])
+    }
+
+    // MARK: - Tombstones
+
+    func testMergeSkipsTombstonedCloudEntries() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let tombstonedID = UUID()
+        let normalID = UUID()
+
+        // Write tombstone to cloud
+        let tombstoneData = try! JSONEncoder().encode([tombstonedID.uuidString])
+        cloud.storage["deletedClipboardIDs"] = tombstoneData
+
+        // Write cloud entries including the tombstoned one
+        let cloudEntries = [
+            ClipboardCloudEntry(id: tombstonedID, text: "deleted", timestamp: Date()),
+            ClipboardCloudEntry(id: normalID, text: "kept", timestamp: Date()),
+        ]
+        cloud.storage["clipboard"] = try! JSONEncoder().encode(cloudEntries)
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertEqual(store.entries.count, 1)
+        XCTAssertEqual(store.entries.first?.id, normalID)
+        XCTAssertEqual(store.entries.first?.text, "kept")
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testMergeRemovesTombstonedLocalEntries() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let id = UUID()
+        store.entries = [ClipboardEntry(id: id, kind: .text, text: "will be removed")]
+
+        // Write tombstone to cloud for the local entry
+        let tombstoneData = try! JSONEncoder().encode([id.uuidString])
+        cloud.storage["deletedClipboardIDs"] = tombstoneData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertTrue(store.entries.isEmpty)
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testMergeRemovesTombstonedLocalEntriesWithNoCloudData() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let id = UUID()
+        store.entries = [ClipboardEntry(id: id, kind: .text, text: "will be removed")]
+
+        // Write tombstone but no clipboard data
+        let tombstoneData = try! JSONEncoder().encode([id.uuidString])
+        cloud.storage["deletedClipboardIDs"] = tombstoneData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertTrue(store.entries.isEmpty)
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testMergeTombstonesCleansUpImageFiles() throws {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let fileName = "tombstone-test.png"
+        let fileURL = tempImagesDir.appendingPathComponent(fileName)
+        try Data([0x89, 0x50]).write(to: fileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+
+        let id = UUID()
+        store.entries = [ClipboardEntry(id: id, kind: .image, imageFileName: fileName)]
+
+        let tombstoneData = try! JSONEncoder().encode([id.uuidString])
+        cloud.storage["deletedClipboardIDs"] = tombstoneData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertTrue(store.entries.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testMergeWithTombstonesPreservesNonTombstonedEntries() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let tombstonedID = UUID()
+        let keptID = UUID()
+        store.entries = [
+            ClipboardEntry(id: tombstonedID, kind: .text, text: "remove me"),
+            ClipboardEntry(id: keptID, kind: .text, text: "keep me"),
+        ]
+
+        let tombstoneData = try! JSONEncoder().encode([tombstonedID.uuidString])
+        cloud.storage["deletedClipboardIDs"] = tombstoneData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertEqual(store.entries.count, 1)
+        XCTAssertEqual(store.entries.first?.id, keptID)
+        SettingsStore.shared.icloudSync = false
     }
 }

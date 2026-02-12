@@ -56,6 +56,7 @@ indirect enum SplitNode: Identifiable, Equatable {
         lhs.id == rhs.id
     }
 
+
     /// Compute normalized bounds (0-1) for all panes in the tree
     /// - Parameter availableRect: The rect available for this subtree (starts as unit rect)
     /// - Returns: Array of pane IDs with their computed bounds

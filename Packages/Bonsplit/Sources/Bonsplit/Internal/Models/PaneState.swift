@@ -8,6 +8,11 @@ final class PaneState: Identifiable {
     var tabs: [TabItem]
     var selectedTabId: UUID?
 
+    /// Per-tab hosting views preserved across view lifecycle transitions (e.g. pane collapse).
+    /// Not observed – changes don't trigger SwiftUI updates.
+    @ObservationIgnored
+    var hostingViewCache: [UUID: CursorPassthroughHostingView<AnyView>] = [:]
+
     init(
         id: PaneID = PaneID(),
         tabs: [TabItem] = [],

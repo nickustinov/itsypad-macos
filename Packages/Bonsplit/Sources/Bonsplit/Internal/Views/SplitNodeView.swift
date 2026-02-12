@@ -4,7 +4,7 @@ import AppKit
 /// Recursively renders a split node (pane or split)
 struct SplitNodeView<Content: View, EmptyContent: View>: View {
     @Environment(SplitViewController.self) private var controller
-    
+
     let node: SplitNode
     let contentBuilder: (TabItem, PaneID) -> Content
     let emptyPaneBuilder: (PaneID) -> EmptyContent
@@ -15,7 +15,6 @@ struct SplitNodeView<Content: View, EmptyContent: View>: View {
     var body: some View {
         switch node {
         case .pane(let paneState):
-            // Wrap in NSHostingController for proper layout constraints
             SinglePaneWrapper(
                 pane: paneState,
                 contentBuilder: contentBuilder,
@@ -41,7 +40,7 @@ struct SplitNodeView<Content: View, EmptyContent: View>: View {
 /// Wrapper that uses NSHostingController for proper AppKit layout constraints
 struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable {
     @Environment(SplitViewController.self) private var controller
-    
+
     let pane: PaneState
     let contentBuilder: (TabItem, PaneID) -> Content
     let emptyPaneBuilder: (PaneID) -> EmptyContent
@@ -49,7 +48,6 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
     var contentViewLifecycle: ContentViewLifecycle = .recreateOnSwitch
 
     func makeNSView(context: Context) -> NSView {
-
         let paneView = PaneContainerView(
             pane: pane,
             controller: controller,
@@ -77,7 +75,6 @@ struct SinglePaneWrapper<Content: View, EmptyContent: View>: NSViewRepresentable
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {
-
         let paneView = PaneContainerView(
             pane: pane,
             controller: controller,

@@ -172,6 +172,8 @@ class TabStore: ObservableObject {
                 self.tabs[index].language = "plain"
             }
             let newLang = self.tabs[index].language
+            NSLog("[AutoDetect] RESULT: '%@' -> '%@' (confidence=%d, name=%@)",
+                  oldLang, newLang, result.confidence, name ?? "(untitled)")
             if newLang != oldLang {
                 self.onLanguageDetected?(id, newLang)
             }

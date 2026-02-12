@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.5.1
+
+Fixes:
+- Fixed tab content disappearing after closing a split pane on macOS 14 and 15 (#24)
+- Fixed plain text (emails, short notes) being false-positive highlighted as Swift
+
 ## 1.5.0
 
 Features:

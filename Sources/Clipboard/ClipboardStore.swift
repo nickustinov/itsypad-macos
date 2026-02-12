@@ -49,7 +49,9 @@ class ClipboardStore {
 
     private let maxEntries = 1000
     private static let cloudClipboardKey = "clipboard"
+    private static let cloudDeletedKey = "deletedClipboardIDs"
     private static let maxCloudEntries = 200
+    private var deletedEntryIDs: Set<UUID> = []
 
     init(storageURL: URL? = nil, imagesDirectory: URL? = nil) {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -157,9 +159,31 @@ class ClipboardStore {
         }
 
         lastChangeCount = pasteboard.changeCount
+
+        // Re-add as newest entry if this isn't already the most recent,
+        // so iCloud sync picks it up as the latest across devices.
+        if entries.first?.id != entry.id {
+            let copy = ClipboardEntry(
+                kind: entry.kind,
+                text: entry.text,
+                imageFileName: entry.imageFileName
+            )
+            insertEntry(copy)
+        }
     }
 
     func clearAll() {
+        if SettingsStore.shared.icloudSync {
+            let cloudStore = ICloudSyncManager.shared.cloudStore
+            // Tombstone all local entry IDs
+            deletedEntryIDs.formUnion(entries.map(\.id))
+            // Also tombstone any cloud entry IDs not already local
+            if let data = cloudStore.data(forKey: Self.cloudClipboardKey),
+               let cloudEntries = try? JSONDecoder().decode([ClipboardCloudEntry].self, from: data) {
+                deletedEntryIDs.formUnion(cloudEntries.map(\.id))
+            }
+            syncDeletedIDs(to: cloudStore)
+        }
         for entry in entries {
             cleanupImageFile(for: entry)
         }
@@ -172,6 +196,10 @@ class ClipboardStore {
         if let index = entries.firstIndex(where: { $0.id == id }) {
             let entry = entries.remove(at: index)
             cleanupImageFile(for: entry)
+        }
+        if SettingsStore.shared.icloudSync {
+            deletedEntryIDs.insert(id)
+            syncDeletedIDs(to: ICloudSyncManager.shared.cloudStore)
         }
         scheduleSave()
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
@@ -210,13 +238,30 @@ class ClipboardStore {
 
     func mergeCloudClipboard(from cloudStore: KeyValueStoreProtocol) {
         guard SettingsStore.shared.icloudSync else { return }
+        loadDeletedIDs(from: cloudStore)
+
+        // Remove local entries that were tombstoned on another device
+        let tombstoned = entries.filter { deletedEntryIDs.contains($0.id) }
+        for entry in tombstoned {
+            cleanupImageFile(for: entry)
+        }
+        entries.removeAll { deletedEntryIDs.contains($0.id) }
+        let localRemoved = tombstoned.count
+
         guard let data = cloudStore.data(forKey: Self.cloudClipboardKey),
-              let cloudEntries = try? JSONDecoder().decode([ClipboardCloudEntry].self, from: data) else { return }
+              let cloudEntries = try? JSONDecoder().decode([ClipboardCloudEntry].self, from: data) else {
+            if localRemoved > 0 {
+                scheduleSave()
+                NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
+            }
+            return
+        }
 
         let existingIDs = Set(entries.map(\.id))
         var inserted = false
 
         for cloudEntry in cloudEntries {
+            guard !deletedEntryIDs.contains(cloudEntry.id) else { continue }
             guard !existingIDs.contains(cloudEntry.id) else { continue }
             let entry = ClipboardEntry(
                 id: cloudEntry.id,
@@ -236,13 +281,28 @@ class ClipboardStore {
             cleanupImageFile(for: evicted)
         }
 
-        if inserted {
+        if inserted || localRemoved > 0 {
+            scheduleSave()
             NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
         }
     }
 
     func clearCloudData(from cloudStore: KeyValueStoreProtocol) {
         cloudStore.removeObject(forKey: Self.cloudClipboardKey)
+        cloudStore.removeObject(forKey: Self.cloudDeletedKey)
+        deletedEntryIDs.removeAll()
+    }
+
+    private func syncDeletedIDs(to cloudStore: KeyValueStoreProtocol) {
+        let strings = deletedEntryIDs.map(\.uuidString)
+        cloudStore.setData(try? JSONEncoder().encode(strings), forKey: Self.cloudDeletedKey)
+        cloudStore.synchronize()
+    }
+
+    private func loadDeletedIDs(from cloudStore: KeyValueStoreProtocol) {
+        guard let data = cloudStore.data(forKey: Self.cloudDeletedKey),
+              let strings = try? JSONDecoder().decode([String].self, from: data) else { return }
+        deletedEntryIDs.formUnion(strings.compactMap(UUID.init))
     }
 
     // MARK: - Persistence

@@ -65,6 +65,12 @@ struct LanguageDetector {
     /// These are still detected by file extension.
     private static let autoDetectExcluded: Set<String> = ["plain", "zsh", "sql", "css", "markdown"]
 
+    /// Per-language relevance thresholds (default is 7).
+    /// Languages prone to false positives on plain text get a higher bar.
+    private static let relevanceThreshold: [String: Int] = [
+        "swift": 10,
+    ]
+
     /// Languages to pass as subset to highlightAuto (using highlight.js identifiers).
     private static let autoDetectSubset: [String] = {
         allLanguages.compactMap { lang in
@@ -100,7 +106,8 @@ struct LanguageDetector {
             let preview = String(text.prefix(80)).replacingOccurrences(of: "\n", with: "\\n")
             NSLog("[AutoDetect] lang=%@ relevance=%d prose=%d ext=%@ text=\"%@\"",
                   canonical, auto.relevance, isProse ? 1 : 0, ext ?? "(none)", preview)
-            if auto.relevance >= 7 && !isProse {
+            let threshold = Self.relevanceThreshold[canonical] ?? 7
+            if auto.relevance >= threshold && !isProse {
                 return Result(lang: canonical, confidence: auto.relevance)
             }
         }
@@ -116,9 +123,17 @@ struct LanguageDetector {
         let lines = text.components(separatedBy: "\n")
             .map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
-        guard lines.count >= 3 else { return false }
+        guard lines.count >= 3 else {
+            NSLog("[AutoDetect] prose=NO (only %d non-empty lines, need 3+)", lines.count)
+            return false
+        }
         let longLines = lines.filter { $0.split(separator: " ").count >= 8 }.count
-        return Double(longLines) / Double(lines.count) >= 0.3
+        let ratio = Double(longLines) / Double(lines.count)
+        let result = ratio >= 0.3
+        NSLog("[AutoDetect] prose=%@ lines=%d longLines=%d ratio=%.1f%% wordCounts=%@",
+              result ? "YES" : "NO", lines.count, longLines, ratio * 100,
+              lines.prefix(10).map { "\($0.split(separator: " ").count)" }.joined(separator: ","))
+        return result
     }
 
     func detectFromExtension(name: String) -> String? {
