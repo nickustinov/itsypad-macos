@@ -18,4 +18,6 @@ jobs:
       - name: Generate Xcode project
         run: xcodegen generate
       - name: Run tests
-        run: xcodebuild test -scheme itsypad -destination 'platform=macOS' -quiet
+        run: >
+          xcodebuild test -scheme itsypad -destination 'platform=macOS' -quiet
+          CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
