@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.5.0
+
+Features:
+- Markdown preview – toggle a side-by-side rendered preview for `.md` tabs via View → Toggle preview (⇧⌘P) or the toolbar button; live-updates as you type, uses the active syntax theme for code block highlighting, renders local images, opens links in the default browser
+- iCloud sync now includes clipboard history – text-only entries sync across devices via the same iCloud KV store used for scratch tabs
+- Unified sync manager (`ICloudSyncManager`) replaces the previous per-store sync orchestration
+
 ## 1.4.5
 
 Fixes:

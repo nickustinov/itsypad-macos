@@ -23,6 +23,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var windowActivateObserver: Any?
     private var editorFocusObserver: Any?
 
+    // Markdown preview state
+    private var previewingTabs: Set<TabID> = []
+    private var previewHTMLCache: [TabID: String] = [:]
+    private var previewBaseURLCache: [TabID: URL] = [:]
+    private var previewDebounceWork: DispatchWorkItem?
+
     @MainActor
     init() {
         var config = BonsplitConfiguration.default
@@ -50,6 +56,14 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             MainActor.assumeIsolated {
                 guard let self, let bonsplitID = self.tabIDMap[tabID] else { return }
                 self.highlighterForTab(bonsplitID)?.language = language
+
+                // Exit preview if language changed away from markdown
+                if language != "markdown" && self.previewingTabs.contains(bonsplitID) {
+                    self.previewingTabs.remove(bonsplitID)
+                    self.previewHTMLCache.removeValue(forKey: bonsplitID)
+                }
+
+                self.postMarkdownState(for: bonsplitID)
             }
         }
 
@@ -91,9 +105,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { _ in
             MainActor.assumeIsolated {
-                self?.tabStore.checkICloud()
+                ICloudSyncManager.shared.check()
             }
         }
 
@@ -106,6 +120,11 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 guard let textView = notification.object as? EditorTextView else { return }
                 self?.handleEditorFocused(textView)
             }
+        }
+
+        // Trigger ICloudSyncManager creation (deferred so init completes first)
+        DispatchQueue.main.async {
+            _ = ICloudSyncManager.shared
         }
     }
 
@@ -199,6 +218,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                     self.controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
                 }
                 self.highlighterForTab(bonsplitID)?.language = tab.language
+                self.schedulePreviewUpdate(for: bonsplitID)
             }
         }
     }
@@ -220,6 +240,84 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
               selectedTab.id != clipboardTabID,
               let state = editorStates[selectedTab.id] else { return nil }
         return state.textView
+    }
+
+    // MARK: - Markdown preview
+
+    static let markdownStateChanged = Notification.Name("EditorCoordinatorMarkdownStateChanged")
+
+    @MainActor
+    var isCurrentTabMarkdown: Bool {
+        guard let focusedPaneId = controller.focusedPaneId,
+              let selectedTab = controller.selectedTab(inPane: focusedPaneId),
+              selectedTab.id != clipboardTabID else { return false }
+        return highlighterForTab(selectedTab.id)?.language == "markdown"
+    }
+
+    func isPreviewActive(for bonsplitTabID: TabID) -> Bool {
+        previewingTabs.contains(bonsplitTabID)
+    }
+
+    func previewHTML(for bonsplitTabID: TabID) -> String? {
+        previewHTMLCache[bonsplitTabID]
+    }
+
+    func previewBaseURL(for bonsplitTabID: TabID) -> URL? {
+        previewBaseURLCache[bonsplitTabID]
+    }
+
+    @MainActor
+    func togglePreview() {
+        guard let focusedPaneId = controller.focusedPaneId,
+              let selectedTab = controller.selectedTab(inPane: focusedPaneId),
+              selectedTab.id != clipboardTabID else { return }
+
+        if previewingTabs.contains(selectedTab.id) {
+            previewingTabs.remove(selectedTab.id)
+            previewHTMLCache.removeValue(forKey: selectedTab.id)
+            previewBaseURLCache.removeValue(forKey: selectedTab.id)
+        } else {
+            guard highlighterForTab(selectedTab.id)?.language == "markdown" else { return }
+            renderPreview(for: selectedTab.id)
+            previewingTabs.insert(selectedTab.id)
+        }
+
+        postMarkdownState(for: selectedTab.id)
+    }
+
+    @MainActor
+    private func renderPreview(for bonsplitTabID: TabID) {
+        guard let tabStoreID = reverseMap[bonsplitTabID],
+              let tab = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return }
+        previewHTMLCache[bonsplitTabID] = MarkdownRenderer.shared.render(
+            markdown: tab.content,
+            theme: cssTheme
+        )
+        previewBaseURLCache[bonsplitTabID] = tab.fileURL?.deletingLastPathComponent()
+    }
+
+    @MainActor
+    private func schedulePreviewUpdate(for bonsplitTabID: TabID) {
+        guard previewingTabs.contains(bonsplitTabID) else { return }
+        previewDebounceWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            MainActor.assumeIsolated {
+                self?.renderPreview(for: bonsplitTabID)
+            }
+        }
+        previewDebounceWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+    }
+
+    func postMarkdownState(for bonsplitTabID: TabID) {
+        let isMarkdown = bonsplitTabID != clipboardTabID
+            && highlighterForTab(bonsplitTabID)?.language == "markdown"
+        let isPreviewing = previewingTabs.contains(bonsplitTabID)
+        NotificationCenter.default.post(
+            name: Self.markdownStateChanged,
+            object: nil,
+            userInfo: ["isMarkdown": isMarkdown, "isPreviewing": isPreviewing]
+        )
     }
 
     // MARK: - Editor focus → pane focus
@@ -423,6 +521,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 NotificationCenter.default.post(name: ClipboardStore.clipboardTabSelectedNotification, object: nil)
             }
 
+            // Markdown toolbar state is handled by BonsplitRootView.onChange(of: isSelected)
+            // since this delegate only fires for programmatic selectTab() calls, not user clicks.
+
             // First responder is handled by EditorContentView.updateNSView
             // when isSelected changes, ensuring correct SwiftUI timing
         }
@@ -438,6 +539,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             fileWatcher.stop(url: fileURL)
         }
         editorStates.removeValue(forKey: tabId)
+        previewingTabs.remove(tabId)
+        previewHTMLCache.removeValue(forKey: tabId)
+        previewBaseURLCache.removeValue(forKey: tabId)
         tabIDMap.removeValue(forKey: tabStoreID)
         reverseMap.removeValue(forKey: tabId)
         tabStore.closeTab(id: tabStoreID)
@@ -700,6 +804,11 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         refreshCSSTheme()
         applyBonsplitTheme()
+
+        // Re-render any active markdown previews with the new theme
+        for tabID in previewingTabs {
+            renderPreview(for: tabID)
+        }
     }
 
     @MainActor

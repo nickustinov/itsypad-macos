@@ -56,7 +56,7 @@ extension TabData: Codable {
         language = try c.decode(String.self, forKey: .language)
         fileURL = try c.decodeIfPresent(URL.self, forKey: .fileURL)
         languageLocked = try c.decode(Bool.self, forKey: .languageLocked)
-        isDirty = try c.decode(Bool.self, forKey: .isDirty)
+        isDirty = try c.decodeIfPresent(Bool.self, forKey: .isDirty) ?? false
         cursorPosition = try c.decode(Int.self, forKey: .cursorPosition)
         lastModified = try c.decodeIfPresent(Date.self, forKey: .lastModified) ?? .distantPast
     }
@@ -67,16 +67,13 @@ class TabStore: ObservableObject {
 
     @Published var tabs: [TabData] = []
     @Published var selectedTabID: UUID?
-    @Published private(set) var lastICloudSync: Date?
+    @Published var lastICloudSync: Date?
     private(set) var savedLayout: LayoutNode?
     var currentLayout: LayoutNode?
 
     private var saveDebounceWork: DispatchWorkItem?
     private var languageDetectWork: DispatchWorkItem?
     private let sessionURL: URL
-    private let cloudStore: KeyValueStoreProtocol
-    private var icloudObserver: NSObjectProtocol?
-    private var settingsObserver: NSObjectProtocol?
     private static let cloudTabsKey = "tabs"
     private static let cloudDeletedKey = "deletedTabIDs"
     private var deletedTabIDs: Set<UUID> = []
@@ -85,9 +82,7 @@ class TabStore: ObservableObject {
         tabs.first { $0.id == selectedTabID }
     }
 
-    init(sessionURL: URL? = nil, cloudStore: KeyValueStoreProtocol = NSUbiquitousKeyValueStore.default) {
-        self.cloudStore = cloudStore
-
+    init(sessionURL: URL? = nil) {
         if let sessionURL {
             self.sessionURL = sessionURL
         } else {
@@ -101,21 +96,6 @@ class TabStore: ObservableObject {
 
         if tabs.isEmpty {
             addNewTab()
-        }
-
-        if SettingsStore.shared.icloudSync {
-            startICloudSync()
-        }
-
-        settingsObserver = NotificationCenter.default.addObserver(
-            forName: .settingsChanged, object: nil, queue: .main
-        ) { [weak self] _ in
-            guard let self else { return }
-            if SettingsStore.shared.icloudSync {
-                self.startICloudSync()
-            } else {
-                self.stopICloudSync()
-            }
         }
     }
 
@@ -133,7 +113,7 @@ class TabStore: ObservableObject {
         // Record tombstone for scratch tabs so other devices don't re-add
         if tabs[index].fileURL == nil && SettingsStore.shared.icloudSync {
             deletedTabIDs.insert(id)
-            syncDeletedIDs()
+            syncDeletedIDs(to: ICloudSyncManager.shared.cloudStore)
         }
         tabs.remove(at: index)
 
@@ -333,61 +313,33 @@ class TabStore: ObservableObject {
 
     static let cloudTabsMerged = Notification.Name("cloudTabsMerged")
 
-    private func syncDeletedIDs() {
+    private func syncDeletedIDs(to cloudStore: KeyValueStoreProtocol) {
         let strings = deletedTabIDs.map(\.uuidString)
         cloudStore.setData(try? JSONEncoder().encode(strings), forKey: Self.cloudDeletedKey)
         cloudStore.synchronize()
     }
 
-    private func loadDeletedIDs() {
+    private func loadDeletedIDs(from cloudStore: KeyValueStoreProtocol) {
         guard let data = cloudStore.data(forKey: Self.cloudDeletedKey),
               let strings = try? JSONDecoder().decode([String].self, from: data) else { return }
         deletedTabIDs = Set(strings.compactMap(UUID.init))
     }
 
-    func startICloudSync() {
-        guard icloudObserver == nil else { return }
-        let synced = cloudStore.synchronize()
-        if synced { lastICloudSync = Date() }
-        loadDeletedIDs()
-        mergeCloudTabs()
-        icloudObserver = NotificationCenter.default.addObserver(
-            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: cloudStore, queue: .main
-        ) { [weak self] _ in
-            self?.mergeCloudTabs()
-        }
-    }
-
-    func stopICloudSync() {
-        if let observer = icloudObserver {
-            NotificationCenter.default.removeObserver(observer)
-            icloudObserver = nil
-        }
-        cloudStore.removeObject(forKey: Self.cloudTabsKey)
-        cloudStore.removeObject(forKey: Self.cloudDeletedKey)
-        deletedTabIDs.removeAll()
-        cloudStore.synchronize()
-    }
-
-    func checkICloud() {
-        guard SettingsStore.shared.icloudSync else { return }
-        cloudStore.synchronize()
-        loadDeletedIDs()
-        mergeCloudTabs()
-    }
-
-    private func saveToICloud() {
-        guard SettingsStore.shared.icloudSync else { return }
+    func saveTabsToCloud(_ cloudStore: KeyValueStoreProtocol) {
         let scratchTabs = tabs.filter { $0.fileURL == nil }
         guard let data = try? JSONEncoder().encode(scratchTabs) else { return }
         cloudStore.setData(data, forKey: Self.cloudTabsKey)
-        cloudStore.synchronize()
-        lastICloudSync = Date()
     }
 
-    private func mergeCloudTabs() {
+    func clearCloudData(from cloudStore: KeyValueStoreProtocol) {
+        cloudStore.removeObject(forKey: Self.cloudTabsKey)
+        cloudStore.removeObject(forKey: Self.cloudDeletedKey)
+        deletedTabIDs.removeAll()
+    }
+
+    func mergeCloudTabs(from cloudStore: KeyValueStoreProtocol) {
         guard SettingsStore.shared.icloudSync else { return }
+        loadDeletedIDs(from: cloudStore)
         guard let data = cloudStore.data(forKey: Self.cloudTabsKey) else { return }
         guard let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data) else { return }
 
@@ -457,7 +409,7 @@ class TabStore: ObservableObject {
         } catch {
             NSLog("Failed to save session: \(error)")
         }
-        saveToICloud()
+        ICloudSyncManager.shared.saveTabs()
     }
 
     private func restoreSession() {

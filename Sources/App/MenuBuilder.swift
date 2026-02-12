@@ -227,6 +227,12 @@ class MenuBuilder {
         pinItem.target = target
         menu.addItem(pinItem)
 
+        let previewItem = NSMenuItem(title: "Toggle preview", action: #selector(AppDelegate.togglePreviewAction), keyEquivalent: "p")
+        previewItem.image = NSImage(systemSymbolName: "rectangle.split.2x1", accessibilityDescription: nil)
+        previewItem.keyEquivalentModifierMask = [.command, .shift]
+        previewItem.target = target
+        menu.addItem(previewItem)
+
         menu.addItem(.separator())
 
         let nextTabItem = NSMenuItem(title: "Next tab", action: #selector(AppDelegate.nextTabAction), keyEquivalent: "\t")

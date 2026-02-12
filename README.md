@@ -9,14 +9,14 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.ap
 ## Features
 
 - **Text editor** — syntax highlighting, multi-tab, split view, find and replace, clickable links, lists and checklists
-- **Clipboard manager** — 1,000-item history, searchable, keyboard navigable, grid or panels layout
+- **Clipboard manager** — 1,000-item history, searchable, keyboard navigable, grid or panels layout, iCloud sync (text entries)
 - **Global hotkeys** — tap left ⌥ three times to show/hide, or define your own hotkey
 - **Lightweight** — nearly zero CPU and memory usage
 - **No AI, no telemetry** — your data stays on your machine
 - **Menu bar icon** — show or hide in menu bar
 - **Dock icon** — show or hide in Dock, as you prefer
 - **Open at login** — optional auto-start
-- **iCloud sync** — sync scratch tabs across Macs via iCloud
+- **iCloud sync** — sync scratch tabs and clipboard history (text only) across Macs via iCloud
 
 ## Editor
 - **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder (tab bar by [Bonsplit](https://github.com/almonk/bonsplit))
@@ -24,6 +24,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.ap
 - **Find and replace** — built-in find bar with next/previous match and use selection for find
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts
 - **Auto-save** — content is continuously saved to session, never lose your work
+- **Markdown preview** — side-by-side rendered preview for `.md` tabs (⇧⌘P), live-updates as you type, themed code blocks, local images
 - **Clickable links** — URLs in plain text and markdown tabs are highlighted and underlined; click to open in browser
 - **Always on top** — pin the window above all other apps (⇧⌘T)
 - **Syntax themes** — 9 curated themes (Atom One, Catppuccin, GitHub, Gruvbox, IntelliJ / Darcula, Itsypad, Stack Overflow, Tokyo Night, Visual Studio) with dark and light variants
@@ -71,6 +72,7 @@ Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines ali
 - **Configurable cards** — adjust preview line count and font size in settings
 - **Delete entries** — remove individual items on hover
 - **Separate hotkey** — assign a dedicated global hotkey to show/hide
+- **iCloud sync** — text entries sync across devices alongside scratch tabs (up to 200 most recent)
 
 ## Install
 
@@ -137,27 +139,34 @@ If you like Itsypad, check out my other macOS apps - same philosophy of native, 
 ```
 Sources/
 ├── App/
-│   ├── Launch.swift                     # App entry point
 │   ├── AppDelegate.swift                # Menu bar, toolbar, window, and panel setup
-│   ├── MenuBuilder.swift                # Main menu bar construction
 │   ├── BonsplitRootView.swift           # SwiftUI root view rendering editor and clipboard tabs
+│   ├── ICloudSyncManager.swift          # Unified iCloud sync orchestrator for tabs and clipboard
+│   ├── Launch.swift                     # App entry point
+│   ├── MenuBuilder.swift                # Main menu bar construction
 │   ├── Models.swift                     # ShortcutKeys and shared data types
-│   └── TabStore.swift                   # Tab data model with persistence and iCloud sync
+│   ├── ICloudSyncManager.swift          # Unified iCloud KV sync for tabs and clipboard
+│   ├── TabStore.swift                   # Tab data model with persistence
+│   └── UpdateChecker.swift              # GitHub release check for new versions
 ├── Editor/
-│   ├── EditorTextView.swift             # NSTextView subclass with editing helpers and file drops
 │   ├── EditorContentView.swift          # NSViewRepresentable wrapping text view, scroll view, and gutter
-│   ├── EditorCoordinator.swift          # Tab/pane orchestrator bridging TabStore, Bonsplit, and iCloud
+│   ├── EditorCoordinator.swift          # Tab/pane orchestrator bridging TabStore and Bonsplit
+│   ├── EditorStateFactory.swift         # Editor state creation and theme application
+│   ├── EditorTextView.swift             # NSTextView subclass with editing helpers and file drops
 │   ├── EditorTheme.swift                # Dark/light color palettes with CSS-derived theme cache
+│   ├── FileWatcher.swift                # DispatchSource-based file change monitoring
 │   ├── HighlightJS.swift                # JSContext wrapper for highlight.js with CSS/HTML parsing
-│   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
-│   ├── SyntaxThemeRegistry.swift        # Curated syntax theme definitions with dark/light CSS mapping
 │   ├── LanguageDetector.swift           # File extension → language mapping for highlight.js
+│   ├── LayoutSerializer.swift           # Split layout capture and restore for session persistence
 │   ├── LineNumberGutterView.swift       # Line number gutter drawn alongside the text view
 │   ├── ListHelper.swift                 # List/checklist parsing, continuation, and toggling
+│   ├── MarkdownPreviewView.swift        # WKWebView wrapper for rendered markdown preview
+│   ├── MarkdownRenderer.swift           # Markdown-to-HTML via marked.js + highlight.js in JSContext
 │   ├── SessionRestorer.swift            # Session restore logic for tabs and editor state
-│   └── FileWatcher.swift                # DispatchSource-based file change monitoring
+│   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
+│   └── SyntaxThemeRegistry.swift        # Curated syntax theme definitions with dark/light CSS mapping
 ├── Clipboard/
-│   ├── ClipboardStore.swift             # Clipboard monitoring and history persistence
+│   ├── ClipboardStore.swift             # Clipboard monitoring, history persistence, and iCloud sync
 │   ├── ClipboardContentView.swift       # NSCollectionView grid with search, keyboard nav, and layout
 │   ├── ClipboardCollectionView.swift    # NSCollectionView subclass with key event delegation
 │   ├── ClipboardCardItem.swift          # NSCollectionViewItem wrapper for card views
@@ -182,6 +191,7 @@ Executable/
 Packages/
 └── Bonsplit/                            # Local package: split pane and tab bar framework
 Tests/
+├── AutoDetectTests.swift
 ├── ClipboardShortcutTests.swift
 ├── ClipboardStoreTests.swift
 ├── EditorThemeTests.swift

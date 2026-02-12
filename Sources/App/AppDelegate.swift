@@ -17,6 +17,7 @@ private extension NSToolbarItem.Identifier {
     static let saveFile = NSToolbarItem.Identifier("saveFile")
     static let findReplace = NSToolbarItem.Identifier("findReplace")
     static let tabSwitcher = NSToolbarItem.Identifier("tabSwitcher")
+    static let markdownPreview = NSToolbarItem.Identifier("markdownPreview")
 }
 
 @MainActor
@@ -31,6 +32,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var appearanceObservation: NSKeyValueObservation?
     private var recentFilesMenu: NSMenu?
     private var isPinned = false
+    private var markdownObserver: Any?
+    private var showMarkdownPreview = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -80,6 +83,24 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
                 guard SettingsStore.shared.appearanceOverride == "system" else { return }
                 NotificationCenter.default.post(name: .settingsChanged, object: nil)
             }
+        }
+
+        markdownObserver = NotificationCenter.default.addObserver(
+            forName: EditorCoordinator.markdownStateChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                let isMarkdown = notification.userInfo?["isMarkdown"] as? Bool ?? false
+                let isPreviewing = notification.userInfo?["isPreviewing"] as? Bool ?? false
+                self?.updateMarkdownToolbarItem(isMarkdown: isMarkdown, isPreviewing: isPreviewing)
+            }
+        }
+
+        // Notifications during EditorCoordinator.init fire before the observer above is registered,
+        // so check the initial state now.
+        if let isMarkdown = editorCoordinator?.isCurrentTabMarkdown {
+            updateMarkdownToolbarItem(isMarkdown: isMarkdown, isPreviewing: false)
         }
     }
 
@@ -314,11 +335,16 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .findReplace]
+        var items: [NSToolbarItem.Identifier] = [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space]
+        if showMarkdownPreview {
+            items.append(.markdownPreview)
+        }
+        items.append(.findReplace)
+        return items
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .findReplace]
+        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .markdownPreview, .findReplace]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
@@ -356,6 +382,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             item.toolTip = "Save file"
             item.target = self
             item.action = #selector(saveFileAction)
+        case .markdownPreview:
+            let isPreviewing = currentSelectedTabID().flatMap { editorCoordinator?.isPreviewActive(for: $0) } ?? false
+            item.image = NSImage(systemSymbolName: isPreviewing ? "rectangle.split.2x1.fill" : "rectangle.split.2x1", accessibilityDescription: "Preview")
+            item.label = "Preview"
+            item.toolTip = "Toggle markdown preview (⇧⌘P)"
+            item.target = self
+            item.action = #selector(togglePreviewAction)
         case .findReplace:
             item.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Find")
             item.label = "Find"
@@ -515,6 +548,32 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         editorWindow?.level = isPinned ? .floating : .normal
     }
 
+    @objc func togglePreviewAction() {
+        editorCoordinator?.togglePreview()
+    }
+
+    private func currentSelectedTabID() -> TabID? {
+        guard let focusedPaneId = editorCoordinator?.controller.focusedPaneId else { return nil }
+        return editorCoordinator?.controller.selectedTab(inPane: focusedPaneId)?.id
+    }
+
+    private func updateMarkdownToolbarItem(isMarkdown: Bool, isPreviewing: Bool) {
+        guard let window = editorWindow else { return }
+
+        if isMarkdown != showMarkdownPreview {
+            showMarkdownPreview = isMarkdown
+            let toolbar = NSToolbar(identifier: "EditorToolbar")
+            toolbar.delegate = self
+            toolbar.displayMode = .iconOnly
+            window.toolbar = toolbar
+        } else if isMarkdown, let item = window.toolbar?.items.first(where: { $0.itemIdentifier == .markdownPreview }) {
+            item.image = NSImage(
+                systemSymbolName: isPreviewing ? "rectangle.split.2x1.fill" : "rectangle.split.2x1",
+                accessibilityDescription: "Preview"
+            )
+        }
+    }
+
     private func buildTabSwitcherMenu() -> NSMenu {
         let menu = NSMenu()
         menu.delegate = self
@@ -616,6 +675,15 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         }
         if menuItem.action == #selector(togglePin) {
             menuItem.state = isPinned ? .on : .off
+        }
+        if menuItem.action == #selector(togglePreviewAction) {
+            let isMarkdown = editorCoordinator?.isCurrentTabMarkdown ?? false
+            if isMarkdown, let tabID = currentSelectedTabID() {
+                menuItem.state = editorCoordinator?.isPreviewActive(for: tabID) ?? false ? .on : .off
+            } else {
+                menuItem.state = .off
+            }
+            return isMarkdown
         }
         return true
     }

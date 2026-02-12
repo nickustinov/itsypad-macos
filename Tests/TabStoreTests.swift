@@ -30,7 +30,7 @@ final class TabStoreTests: XCTestCase {
         tempURL = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString)
             .appendingPathExtension("json")
-        store = TabStore(sessionURL: tempURL, cloudStore: MockKeyValueStore())
+        store = TabStore(sessionURL: tempURL)
     }
 
     override func tearDown() {
@@ -273,50 +273,28 @@ final class TabStoreTests: XCTestCase {
 
     func testSaveSessionWritesScratchTabsToCloudStore() {
         let cloud = MockKeyValueStore()
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        SettingsStore.shared.icloudSync = true
-        let tabStore = TabStore(sessionURL: url, cloudStore: cloud)
-        tabStore.updateContent(id: tabStore.tabs.first!.id, content: "scratch note")
-        tabStore.saveSession()
+        store.updateContent(id: store.tabs.first!.id, content: "scratch note")
+        store.saveTabsToCloud(cloud)
 
         XCTAssertNotNil(cloud.storage["tabs"])
         let decoded = try! JSONDecoder().decode([TabData].self, from: cloud.storage["tabs"]!)
         XCTAssertEqual(decoded.count, 1)
         XCTAssertEqual(decoded.first?.content, "scratch note")
-        SettingsStore.shared.icloudSync = false
     }
 
     func testSaveSessionExcludesFileBackedTabs() {
         let cloud = MockKeyValueStore()
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        SettingsStore.shared.icloudSync = true
-        let tabStore = TabStore(sessionURL: url, cloudStore: cloud)
-        tabStore.tabs[0].fileURL = URL(fileURLWithPath: "/tmp/test.swift")
-        tabStore.saveSession()
+        store.tabs[0].fileURL = URL(fileURLWithPath: "/tmp/test.swift")
+        store.saveTabsToCloud(cloud)
 
         let decoded = try! JSONDecoder().decode([TabData].self, from: cloud.storage["tabs"]!)
         XCTAssertTrue(decoded.isEmpty)
-        SettingsStore.shared.icloudSync = false
     }
 
     func testSaveSessionSkipsCloudWhenSyncDisabled() {
         let cloud = MockKeyValueStore()
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
-        defer { try? FileManager.default.removeItem(at: url) }
-
         SettingsStore.shared.icloudSync = false
-        let tabStore = TabStore(sessionURL: url, cloudStore: cloud)
-        tabStore.saveSession()
+        store.saveSession()
 
         XCTAssertNil(cloud.storage["tabs"])
     }
@@ -324,40 +302,26 @@ final class TabStoreTests: XCTestCase {
     func testStopICloudSyncRemovesCloudData() {
         let cloud = MockKeyValueStore()
         cloud.storage["tabs"] = Data()
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
-        defer { try? FileManager.default.removeItem(at: url) }
-
-        let tabStore = TabStore(sessionURL: url, cloudStore: cloud)
-        tabStore.stopICloudSync()
+        cloud.storage["deletedTabIDs"] = Data()
+        store.clearCloudData(from: cloud)
 
         XCTAssertNil(cloud.storage["tabs"])
+        XCTAssertNil(cloud.storage["deletedTabIDs"])
     }
 
     func testMergeCloudTabsAppendsNewTab() {
         let cloud = MockKeyValueStore()
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
-        defer { try? FileManager.default.removeItem(at: url) }
-
         SettingsStore.shared.icloudSync = true
-        let tabStore = TabStore(sessionURL: url, cloudStore: cloud)
-        let initialCount = tabStore.tabs.count
+        let initialCount = store.tabs.count
 
         let cloudTab = TabData(name: "Cloud note", content: "from cloud", language: "plain")
         let cloudData = try! JSONEncoder().encode([cloudTab])
         cloud.storage["tabs"] = cloudData
 
-        tabStore.startICloudSync()
-        NotificationCenter.default.post(
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: cloud
-        )
+        store.mergeCloudTabs(from: cloud)
 
-        XCTAssertEqual(tabStore.tabs.count, initialCount + 1)
-        XCTAssertTrue(tabStore.tabs.contains(where: { $0.id == cloudTab.id }))
+        XCTAssertEqual(store.tabs.count, initialCount + 1)
+        XCTAssertTrue(store.tabs.contains(where: { $0.id == cloudTab.id }))
         SettingsStore.shared.icloudSync = false
     }
 
@@ -456,28 +420,18 @@ final class TabStoreTests: XCTestCase {
 
     func testMergeCloudTabsUpdatesExistingTab() {
         let cloud = MockKeyValueStore()
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(UUID().uuidString)
-            .appendingPathExtension("json")
-        defer { try? FileManager.default.removeItem(at: url) }
-
         SettingsStore.shared.icloudSync = true
-        let tabStore = TabStore(sessionURL: url, cloudStore: cloud)
-        let existingID = tabStore.tabs.first!.id
+        let existingID = store.tabs.first!.id
 
         let cloudTab = TabData(id: existingID, name: "Updated", content: "updated content", language: "swift")
         let cloudData = try! JSONEncoder().encode([cloudTab])
         cloud.storage["tabs"] = cloudData
 
-        tabStore.startICloudSync()
-        NotificationCenter.default.post(
-            name: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: cloud
-        )
+        store.mergeCloudTabs(from: cloud)
 
-        XCTAssertEqual(tabStore.tabs.first?.content, "updated content")
-        XCTAssertEqual(tabStore.tabs.first?.name, "Updated")
-        XCTAssertEqual(tabStore.tabs.first?.language, "swift")
+        XCTAssertEqual(store.tabs.first?.content, "updated content")
+        XCTAssertEqual(store.tabs.first?.name, "Updated")
+        XCTAssertEqual(store.tabs.first?.language, "swift")
         SettingsStore.shared.icloudSync = false
     }
 }

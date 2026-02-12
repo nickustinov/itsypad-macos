@@ -176,4 +176,103 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertEqual(decoded.imageFileName, "abc123.png")
         XCTAssertNil(decoded.text)
     }
+
+    // MARK: - iCloud sync
+
+    func testSaveClipboardToCloudEncodesTextOnly() {
+        let cloud = MockKeyValueStore()
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "hello"),
+            ClipboardEntry(kind: .image, imageFileName: "img.png"),
+            ClipboardEntry(kind: .text, text: "world"),
+        ]
+        store.saveClipboardToCloud(cloud)
+
+        let data = cloud.storage["clipboard"]!
+        let decoded = try! JSONDecoder().decode([ClipboardCloudEntry].self, from: data)
+        XCTAssertEqual(decoded.count, 2)
+        XCTAssertEqual(decoded[0].text, "hello")
+        XCTAssertEqual(decoded[1].text, "world")
+    }
+
+    func testSaveClipboardToCloudCapsAt200() {
+        let cloud = MockKeyValueStore()
+        store.entries = (0..<300).map { i in
+            ClipboardEntry(kind: .text, text: "entry \(i)")
+        }
+        store.saveClipboardToCloud(cloud)
+
+        let data = cloud.storage["clipboard"]!
+        let decoded = try! JSONDecoder().decode([ClipboardCloudEntry].self, from: data)
+        XCTAssertEqual(decoded.count, 200)
+    }
+
+    func testMergeCloudClipboardInsertsNewEntries() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "local"),
+        ]
+
+        let cloudEntry = ClipboardCloudEntry(id: UUID(), text: "from cloud", timestamp: Date())
+        let cloudData = try! JSONEncoder().encode([cloudEntry])
+        cloud.storage["clipboard"] = cloudData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertEqual(store.entries.count, 2)
+        XCTAssertTrue(store.entries.contains(where: { $0.text == "from cloud" }))
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testMergeCloudClipboardSkipsDuplicateUUIDs() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let sharedID = UUID()
+        store.entries = [
+            ClipboardEntry(id: sharedID, kind: .text, text: "local version"),
+        ]
+
+        let cloudEntry = ClipboardCloudEntry(id: sharedID, text: "cloud version", timestamp: Date())
+        let cloudData = try! JSONEncoder().encode([cloudEntry])
+        cloud.storage["clipboard"] = cloudData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertEqual(store.entries.count, 1)
+        XCTAssertEqual(store.entries.first?.text, "local version")
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testMergeCloudClipboardMaintainsChronologicalOrder() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let now = Date()
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "newest", timestamp: now),
+            ClipboardEntry(kind: .text, text: "oldest", timestamp: now.addingTimeInterval(-100)),
+        ]
+
+        let cloudEntry = ClipboardCloudEntry(id: UUID(), text: "middle", timestamp: now.addingTimeInterval(-50))
+        let cloudData = try! JSONEncoder().encode([cloudEntry])
+        cloud.storage["clipboard"] = cloudData
+
+        store.mergeCloudClipboard(from: cloud)
+
+        XCTAssertEqual(store.entries.count, 3)
+        XCTAssertEqual(store.entries[0].text, "newest")
+        XCTAssertEqual(store.entries[1].text, "middle")
+        XCTAssertEqual(store.entries[2].text, "oldest")
+        SettingsStore.shared.icloudSync = false
+    }
+
+    func testClearCloudDataRemovesKey() {
+        let cloud = MockKeyValueStore()
+        cloud.storage["clipboard"] = Data()
+        store.clearCloudData(from: cloud)
+        XCTAssertNil(cloud.storage["clipboard"])
+    }
 }

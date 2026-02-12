@@ -106,7 +106,7 @@ struct GeneralSettingsView: View {
                         get: { store.icloudSync },
                         set: { store.setICloudSync($0) }
                     ))
-                    Text("Only syncs scratch tabs and their content. Tabs backed by files on disk are not transferred.")
+                    Text("Syncs scratch tabs and clipboard history (text only) across devices. File-backed tabs are not synced.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if store.icloudSync {
