@@ -101,4 +101,40 @@ final class MarkdownRendererTests: XCTestCase {
         let html = Self.renderer.render(markdown: "---", theme: theme)
         XCTAssertTrue(html.contains("<hr"), "Expected <hr> tag")
     }
+
+    // MARK: - Frontmatter stripping
+
+    func testStripFrontmatter() {
+        let result = Self.renderer.stripFrontmatter("---\ntitle: Test\n---\n# Hello")
+        XCTAssertEqual(result, "# Hello")
+    }
+
+    func testStripFrontmatterPreservesContent() {
+        let result = Self.renderer.stripFrontmatter("# No frontmatter here")
+        XCTAssertEqual(result, "# No frontmatter here")
+    }
+
+    func testStripFrontmatterMultipleFields() {
+        let markdown = "---\ntitle: Test\ndate: 2026-01-01\ntags: [swift]\n---\nContent"
+        let result = Self.renderer.stripFrontmatter(markdown)
+        XCTAssertEqual(result, "Content")
+    }
+
+    func testStripFrontmatterOnlyFrontmatter() {
+        let result = Self.renderer.stripFrontmatter("---\ntitle: Test\n---")
+        XCTAssertEqual(result, "")
+    }
+
+    func testStripFrontmatterNotAtStart() {
+        let markdown = "Some text\n---\ntitle: Test\n---\n"
+        let result = Self.renderer.stripFrontmatter(markdown)
+        XCTAssertEqual(result, markdown, "Should not strip frontmatter that doesn't start at beginning")
+    }
+
+    func testRenderFrontmatterDocument() {
+        let markdown = "---\ntitle: My Post\ndate: 2026-01-01\n---\n# Hello world"
+        let html = Self.renderer.render(markdown: markdown, theme: theme)
+        XCTAssertTrue(html.contains("<h1>Hello world</h1>"), "Expected content after frontmatter")
+        XCTAssertFalse(html.contains("title: My Post"), "Frontmatter should be stripped from output")
+    }
 }

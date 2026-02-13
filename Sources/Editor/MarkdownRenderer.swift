@@ -44,7 +44,7 @@ class MarkdownRenderer {
         }
 
         // Escape markdown for JavaScript string
-        let escaped = markdown
+        let escaped = stripFrontmatter(markdown)
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "`", with: "\\`")
             .replacingOccurrences(of: "$", with: "\\$")
@@ -217,6 +217,27 @@ class MarkdownRenderer {
         </body>
         </html>
         """
+    }
+
+    func stripFrontmatter(_ markdown: String) -> String {
+        guard markdown.hasPrefix("---\n") || markdown.hasPrefix("---\r\n") else {
+            return markdown
+        }
+        // Find the closing --- after the opening one
+        let searchStart = markdown.index(markdown.startIndex, offsetBy: 4)
+        guard searchStart < markdown.endIndex else { return markdown }
+        let rest = markdown[searchStart...]
+        if let closingRange = rest.range(of: "\n---\n") {
+            return String(rest[closingRange.upperBound...])
+        }
+        if let closingRange = rest.range(of: "\r\n---\r\n") {
+            return String(rest[closingRange.upperBound...])
+        }
+        // Frontmatter at end of file (no trailing content)
+        if rest.hasSuffix("\n---") || rest.hasSuffix("\r\n---") {
+            return ""
+        }
+        return markdown
     }
 
     private func hexString(_ color: NSColor) -> String {

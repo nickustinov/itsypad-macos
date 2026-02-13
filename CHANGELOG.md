@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.7.1
+
+Features:
+- Frontmatter support – YAML frontmatter blocks (`---` delimited) at the top of markdown files are now stripped from the rendered preview instead of being rendered as broken HTML (#32)
+
 ## 1.7.0
 
 Features:
