@@ -226,10 +226,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         settingsItem.target = self
         menu.addItem(settingsItem)
 
+        #if !APPSTORE
         let updateItem = NSMenuItem(title: "Check for updates...", action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
         updateItem.target = self
         menu.addItem(updateItem)
+        #endif
 
         menu.addItem(.separator())
 
@@ -458,9 +460,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         toggleWindow()
     }
 
+    #if !APPSTORE
     @objc func checkForUpdates() {
         UpdateChecker.check()
     }
+    #endif
 
     @objc private func quitApp() {
         TabStore.shared.saveSession()

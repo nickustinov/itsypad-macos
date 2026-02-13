@@ -384,6 +384,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             return
         }
 
+        _ = url.startAccessingSecurityScopedResource()
         tabStore.openFile(url: url)
         guard let newTab = tabStore.tabs.last else { return }
         if let bonsplitTabID = controller.createTab(

@@ -21,10 +21,12 @@ class MenuBuilder {
         settingsMenuItem.target = target
         menu.addItem(settingsMenuItem)
 
+        #if !APPSTORE
         let updateItem = NSMenuItem(title: "Check for updates...", action: #selector(AppDelegate.checkForUpdates), keyEquivalent: "")
         updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
         updateItem.target = target
         menu.addItem(updateItem)
+        #endif
 
         menu.addItem(.separator())
 
