@@ -57,10 +57,24 @@ find "$ARCHIVE_APP" \( -name "*.framework" -o -name "*.dylib" \) | while read -r
 done
 
 # Create resolved entitlements (Xcode variables aren't available during manual signing)
+# Also inject application-identifier, team-identifier, and keychain-access-groups
+# which Xcode adds automatically but manual codesign does not. Without these,
+# CloudKit fails with CKError.missingEntitlement (code 8).
 RESOLVED_ENTITLEMENTS="$DIST_DIR/itsypad-resolved.entitlements"
 sed -e 's/$(TeamIdentifierPrefix)/R892A93W42./g' \
     -e 's/$(CFBundleIdentifier)/com.nickustinov.itsypad/g' \
     "$PROJECT_DIR/Sources/itsypad-direct.entitlements" > "$RESOLVED_ENTITLEMENTS"
+
+# Inject entitlements that Xcode normally adds during signing
+sed -i '' 's|</dict>|    <key>com.apple.application-identifier</key>\
+    <string>R892A93W42.com.nickustinov.itsypad</string>\
+    <key>com.apple.developer.team-identifier</key>\
+    <string>R892A93W42</string>\
+    <key>keychain-access-groups</key>\
+    <array>\
+        <string>R892A93W42.*</string>\
+    </array>\
+</dict>|' "$RESOLVED_ENTITLEMENTS"
 
 # Sign the app bundle with resolved entitlements
 codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" \

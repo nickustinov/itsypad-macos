@@ -160,6 +160,7 @@ Both entitlements files are sandboxed and share the same capabilities:
 | `network.client` | yes (update checker) | no |
 | `ubiquity-kvstore-identifier` | yes (legacy, unused) | yes (legacy, unused) |
 | `icloud-container-identifiers` | `iCloud.com.nickustinov.itsypad` | same |
+| `icloud-container-environment` | `Production` | same |
 | `icloud-services` | `CloudKit` | same |
 
 The only real difference is `network.client` – the direct version needs it for checking GitHub releases. The App Store version doesn't need it because App Store handles updates.

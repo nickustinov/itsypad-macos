@@ -28,6 +28,9 @@ final class CloudSyncEngine: @unchecked Sendable {
     private static let containerID = "iCloud.com.nickustinov.itsypad"
     private static let zoneName = "ItsypadData"
 
+    /// Bump this to force a full re-sync (clears stale metadata and change tokens).
+    private static let syncVersion = 2
+
     // Lazy CloudKit objects – only created when start() is called
     private var container: CKContainer?
     private var database: CKDatabase?
@@ -75,7 +78,21 @@ final class CloudSyncEngine: @unchecked Sendable {
 
         guard let database else { return }
 
-        let stateSerialization = loadStateSerialization()
+        // Detect first sync: either no metadata, or sync version bumped (e.g. dev→prod migration).
+        let storedVersion = UserDefaults.standard.integer(forKey: "cloudSyncVersion")
+        let versionMismatch = storedVersion < Self.syncVersion
+        let isFirstSync = recordMetadata.isEmpty || versionMismatch
+        if isFirstSync {
+            if versionMismatch {
+                logger.info("Sync version bumped (\(storedVersion) → \(Self.syncVersion)) – clearing state for full re-sync")
+                recordMetadata.removeAll()
+                saveRecordMetadata()
+                UserDefaults.standard.set(Self.syncVersion, forKey: "cloudSyncVersion")
+            }
+            try? FileManager.default.removeItem(at: stateURL)
+        }
+
+        let stateSerialization = isFirstSync ? nil : loadStateSerialization()
         var configuration = CKSyncEngine.Configuration(
             database: database,
             stateSerialization: stateSerialization,
@@ -83,12 +100,16 @@ final class CloudSyncEngine: @unchecked Sendable {
         )
         configuration.automaticallySync = true
         syncEngine = CKSyncEngine(configuration)
-        logger.info("CloudSyncEngine started")
+        logger.info("CloudSyncEngine started (firstSync=\(isFirstSync))")
+
+        if isFirstSync {
+            syncEngine?.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
+            reuploadAllRecords()
+        }
     }
 
     func stop() {
         syncEngine = nil
-        // Clear cloud metadata but keep state serialization so re-enable is fast
         recordMetadata.removeAll()
         saveRecordMetadata()
         logger.info("CloudSyncEngine stopped")
@@ -295,26 +316,35 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
             saveStateSerialization(stateUpdate.stateSerialization)
 
         case .accountChange(let accountChange):
+            logger.info("Account change: \(String(describing: accountChange.changeType))")
             handleAccountChange(accountChange)
 
         case .fetchedDatabaseChanges(let event):
             handleFetchedDatabaseChanges(event)
 
         case .fetchedRecordZoneChanges(let event):
+            logger.info("Fetched \(event.modifications.count) changes, \(event.deletions.count) deletions")
             applyFetchedChanges(event)
 
         case .sentRecordZoneChanges(let event):
             handleSentRecordZoneChanges(event)
 
-        case .sentDatabaseChanges:
-            break
+        case .sentDatabaseChanges(let event):
+            for failedZone in event.failedZoneSaves {
+                logger.error("Failed zone save: code=\(failedZone.error.code.rawValue) \(failedZone.error.localizedDescription)")
+            }
 
-        case .willFetchChanges, .willFetchRecordZoneChanges, .didFetchRecordZoneChanges,
-             .didFetchChanges, .willSendChanges, .didSendChanges:
+        case .didFetchChanges, .didSendChanges:
+            DispatchQueue.main.async {
+                TabStore.shared.lastICloudSync = Date()
+            }
+
+        case .willFetchChanges, .willSendChanges,
+             .willFetchRecordZoneChanges, .didFetchRecordZoneChanges:
             break
 
         @unknown default:
-            logger.info("Unknown sync event: \(event)")
+            break
         }
     }
 
@@ -328,7 +358,6 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
         let batch = await CKSyncEngine.RecordZoneChangeBatch(pendingChanges: changes) { recordID in
             guard let uuid = UUID(uuidString: recordID.recordName) else { return nil }
 
-            // Determine record type from pending changes
             if let record = self.buildScratchTabRecord(id: uuid, recordID: recordID) {
                 return record
             }
@@ -348,7 +377,6 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
     private func handleAccountChange(_ event: CKSyncEngine.Event.AccountChange) {
         switch event.changeType {
         case .signIn:
-            // Re-upload all local data
             syncEngine?.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
             reuploadAllRecords()
 
@@ -359,7 +387,7 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
             clearLocalCloudState()
 
         @unknown default:
-            logger.info("Unknown account change: \(event)")
+            break
         }
     }
 
@@ -381,6 +409,7 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
 
         for failedSave in event.failedRecordSaves {
             let failedRecord = failedSave.record
+            logger.error("Failed to save \(failedRecord.recordType) \(failedRecord.recordID.recordName): code=\(failedSave.error.code.rawValue)")
 
             switch failedSave.error.code {
             case .serverRecordChanged:
@@ -408,10 +437,10 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
 
             case .networkFailure, .networkUnavailable, .zoneBusy, .serviceUnavailable,
                  .notAuthenticated, .operationCancelled:
-                logger.debug("Retryable error: \(failedSave.error)")
+                break
 
             default:
-                logger.error("Failed to save record \(failedRecord.recordID): \(failedSave.error)")
+                logger.error("Unhandled save error: \(failedSave.error)")
             }
         }
 
@@ -438,6 +467,7 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
             .filter { $0.kind == .text }
             .map { .saveRecord(CKRecord.ID(recordName: $0.id.uuidString, zoneID: zoneID)) }
 
+        logger.info("Re-uploading \(tabChanges.count) tabs, \(clipboardChanges.count) clipboard entries")
         syncEngine?.state.add(pendingRecordZoneChanges: tabChanges + clipboardChanges)
     }
 
@@ -448,8 +478,6 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
     }
 
     private static let hasCloudKitEntitlement: Bool = {
-        // CKContainer init traps when CloudKit entitlements are missing (e.g. unit test host).
-        // Detect this by checking for the XCTest environment variable.
         return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
     }()
 }
