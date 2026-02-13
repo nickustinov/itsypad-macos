@@ -104,6 +104,10 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(store.clipboardFontSize, 11)
     }
 
+    func testDefaultClipboardAutoDelete() {
+        XCTAssertEqual(store.clipboardAutoDelete, "never")
+    }
+
     // MARK: - Setting persistence
 
     func testShortcutPersistsToDefaults() {
@@ -139,6 +143,11 @@ final class SettingsStoreTests: XCTestCase {
     func testClipboardFontSizePersistsToDefaults() {
         store.clipboardFontSize = 14
         XCTAssertEqual(defaults.double(forKey: "clipboardFontSize"), 14)
+    }
+
+    func testClipboardAutoDeletePersistsToDefaults() {
+        store.clipboardAutoDelete = "7d"
+        XCTAssertEqual(defaults.string(forKey: "clipboardAutoDelete"), "7d")
     }
 
     func testClickableLinksPersistsToDefaults() {
@@ -188,6 +197,7 @@ final class SettingsStoreTests: XCTestCase {
         preDefaults.set("panels", forKey: "clipboardViewMode")
         preDefaults.set(12, forKey: "clipboardPreviewLines")
         preDefaults.set(16.0, forKey: "clipboardFontSize")
+        preDefaults.set("14d", forKey: "clipboardAutoDelete")
 
         let preStore = SettingsStore(defaults: preDefaults)
         XCTAssertEqual(preStore.editorFontName, "Menlo")
@@ -202,6 +212,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(preStore.clipboardViewMode, "panels")
         XCTAssertEqual(preStore.clipboardPreviewLines, 12)
         XCTAssertEqual(preStore.clipboardFontSize, 16)
+        XCTAssertEqual(preStore.clipboardAutoDelete, "14d")
 
         preDefaults.removePersistentDomain(forName: preSuiteName)
     }

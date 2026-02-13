@@ -245,6 +245,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var clipboardAutoDelete: String = "never" {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(clipboardAutoDelete, forKey: "clipboardAutoDelete")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     var indentString: String {
         indentUsingSpaces ? String(repeating: " ", count: tabWidth) : "\t"
     }
@@ -327,5 +335,6 @@ class SettingsStore: ObservableObject {
         let savedClipboardFontSize = defaults.double(forKey: "clipboardFontSize")
         clipboardFontSize = savedClipboardFontSize > 0 ? savedClipboardFontSize : 11
         clipboardClickAction = defaults.string(forKey: "clipboardClickAction") ?? "copy"
+        clipboardAutoDelete = defaults.string(forKey: "clipboardAutoDelete") ?? "never"
     }
 }

@@ -41,6 +41,7 @@ class ClipboardStore {
     private var timer: Timer?
     private var lastChangeCount: Int
     private var saveDebounceWork: DispatchWorkItem?
+    private var lastPruneDate: Date = .distantPast
     private let storageURL: URL
     let imagesDirectory: URL
 
@@ -80,6 +81,7 @@ class ClipboardStore {
 
     func startMonitoring() {
         lastChangeCount = NSPasteboard.general.changeCount
+        pruneExpiredEntries()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             self?.checkPasteboard()
         }
@@ -92,6 +94,11 @@ class ClipboardStore {
     }
 
     private func checkPasteboard() {
+        if Date().timeIntervalSince(lastPruneDate) >= 900 {
+            lastPruneDate = Date()
+            pruneExpiredEntries()
+        }
+
         let pasteboard = NSPasteboard.general
         let currentCount = pasteboard.changeCount
         guard currentCount != lastChangeCount else { return }
@@ -162,7 +169,16 @@ class ClipboardStore {
 
         // Re-add as newest entry if this isn't already the most recent,
         // so iCloud sync picks it up as the latest across devices.
-        if entries.first?.id != entry.id {
+        let alreadyFirst: Bool
+        if let first = entries.first, first.kind == entry.kind {
+            switch entry.kind {
+            case .text: alreadyFirst = first.text == entry.text
+            case .image: alreadyFirst = first.imageFileName == entry.imageFileName
+            }
+        } else {
+            alreadyFirst = false
+        }
+        if !alreadyFirst {
             let copy = ClipboardEntry(
                 kind: entry.kind,
                 text: entry.text,
@@ -215,6 +231,43 @@ class ClipboardStore {
                 return "image".localizedCaseInsensitiveContains(query)
             }
         }
+    }
+
+    // MARK: - Auto-delete
+
+    static func autoDeleteInterval(for setting: String) -> TimeInterval? {
+        switch setting {
+        case "1h": return 3600
+        case "12h": return 43200
+        case "1d": return 86400
+        case "7d": return 604800
+        case "14d": return 1209600
+        case "30d": return 2592000
+        default: return nil
+        }
+    }
+
+    func pruneExpiredEntries(setting: String? = nil) {
+        let autoDelete = setting ?? SettingsStore.shared.clipboardAutoDelete
+        guard let interval = Self.autoDeleteInterval(for: autoDelete) else { return }
+
+        let cutoff = Date().addingTimeInterval(-interval)
+        let expired = entries.filter { $0.timestamp < cutoff }
+        guard !expired.isEmpty else { return }
+
+        for entry in expired {
+            cleanupImageFile(for: entry)
+        }
+
+        if SettingsStore.shared.icloudSync {
+            let cloudStore = ICloudSyncManager.shared.cloudStore
+            deletedEntryIDs.formUnion(expired.map(\.id))
+            syncDeletedIDs(to: cloudStore)
+        }
+
+        entries.removeAll { $0.timestamp < cutoff }
+        saveEntries()
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
 
     // MARK: - Image cleanup

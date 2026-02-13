@@ -277,6 +277,23 @@ struct ClipboardSettingsView: View {
                     }
                 }
 
+                Section("History") {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Picker("Auto-delete entries older than", selection: $store.clipboardAutoDelete) {
+                            Text("Never").tag("never")
+                            Text("1 hour").tag("1h")
+                            Text("12 hours").tag("12h")
+                            Text("1 day").tag("1d")
+                            Text("7 days").tag("7d")
+                            Text("14 days").tag("14d")
+                            Text("30 days").tag("30d")
+                        }
+                        Text("Clipboard history stores up to 1,000 entries maximum.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Section("Display") {
                     Picker("View mode", selection: $store.clipboardViewMode) {
                         Text("Grid").tag("grid")
@@ -306,6 +323,9 @@ struct ClipboardSettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .onChange(of: store.clipboardAutoDelete) {
+            ClipboardStore.shared.pruneExpiredEntries()
+        }
     }
 }
 

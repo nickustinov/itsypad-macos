@@ -1,11 +1,14 @@
 # Changelog
 
-## 1.5.2
+## 1.6.0
 
 Features:
+- Auto-delete clipboard history – configurable interval (1 hour to 30 days) in Settings → Clipboard → History; prunes expired entries on launch, periodically, and on setting change; syncs deletions to iCloud
+- Added Solarized syntax theme (light and dark variants)
 - Cross-device clipboard delete/clear – deleting or clearing clipboard entries now syncs across devices via tombstones (`deletedClipboardIDs`), matching the existing tab tombstone pattern
 
 Fixes:
+- Fixed clicking the same clipboard entry repeatedly creating duplicate entries at the top of the list
 - Fixed clipboard duplicates caused by Universal Clipboard round-trip – merge now skips cloud entries whose text already exists locally
 
 ## 1.5.1

@@ -362,6 +362,75 @@ final class ClipboardStoreTests: XCTestCase {
         SettingsStore.shared.icloudSync = false
     }
 
+    // MARK: - pruneExpiredEntries
+
+    func testPruneRemovesExpiredEntries() {
+        let now = Date()
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "recent", timestamp: now),
+            ClipboardEntry(kind: .text, text: "old", timestamp: now.addingTimeInterval(-7200)),
+        ]
+        store.pruneExpiredEntries(setting: "1h")
+        XCTAssertEqual(store.entries.count, 1)
+        XCTAssertEqual(store.entries.first?.text, "recent")
+    }
+
+    func testPruneKeepsEntriesWithinThreshold() {
+        let now = Date()
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "recent1", timestamp: now.addingTimeInterval(-3600)),
+            ClipboardEntry(kind: .text, text: "recent2", timestamp: now.addingTimeInterval(-43200)),
+        ]
+        store.pruneExpiredEntries(setting: "1d")
+        XCTAssertEqual(store.entries.count, 2)
+    }
+
+    func testPruneNeverRemovesNothing() {
+        let now = Date()
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "ancient", timestamp: now.addingTimeInterval(-999999)),
+        ]
+        store.pruneExpiredEntries(setting: "never")
+        XCTAssertEqual(store.entries.count, 1)
+    }
+
+    func testPruneCleansUpImageFiles() throws {
+        let fileName = "prune-test.png"
+        let fileURL = tempImagesDir.appendingPathComponent(fileName)
+        try Data([0x89, 0x50]).write(to: fileURL)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: fileURL.path))
+
+        store.entries = [
+            ClipboardEntry(kind: .image, imageFileName: fileName, timestamp: Date().addingTimeInterval(-7200)),
+        ]
+        store.pruneExpiredEntries(setting: "1h")
+
+        XCTAssertTrue(store.entries.isEmpty)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: fileURL.path))
+    }
+
+    func testPruneCreatesTombstonesWhenICloudSyncOn() {
+        let cloud = MockKeyValueStore()
+        SettingsStore.shared.icloudSync = true
+
+        let expiredID = UUID()
+        store.entries = [
+            ClipboardEntry(id: expiredID, kind: .text, text: "old", timestamp: Date().addingTimeInterval(-7200)),
+        ]
+        store.pruneExpiredEntries(setting: "1h")
+
+        XCTAssertTrue(store.entries.isEmpty)
+
+        // Verify tombstone was synced by merging – the expired ID should be blocked
+        let cloudEntry = ClipboardCloudEntry(id: expiredID, text: "old", timestamp: Date())
+        let cloudData = try! JSONEncoder().encode([cloudEntry])
+        cloud.storage["clipboard"] = cloudData
+        store.mergeCloudClipboard(from: cloud)
+        XCTAssertTrue(store.entries.isEmpty)
+
+        SettingsStore.shared.icloudSync = false
+    }
+
     func testMergeWithTombstonesPreservesNonTombstonedEntries() {
         let cloud = MockKeyValueStore()
         SettingsStore.shared.icloudSync = true
