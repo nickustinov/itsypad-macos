@@ -134,6 +134,47 @@ If you like Itsypad, check out my other macOS apps - same philosophy of native, 
 
 **[Itsytv](https://itsytv.app)** - The missing Apple TV remote for macOS. Full D-pad and playback controls, now-playing widget, app launcher, text input, and multi-device support. Free and [open source](https://github.com/nickustinov/itsytv-macos).
 
+## Distribution
+
+Itsypad ships in two variants from the same codebase: a **direct/DMG** version (downloaded from GitHub/Homebrew) and an **App Store** version. The differences are minimal but important to understand.
+
+### Schemes and configs
+
+| Scheme | Configs | Entitlements | Use |
+|---|---|---|---|
+| `itsypad` | `Debug` / `Release` | `itsypad-direct.entitlements` | Direct/DMG distribution |
+| `itsypad-appstore` | `Debug-AppStore` / `Release-AppStore` | `itsypad.entitlements` | App Store distribution |
+
+App Store configs set the `APPSTORE` Swift compilation condition, used to hide features that aren't allowed in the App Store (e.g. the update checker).
+
+### Entitlements
+
+Both entitlements files are sandboxed and share the same capabilities:
+
+| Entitlement | Direct | App Store |
+|---|---|---|
+| `app-sandbox` | yes | yes |
+| `files.user-selected.read-write` | yes | yes |
+| `files.bookmarks.app-scope` | yes | yes |
+| `cs.allow-unsigned-executable-memory` | yes (highlight.js JSContext) | yes |
+| `network.client` | yes (update checker) | no |
+| `ubiquity-kvstore-identifier` | yes (legacy, unused) | yes (legacy, unused) |
+| `icloud-container-identifiers` | `iCloud.com.nickustinov.itsypad` | same |
+| `icloud-services` | `CloudKit` | same |
+
+The only real difference is `network.client` – the direct version needs it for checking GitHub releases. The App Store version doesn't need it because App Store handles updates.
+
+Both versions use the same CloudKit container (`iCloud.com.nickustinov.itsypad`) and sync with each other.
+
+### Signing
+
+- **Direct/DMG:** Signed with "Developer ID Application" certificate and a Developer ID provisioning profile. The build script (`scripts/build-release.sh`) archives unsigned, embeds the profile, then manually signs with resolved entitlements (Xcode variables like `$(TeamIdentifierPrefix)` are expanded to literal values).
+- **App Store:** Signed automatically by Xcode with the App Store provisioning profile. Uploaded via Xcode Organizer or `xcodebuild -exportArchive`.
+
+### iCloud sync
+
+Both versions use CloudKit via `CKSyncEngine` for syncing scratch tabs and clipboard history. The `CloudSyncEngine` singleton manages the sync lifecycle. See the record schema and sync flow in the [iOS migration docs](../itsypad-ios/docs/cloudkit-sync.md).
+
 ## Architecture
 
 ```
@@ -141,11 +182,10 @@ Sources/
 ├── App/
 │   ├── AppDelegate.swift                # Menu bar, toolbar, window, and panel setup
 │   ├── BonsplitRootView.swift           # SwiftUI root view rendering editor and clipboard tabs
-│   ├── ICloudSyncManager.swift          # Unified iCloud sync orchestrator for tabs and clipboard
+│   ├── CloudSyncEngine.swift            # CloudKit sync via CKSyncEngine for tabs and clipboard
 │   ├── Launch.swift                     # App entry point
 │   ├── MenuBuilder.swift                # Main menu bar construction
 │   ├── Models.swift                     # ShortcutKeys and shared data types
-│   ├── ICloudSyncManager.swift          # Unified iCloud KV sync for tabs and clipboard
 │   ├── TabStore.swift                   # Tab data model with persistence
 │   └── UpdateChecker.swift              # GitHub release check for new versions
 ├── Editor/
@@ -166,7 +206,7 @@ Sources/
 │   ├── SyntaxHighlightCoordinator.swift # Syntax highlighting coordinator using HighlightJS
 │   └── SyntaxThemeRegistry.swift        # Curated syntax theme definitions with dark/light CSS mapping
 ├── Clipboard/
-│   ├── ClipboardStore.swift             # Clipboard monitoring, history persistence, and iCloud sync
+│   ├── ClipboardStore.swift             # Clipboard monitoring, history persistence, and CloudKit sync
 │   ├── ClipboardContentView.swift       # NSCollectionView grid with search, keyboard nav, and layout
 │   ├── ClipboardCollectionView.swift    # NSCollectionView subclass with key event delegation
 │   ├── ClipboardCardItem.swift          # NSCollectionViewItem wrapper for card views
@@ -185,7 +225,8 @@ Sources/
 ├── Resources/
 │   └── Assets.xcassets                  # App icon and custom images
 ├── Info.plist                           # Bundle metadata and document types
-└── itsypad.entitlements                 # Entitlements (unsigned executable memory for highlight.js)
+├── itsypad.entitlements                 # App Store entitlements (sandbox, CloudKit, iCloud)
+└── itsypad-direct.entitlements          # Direct/DMG entitlements (adds network.client for update checker)
 Executable/
 └── main.swift                           # Executable target entry point
 Packages/
@@ -194,12 +235,14 @@ Tests/
 ├── AutoDetectTests.swift
 ├── ClipboardShortcutTests.swift
 ├── ClipboardStoreTests.swift
+├── CloudSyncEngineTests.swift
 ├── EditorThemeTests.swift
 ├── FileWatcherTests.swift
 ├── HighlightJSTests.swift
 ├── LanguageDetectorTests.swift
 ├── LineNumberGutterViewTests.swift
 ├── ListHelperTests.swift
+├── MarkdownRendererTests.swift
 ├── ModifierKeyDetectionTests.swift
 ├── SettingsStoreTests.swift
 ├── ShortcutKeysTests.swift
@@ -224,14 +267,22 @@ Then build and run with ⌘R in Xcode. Tests run with ⌘U.
 
 ## Releasing
 
+### Both versions
+
 1. Bump `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`
-2. Build, sign, and package the DMG:
+2. Run `xcodegen generate`
+
+### Direct/DMG release
+
+3. Build, sign, and package:
 
 ```bash
 bash scripts/build-release.sh
 ```
 
-3. Notarize and staple:
+This archives with the `itsypad` scheme (`Release` config), embeds the Developer ID provisioning profile, signs with `itsypad-direct.entitlements`, and creates a DMG.
+
+4. Notarize and staple:
 
 ```bash
 xcrun notarytool submit dist/itsypad-<VERSION>.dmg \
@@ -240,7 +291,7 @@ xcrun notarytool submit dist/itsypad-<VERSION>.dmg \
 xcrun stapler staple dist/itsypad-<VERSION>.dmg
 ```
 
-4. Create the GitHub release and fetch the tag locally:
+5. Create the GitHub release:
 
 ```bash
 gh release create v<VERSION> dist/itsypad-<VERSION>.dmg \
@@ -248,18 +299,18 @@ gh release create v<VERSION> dist/itsypad-<VERSION>.dmg \
 git fetch --tags
 ```
 
-5. Update the Homebrew tap:
+6. Update the Homebrew tap:
 
 ```bash
-# Get SHA256 of the notarized DMG
 shasum -a 256 dist/itsypad-<VERSION>.dmg
-
 # Update Casks/itsypad.rb in homebrew-tap with new version and sha256
-cd ../homebrew-tap
-# Edit Casks/itsypad.rb
-git commit -am "Update itsypad to <VERSION>"
-git push
 ```
+
+### App Store release
+
+3. Archive with the `itsypad-appstore` scheme (`Release-AppStore` config) in Xcode
+4. Upload to App Store Connect via Xcode Organizer
+5. Submit for review in App Store Connect
 
 ## License
 

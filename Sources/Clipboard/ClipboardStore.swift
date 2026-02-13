@@ -27,12 +27,6 @@ struct ClipboardEntry: Identifiable, Codable, Equatable {
     }
 }
 
-struct ClipboardCloudEntry: Codable {
-    let id: UUID
-    let text: String
-    let timestamp: Date
-}
-
 class ClipboardStore {
     static let shared = ClipboardStore()
 
@@ -49,10 +43,6 @@ class ClipboardStore {
     static let clipboardTabSelectedNotification = Notification.Name("clipboardTabSelected")
 
     private let maxEntries = 1000
-    private static let cloudClipboardKey = "clipboard"
-    private static let cloudDeletedKey = "deletedClipboardIDs"
-    private static let maxCloudEntries = 200
-    private var deletedEntryIDs: Set<UUID> = []
 
     init(storageURL: URL? = nil, imagesDirectory: URL? = nil) {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -141,6 +131,10 @@ class ClipboardStore {
             cleanupImageFile(for: evicted)
         }
 
+        if entry.kind == .text {
+            CloudSyncEngine.shared.recordChanged(entry.id, type: .clipboardEntry)
+        }
+
         scheduleSave()
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
@@ -189,18 +183,10 @@ class ClipboardStore {
     }
 
     func clearAll() {
-        if SettingsStore.shared.icloudSync {
-            let cloudStore = ICloudSyncManager.shared.cloudStore
-            // Tombstone all local entry IDs
-            deletedEntryIDs.formUnion(entries.map(\.id))
-            // Also tombstone any cloud entry IDs not already local
-            if let data = cloudStore.data(forKey: Self.cloudClipboardKey),
-               let cloudEntries = try? JSONDecoder().decode([ClipboardCloudEntry].self, from: data) {
-                deletedEntryIDs.formUnion(cloudEntries.map(\.id))
-            }
-            syncDeletedIDs(to: cloudStore)
-        }
         for entry in entries {
+            if entry.kind == .text {
+                CloudSyncEngine.shared.recordDeleted(entry.id, type: .clipboardEntry)
+            }
             cleanupImageFile(for: entry)
         }
         entries.removeAll()
@@ -213,10 +199,7 @@ class ClipboardStore {
             let entry = entries.remove(at: index)
             cleanupImageFile(for: entry)
         }
-        if SettingsStore.shared.icloudSync {
-            deletedEntryIDs.insert(id)
-            syncDeletedIDs(to: ICloudSyncManager.shared.cloudStore)
-        }
+        CloudSyncEngine.shared.recordDeleted(id, type: .clipboardEntry)
         scheduleSave()
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
@@ -257,12 +240,9 @@ class ClipboardStore {
 
         for entry in expired {
             cleanupImageFile(for: entry)
-        }
-
-        if SettingsStore.shared.icloudSync {
-            let cloudStore = ICloudSyncManager.shared.cloudStore
-            deletedEntryIDs.formUnion(expired.map(\.id))
-            syncDeletedIDs(to: cloudStore)
+            if entry.kind == .text {
+                CloudSyncEngine.shared.recordDeleted(entry.id, type: .clipboardEntry)
+            }
         }
 
         entries.removeAll { $0.timestamp < cutoff }
@@ -278,58 +258,22 @@ class ClipboardStore {
         try? FileManager.default.removeItem(at: fileURL)
     }
 
-    // MARK: - iCloud sync
+    // MARK: - Cloud sync
 
-    func saveClipboardToCloud(_ cloudStore: KeyValueStoreProtocol) {
-        let textEntries = entries.filter { $0.kind == .text && $0.text != nil }
-        let cloudEntries = textEntries.prefix(Self.maxCloudEntries).map {
-            ClipboardCloudEntry(id: $0.id, text: $0.text!, timestamp: $0.timestamp)
-        }
-        guard let data = try? JSONEncoder().encode(Array(cloudEntries)) else { return }
-        cloudStore.setData(data, forKey: Self.cloudClipboardKey)
-    }
+    func applyCloudClipboardEntry(_ data: CloudClipboardRecord) {
+        // Skip if this entry already exists locally (by UUID or identical text)
+        guard !entries.contains(where: { $0.id == data.id }) else { return }
+        guard !entries.contains(where: { $0.text == data.text }) else { return }
 
-    func mergeCloudClipboard(from cloudStore: KeyValueStoreProtocol) {
-        guard SettingsStore.shared.icloudSync else { return }
-        loadDeletedIDs(from: cloudStore)
-
-        // Remove local entries that were tombstoned on another device
-        let tombstoned = entries.filter { deletedEntryIDs.contains($0.id) }
-        for entry in tombstoned {
-            cleanupImageFile(for: entry)
-        }
-        entries.removeAll { deletedEntryIDs.contains($0.id) }
-        let localRemoved = tombstoned.count
-
-        guard let data = cloudStore.data(forKey: Self.cloudClipboardKey),
-              let cloudEntries = try? JSONDecoder().decode([ClipboardCloudEntry].self, from: data) else {
-            if localRemoved > 0 {
-                scheduleSave()
-                NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
-            }
-            return
-        }
-
-        let existingIDs = Set(entries.map(\.id))
-        let existingTexts = Set(entries.compactMap(\.text))
-        var inserted = false
-
-        for cloudEntry in cloudEntries {
-            guard !deletedEntryIDs.contains(cloudEntry.id) else { continue }
-            guard !existingIDs.contains(cloudEntry.id) else { continue }
-            // Skip if identical text already exists locally (Universal Clipboard round-trip)
-            guard !existingTexts.contains(cloudEntry.text) else { continue }
-            let entry = ClipboardEntry(
-                id: cloudEntry.id,
-                kind: .text,
-                text: cloudEntry.text,
-                timestamp: cloudEntry.timestamp
-            )
-            // Insert in chronological position (entries are sorted newest-first)
-            let insertIndex = entries.firstIndex(where: { $0.timestamp < entry.timestamp }) ?? entries.endIndex
-            entries.insert(entry, at: insertIndex)
-            inserted = true
-        }
+        let entry = ClipboardEntry(
+            id: data.id,
+            kind: .text,
+            text: data.text,
+            timestamp: data.timestamp
+        )
+        // Insert in chronological position (entries are sorted newest-first)
+        let insertIndex = entries.firstIndex(where: { $0.timestamp < entry.timestamp }) ?? entries.endIndex
+        entries.insert(entry, at: insertIndex)
 
         // Evict if over maxEntries
         while entries.count > maxEntries {
@@ -337,28 +281,18 @@ class ClipboardStore {
             cleanupImageFile(for: evicted)
         }
 
-        if inserted || localRemoved > 0 {
-            scheduleSave()
-            NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
+        scheduleSave()
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
+    }
+
+    func removeCloudClipboardEntry(id: UUID) {
+        guard entries.contains(where: { $0.id == id }) else { return }
+        if let index = entries.firstIndex(where: { $0.id == id }) {
+            let entry = entries.remove(at: index)
+            cleanupImageFile(for: entry)
         }
-    }
-
-    func clearCloudData(from cloudStore: KeyValueStoreProtocol) {
-        cloudStore.removeObject(forKey: Self.cloudClipboardKey)
-        cloudStore.removeObject(forKey: Self.cloudDeletedKey)
-        deletedEntryIDs.removeAll()
-    }
-
-    private func syncDeletedIDs(to cloudStore: KeyValueStoreProtocol) {
-        let strings = deletedEntryIDs.map(\.uuidString)
-        cloudStore.setData(try? JSONEncoder().encode(strings), forKey: Self.cloudDeletedKey)
-        cloudStore.synchronize()
-    }
-
-    private func loadDeletedIDs(from cloudStore: KeyValueStoreProtocol) {
-        guard let data = cloudStore.data(forKey: Self.cloudDeletedKey),
-              let strings = try? JSONDecoder().decode([String].self, from: data) else { return }
-        deletedEntryIDs.formUnion(strings.compactMap(UUID.init))
+        scheduleSave()
+        NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
 
     // MARK: - Persistence
@@ -379,7 +313,6 @@ class ClipboardStore {
         } catch {
             NSLog("Failed to save clipboard history: \(error)")
         }
-        ICloudSyncManager.shared.saveClipboard()
     }
 
     private func restoreEntries() {

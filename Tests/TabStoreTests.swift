@@ -1,26 +1,6 @@
 import XCTest
 @testable import ItsypadCore
 
-class MockKeyValueStore: KeyValueStoreProtocol {
-    var storage: [String: Data] = [:]
-
-    func data(forKey key: String) -> Data? {
-        storage[key]
-    }
-
-    func setData(_ data: Data?, forKey key: String) {
-        storage[key] = data
-    }
-
-    func removeObject(forKey key: String) {
-        storage.removeValue(forKey: key)
-    }
-
-    @discardableResult func synchronize() -> Bool {
-        true
-    }
-}
-
 final class TabStoreTests: XCTestCase {
     private var store: TabStore!
     private var tempURL: URL!
@@ -269,60 +249,78 @@ final class TabStoreTests: XCTestCase {
         XCTAssertFalse(result)
     }
 
-    // MARK: - iCloud sync
+    // MARK: - Cloud sync (applyCloudTab / removeCloudTab)
 
-    func testSaveSessionWritesScratchTabsToCloudStore() {
-        let cloud = MockKeyValueStore()
-        store.updateContent(id: store.tabs.first!.id, content: "scratch note")
-        store.saveTabsToCloud(cloud)
-
-        XCTAssertNotNil(cloud.storage["tabs"])
-        let decoded = try! JSONDecoder().decode([TabData].self, from: cloud.storage["tabs"]!)
-        XCTAssertEqual(decoded.count, 1)
-        XCTAssertEqual(decoded.first?.content, "scratch note")
-    }
-
-    func testSaveSessionExcludesFileBackedTabs() {
-        let cloud = MockKeyValueStore()
-        store.tabs[0].fileURL = URL(fileURLWithPath: "/tmp/test.swift")
-        store.saveTabsToCloud(cloud)
-
-        let decoded = try! JSONDecoder().decode([TabData].self, from: cloud.storage["tabs"]!)
-        XCTAssertTrue(decoded.isEmpty)
-    }
-
-    func testSaveSessionSkipsCloudWhenSyncDisabled() {
-        let cloud = MockKeyValueStore()
-        SettingsStore.shared.icloudSync = false
-        store.saveSession()
-
-        XCTAssertNil(cloud.storage["tabs"])
-    }
-
-    func testStopICloudSyncRemovesCloudData() {
-        let cloud = MockKeyValueStore()
-        cloud.storage["tabs"] = Data()
-        cloud.storage["deletedTabIDs"] = Data()
-        store.clearCloudData(from: cloud)
-
-        XCTAssertNil(cloud.storage["tabs"])
-        XCTAssertNil(cloud.storage["deletedTabIDs"])
-    }
-
-    func testMergeCloudTabsAppendsNewTab() {
-        let cloud = MockKeyValueStore()
-        SettingsStore.shared.icloudSync = true
+    func testApplyCloudTabInsertsNewTab() {
         let initialCount = store.tabs.count
-
-        let cloudTab = TabData(name: "Cloud note", content: "from cloud", language: "plain")
-        let cloudData = try! JSONEncoder().encode([cloudTab])
-        cloud.storage["tabs"] = cloudData
-
-        store.mergeCloudTabs(from: cloud)
+        let record = CloudTabRecord(
+            id: UUID(),
+            name: "Cloud note",
+            content: "from cloud",
+            language: "plain",
+            languageLocked: false,
+            lastModified: Date()
+        )
+        store.applyCloudTab(record)
 
         XCTAssertEqual(store.tabs.count, initialCount + 1)
-        XCTAssertTrue(store.tabs.contains(where: { $0.id == cloudTab.id }))
-        SettingsStore.shared.icloudSync = false
+        XCTAssertTrue(store.tabs.contains(where: { $0.id == record.id }))
+        XCTAssertEqual(store.tabs.last?.content, "from cloud")
+    }
+
+    func testApplyCloudTabUpdatesExistingTab() {
+        let existingID = store.tabs.first!.id
+        let record = CloudTabRecord(
+            id: existingID,
+            name: "Updated",
+            content: "updated content",
+            language: "swift",
+            languageLocked: true,
+            lastModified: Date()
+        )
+        store.applyCloudTab(record)
+
+        XCTAssertEqual(store.tabs.first?.content, "updated content")
+        XCTAssertEqual(store.tabs.first?.name, "Updated")
+        XCTAssertEqual(store.tabs.first?.language, "swift")
+        XCTAssertTrue(store.tabs.first!.languageLocked)
+    }
+
+    func testApplyCloudTabSkipsOlderVersion() {
+        let existingID = store.tabs.first!.id
+        store.updateContent(id: existingID, content: "local content")
+
+        let record = CloudTabRecord(
+            id: existingID,
+            name: "Old cloud",
+            content: "old content",
+            language: "plain",
+            languageLocked: false,
+            lastModified: Date.distantPast
+        )
+        store.applyCloudTab(record)
+
+        XCTAssertEqual(store.tabs.first?.content, "local content")
+    }
+
+    func testRemoveCloudTabRemovesTab() {
+        store.addNewTab()
+        let tabToRemove = store.tabs.first!.id
+        store.removeCloudTab(id: tabToRemove)
+        XCTAssertFalse(store.tabs.contains(where: { $0.id == tabToRemove }))
+    }
+
+    func testRemoveCloudTabEnsuresAtLeastOneTab() {
+        let onlyTab = store.tabs.first!.id
+        store.removeCloudTab(id: onlyTab)
+        XCTAssertEqual(store.tabs.count, 1)
+        XCTAssertNotEqual(store.tabs.first?.id, onlyTab)
+    }
+
+    func testRemoveCloudTabIgnoresUnknownID() {
+        let initialCount = store.tabs.count
+        store.removeCloudTab(id: UUID())
+        XCTAssertEqual(store.tabs.count, initialCount)
     }
 
     // MARK: - LayoutNode Codable
@@ -416,22 +414,5 @@ final class TabStoreTests: XCTestCase {
 
     func testSessionPersistenceLayoutNilByDefault() {
         XCTAssertNil(store.currentLayout)
-    }
-
-    func testMergeCloudTabsUpdatesExistingTab() {
-        let cloud = MockKeyValueStore()
-        SettingsStore.shared.icloudSync = true
-        let existingID = store.tabs.first!.id
-
-        let cloudTab = TabData(id: existingID, name: "Updated", content: "updated content", language: "swift")
-        let cloudData = try! JSONEncoder().encode([cloudTab])
-        cloud.storage["tabs"] = cloudData
-
-        store.mergeCloudTabs(from: cloud)
-
-        XCTAssertEqual(store.tabs.first?.content, "updated content")
-        XCTAssertEqual(store.tabs.first?.name, "Updated")
-        XCTAssertEqual(store.tabs.first?.language, "swift")
-        SettingsStore.shared.icloudSync = false
     }
 }

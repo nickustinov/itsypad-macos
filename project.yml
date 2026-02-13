@@ -56,6 +56,7 @@ targets:
         excludes:
           - Info.plist
           - itsypad.entitlements
+          - itsypad-direct.entitlements
       - path: Executable
     dependencies:
       - package: Bonsplit
@@ -83,8 +84,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.nickustinov.itsypad
         PRODUCT_NAME: Itsypad
         PRODUCT_MODULE_NAME: ItsypadCore
-        MARKETING_VERSION: "1.6.1"
-        CURRENT_PROJECT_VERSION: "161"
+        MARKETING_VERSION: "1.7.0"
+        CURRENT_PROJECT_VERSION: "170"
         CODE_SIGN_ENTITLEMENTS: Sources/itsypad.entitlements
         CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION: true
         SWIFT_VERSION: "5.9"
@@ -95,6 +96,10 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Itsypad
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
       configs:
+        Debug:
+          CODE_SIGN_ENTITLEMENTS: Sources/itsypad-direct.entitlements
+        Release:
+          CODE_SIGN_ENTITLEMENTS: Sources/itsypad-direct.entitlements
         Debug-AppStore:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: APPSTORE
         Release-AppStore:

@@ -20,7 +20,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var settingsObserver: Any?
     private var fileDropObserver: Any?
     private var cloudMergeObserver: Any?
-    private var windowActivateObserver: Any?
     private var editorFocusObserver: Any?
 
     // Markdown preview state
@@ -101,16 +100,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         }
 
-        windowActivateObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didBecomeActiveNotification,
-            object: nil,
-            queue: .main
-        ) { _ in
-            MainActor.assumeIsolated {
-                ICloudSyncManager.shared.check()
-            }
-        }
-
         editorFocusObserver = NotificationCenter.default.addObserver(
             forName: EditorTextView.didReceiveClickNotification,
             object: nil,
@@ -122,9 +111,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         }
 
-        // Trigger ICloudSyncManager creation (deferred so init completes first)
+        // Start CloudSyncEngine if enabled (deferred so init completes first)
         DispatchQueue.main.async {
-            _ = ICloudSyncManager.shared
+            CloudSyncEngine.shared.startIfEnabled()
         }
     }
 
@@ -137,9 +126,6 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = cloudMergeObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
-        if let observer = windowActivateObserver {
             NotificationCenter.default.removeObserver(observer)
         }
         if let observer = editorFocusObserver {

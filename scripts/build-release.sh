@@ -60,7 +60,7 @@ done
 RESOLVED_ENTITLEMENTS="$DIST_DIR/itsypad-resolved.entitlements"
 sed -e 's/$(TeamIdentifierPrefix)/R892A93W42./g' \
     -e 's/$(CFBundleIdentifier)/com.nickustinov.itsypad/g' \
-    "$PROJECT_DIR/Sources/itsypad.entitlements" > "$RESOLVED_ENTITLEMENTS"
+    "$PROJECT_DIR/Sources/itsypad-direct.entitlements" > "$RESOLVED_ENTITLEMENTS"
 
 # Sign the app bundle with resolved entitlements
 codesign --force --options runtime --timestamp --sign "$SIGNING_IDENTITY" \

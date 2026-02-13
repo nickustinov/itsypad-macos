@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.7.0
+
+Features:
+- Migrated iCloud sync from NSUbiquitousKeyValueStore to CloudKit with CKSyncEngine – per-record incremental sync replaces full-data rewrites, no practical size limit, native deletion handling (no more tombstones)
+- Clipboard sync limit removed – all 1,000 entries now sync (was capped at 200 due to KVS 1MB limit)
+- Added App Store distribution support with dual entitlements and scheme configuration
+
+Improvements:
+- Updated README with distribution section explaining the two build variants, entitlements, signing, and release processes
+
 ## 1.6.1
 
 Fixes:

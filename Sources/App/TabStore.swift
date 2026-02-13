@@ -1,18 +1,5 @@
 import Cocoa
 
-protocol KeyValueStoreProtocol: AnyObject {
-    func data(forKey key: String) -> Data?
-    func setData(_ data: Data?, forKey key: String)
-    func removeObject(forKey key: String)
-    @discardableResult func synchronize() -> Bool
-}
-
-extension NSUbiquitousKeyValueStore: KeyValueStoreProtocol {
-    func setData(_ data: Data?, forKey key: String) {
-        set(data, forKey: key)
-    }
-}
-
 struct TabData: Identifiable, Equatable {
     let id: UUID
     var name: String
@@ -78,9 +65,6 @@ class TabStore: ObservableObject {
     private var saveDebounceWork: DispatchWorkItem?
     private var languageDetectWork: DispatchWorkItem?
     private let sessionURL: URL
-    private static let cloudTabsKey = "tabs"
-    private static let cloudDeletedKey = "deletedTabIDs"
-    private var deletedTabIDs: Set<UUID> = []
 
     var selectedTab: TabData? {
         tabs.first { $0.id == selectedTabID }
@@ -109,18 +93,18 @@ class TabStore: ObservableObject {
         let tab = TabData()
         tabs.append(tab)
         selectedTabID = tab.id
+        CloudSyncEngine.shared.recordChanged(tab.id, type: .scratchTab)
         scheduleSave()
     }
 
     func closeTab(id: UUID) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        let isScratch = tabs[index].fileURL == nil
         if let url = tabs[index].fileURL {
             url.stopAccessingSecurityScopedResource()
         }
-        // Record tombstone for scratch tabs so other devices don't re-add
-        if tabs[index].fileURL == nil && SettingsStore.shared.icloudSync {
-            deletedTabIDs.insert(id)
-            syncDeletedIDs(to: ICloudSyncManager.shared.cloudStore)
+        if isScratch {
+            CloudSyncEngine.shared.recordDeleted(id, type: .scratchTab)
         }
         tabs.remove(at: index)
 
@@ -160,6 +144,10 @@ class TabStore: ObservableObject {
             scheduleLanguageDetection(id: tab.id, content: content, name: tab.name, fileURL: tab.fileURL)
         }
 
+        if tab.fileURL == nil {
+            CloudSyncEngine.shared.recordChanged(id, type: .scratchTab)
+        }
+
         scheduleSave()
     }
 
@@ -194,6 +182,9 @@ class TabStore: ObservableObject {
         tabs[index].language = language
         tabs[index].languageLocked = true
         tabs[index].lastModified = Date()
+        if tabs[index].fileURL == nil {
+            CloudSyncEngine.shared.recordChanged(id, type: .scratchTab)
+        }
         scheduleSave()
     }
 
@@ -323,7 +314,7 @@ class TabStore: ObservableObject {
         scheduleSave()
     }
 
-    // MARK: - iCloud sync
+    // MARK: - Cloud sync
 
     struct CloudMergeResult {
         var newTabIDs: [UUID] = []
@@ -333,71 +324,36 @@ class TabStore: ObservableObject {
 
     static let cloudTabsMerged = Notification.Name("cloudTabsMerged")
 
-    private func syncDeletedIDs(to cloudStore: KeyValueStoreProtocol) {
-        let strings = deletedTabIDs.map(\.uuidString)
-        cloudStore.setData(try? JSONEncoder().encode(strings), forKey: Self.cloudDeletedKey)
-        cloudStore.synchronize()
-    }
-
-    private func loadDeletedIDs(from cloudStore: KeyValueStoreProtocol) {
-        guard let data = cloudStore.data(forKey: Self.cloudDeletedKey),
-              let strings = try? JSONDecoder().decode([String].self, from: data) else { return }
-        deletedTabIDs = Set(strings.compactMap(UUID.init))
-    }
-
-    func saveTabsToCloud(_ cloudStore: KeyValueStoreProtocol) {
-        let scratchTabs = tabs.filter { $0.fileURL == nil }
-        guard let data = try? JSONEncoder().encode(scratchTabs) else { return }
-        cloudStore.setData(data, forKey: Self.cloudTabsKey)
-    }
-
-    func clearCloudData(from cloudStore: KeyValueStoreProtocol) {
-        cloudStore.removeObject(forKey: Self.cloudTabsKey)
-        cloudStore.removeObject(forKey: Self.cloudDeletedKey)
-        deletedTabIDs.removeAll()
-    }
-
-    func mergeCloudTabs(from cloudStore: KeyValueStoreProtocol) {
-        guard SettingsStore.shared.icloudSync else { return }
-        loadDeletedIDs(from: cloudStore)
-        guard let data = cloudStore.data(forKey: Self.cloudTabsKey) else { return }
-        guard let cloudTabs = try? JSONDecoder().decode([TabData].self, from: data) else { return }
-
+    func applyCloudTab(_ data: CloudTabRecord) {
         var result = CloudMergeResult()
-        for cloudTab in cloudTabs {
-            // Never resurrect a deleted tab
-            if deletedTabIDs.contains(cloudTab.id) { continue }
-            if let localIndex = tabs.firstIndex(where: { $0.id == cloudTab.id }) {
-                // Only accept cloud version if it's newer than local
-                guard cloudTab.lastModified > tabs[localIndex].lastModified else { continue }
-                if tabs[localIndex].content != cloudTab.content
-                    || tabs[localIndex].name != cloudTab.name
-                    || tabs[localIndex].language != cloudTab.language {
-                    tabs[localIndex].content = cloudTab.content
-                    tabs[localIndex].name = cloudTab.name
-                    tabs[localIndex].language = cloudTab.language
-                    tabs[localIndex].lastModified = cloudTab.lastModified
-                    result.updatedTabIDs.append(cloudTab.id)
-                }
-            } else {
-                tabs.append(cloudTab)
-                result.newTabIDs.append(cloudTab.id)
+
+        if let localIndex = tabs.firstIndex(where: { $0.id == data.id }) {
+            // Only accept cloud version if it's newer than local
+            guard data.lastModified > tabs[localIndex].lastModified else { return }
+            if tabs[localIndex].content != data.content
+                || tabs[localIndex].name != data.name
+                || tabs[localIndex].language != data.language {
+                tabs[localIndex].content = data.content
+                tabs[localIndex].name = data.name
+                tabs[localIndex].language = data.language
+                tabs[localIndex].languageLocked = data.languageLocked
+                tabs[localIndex].lastModified = data.lastModified
+                result.updatedTabIDs.append(data.id)
             }
+        } else {
+            let tab = TabData(
+                id: data.id,
+                name: data.name,
+                content: data.content,
+                language: data.language,
+                languageLocked: data.languageLocked,
+                lastModified: data.lastModified
+            )
+            tabs.append(tab)
+            result.newTabIDs.append(data.id)
         }
 
-        // Remove local scratch tabs that were tombstoned on another device
-        let toRemove = tabs.filter { $0.fileURL == nil && deletedTabIDs.contains($0.id) }
-        for tab in toRemove {
-            result.removedTabIDs.append(tab.id)
-        }
-        tabs.removeAll { $0.fileURL == nil && deletedTabIDs.contains($0.id) }
-
-        // Ensure at least one tab exists
-        if tabs.isEmpty {
-            addNewTab()
-        }
-
-        let changed = !result.newTabIDs.isEmpty || !result.updatedTabIDs.isEmpty || !result.removedTabIDs.isEmpty
+        let changed = !result.newTabIDs.isEmpty || !result.updatedTabIDs.isEmpty
         lastICloudSync = Date()
 
         if changed {
@@ -408,6 +364,26 @@ class TabStore: ObservableObject {
             )
             scheduleSave()
         }
+    }
+
+    func removeCloudTab(id: UUID) {
+        guard tabs.contains(where: { $0.id == id }) else { return }
+
+        var result = CloudMergeResult()
+        result.removedTabIDs.append(id)
+        tabs.removeAll { $0.id == id }
+
+        if tabs.isEmpty {
+            addNewTab()
+        }
+
+        lastICloudSync = Date()
+        NotificationCenter.default.post(
+            name: Self.cloudTabsMerged,
+            object: self,
+            userInfo: ["result": result]
+        )
+        scheduleSave()
     }
 
     // MARK: - Session persistence
@@ -429,7 +405,6 @@ class TabStore: ObservableObject {
         } catch {
             NSLog("Failed to save session: \(error)")
         }
-        ICloudSyncManager.shared.saveTabs()
     }
 
     private func restoreSession() {

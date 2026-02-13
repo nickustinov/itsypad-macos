@@ -183,6 +183,11 @@ class SettingsStore: ObservableObject {
         icloudSync = enabled
         defaults.set(enabled, forKey: "icloudSync")
         defaults.synchronize()
+        if enabled {
+            CloudSyncEngine.shared.start()
+        } else {
+            CloudSyncEngine.shared.stop()
+        }
         NotificationCenter.default.post(name: .settingsChanged, object: nil)
     }
 
