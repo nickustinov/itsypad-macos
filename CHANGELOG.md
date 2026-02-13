@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.1
+
+Fixes:
+- Fixed plain text with common English words (`this`, `is`) being false-positive highlighted as Kotlin or C#
+
 ## 1.6.0
 
 Features:

@@ -89,10 +89,11 @@ final class AutoDetectTests: XCTestCase {
             "project.app – todo\n    – tomorrow\n        – forum post follow up\n        – fix notification bug\n    – fix remote control\n\napps\n    – project-one\n    – project-two\n    – project-three\n        – global search",
             // Meeting notes with "key: value"-like patterns
             "Meeting notes\n\nAttendees: John, Sarah, Mike\nAction items:\n- Review the Q4 report by Friday\n- Send updated proposal to client\nBudget approved for $50,000.\nDeadline is March 15.",
-            // Email-style prose with words that overlap language keywords (in, is, if, any, open)
-            "Menu bar app for smart home\n--\nHey Michael!\n\nBeen reading your indie app reviews, thought maybe mine fits – it got over 1000 upvotes in under 4 hours https://www.reddit.com/r/example/s/abc123\n\nHere is the homepage https://example.app/ – now with full support for automations coming next week.\n\nThe app is free and open source (https://github.com/example/example-app) but there are some advanced features in the Pro version – here is the code to unlock it – XXXXX1234XXXXX\n\nLet me know if you have any questions!\n\nJohn",
+
             // Email addresses — @ must not trigger language detection
             "Notes\n\nalice.smith@example.com\nbob@company.org\ncharlie@service.host\ndave@provider.com\neve@mail.com",
+            // "this" and "is" are Kotlin keywords — must not trigger Kotlin detection
+            "this is hello\nand this is second line\nfsgsfgfdsgfd sdfg sdf dfgs this is hello\na",
         ]
         for text in texts {
             let result = detector.detect(text: text, name: nil, fileURL: nil)

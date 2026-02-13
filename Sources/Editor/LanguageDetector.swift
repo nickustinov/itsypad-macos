@@ -63,7 +63,7 @@ struct LanguageDetector {
 
     /// Languages excluded from auto-detect (too many false positives on plain text).
     /// These are still detected by file extension.
-    private static let autoDetectExcluded: Set<String> = ["plain", "zsh", "sql", "css", "markdown"]
+    private static let autoDetectExcluded: Set<String> = ["plain", "zsh", "sql", "css", "markdown", "kotlin", "csharp"]
 
     /// Per-language relevance thresholds (default is 7).
     /// Languages prone to false positives on plain text get a higher bar.
