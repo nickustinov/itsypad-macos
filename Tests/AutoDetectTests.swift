@@ -46,7 +46,7 @@ final class AutoDetectTests: XCTestCase {
     }
 
     func testAutoDetectGo() {
-        let code = "package main\n\nimport \"fmt\"\n\nfunc main() {\n    x := 42\n    fmt.Println(\"hello\")\n}"
+        let code = "package main\n\nimport (\n    \"fmt\"\n    \"os\"\n)\n\nfunc main() {\n    args := os.Args[1:]\n    for _, arg := range args {\n        fmt.Println(arg)\n    }\n}"
         assertDetects(code, as: "go")
     }
 
@@ -66,7 +66,7 @@ final class AutoDetectTests: XCTestCase {
     }
 
     func testAutoDetectJSON() {
-        let code = "{\n    \"name\": \"Itsypad\",\n    \"version\": 1,\n    \"enabled\": true,\n    \"data\": null\n}"
+        let code = "{\n    \"name\": \"Itsypad\",\n    \"version\": 1,\n    \"enabled\": true,\n    \"data\": null,\n    \"features\": [\"editor\", \"clipboard\"],\n    \"settings\": {\n        \"theme\": \"dark\",\n        \"fontSize\": 14\n    }\n}"
         assertDetects(code, as: "json")
     }
 
@@ -94,6 +94,8 @@ final class AutoDetectTests: XCTestCase {
             "Notes\n\nalice.smith@example.com\nbob@company.org\ncharlie@service.host\ndave@provider.com\neve@mail.com",
             // "this" and "is" are Kotlin keywords — must not trigger Kotlin detection
             "this is hello\nand this is second line\nfsgsfgfdsgfd sdfg sdf dfgs this is hello\na",
+            // Markdown with checklists — must not trigger Rust detection
+            "# Welcome to Itsypad for iOS\n\nA tiny, fast scratchpad that lives in your pocket.\n\nHere's what you can do:\n\n– [x] Download Itsypad\n– [ ] Write notes, ideas, code snippets\n– [ ] Use automatic checklists, bullet and numbered lists\n– [ ] Try Itsypad for macOS\n– [ ] Browse clipboard history from Mac\n– [ ] Sync tabs across devices with iCloud\n– [ ] Switch between themes in settings\n\nHappy writing! Close this tab whenever you're ready to start.",
         ]
         for text in texts {
             let result = detector.detect(text: text, name: nil, fileURL: nil)

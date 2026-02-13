@@ -65,10 +65,21 @@ struct LanguageDetector {
     /// These are still detected by file extension.
     private static let autoDetectExcluded: Set<String> = ["plain", "zsh", "sql", "css", "markdown", "kotlin", "csharp"]
 
-    /// Per-language relevance thresholds (default is 7).
-    /// Languages prone to false positives on plain text get a higher bar.
+    /// Minimum relevance score from highlight.js auto-detect to accept a result.
+    ///
+    /// highlight.js relevance is an unbounded integer that accumulates as the
+    /// highlighter matches language-specific keywords and modes.  Rough guide:
+    ///   0–4   very low confidence, almost certainly a false positive
+    ///   5–7   moderate, unreliable for short or mixed text
+    ///   8+    decent confidence, multiple distinctive features matched
+    ///   15+   high confidence
+    ///
+    /// Default threshold is 8.  Per-language overrides below for languages that
+    /// need a higher (or could tolerate a lower) bar.
+    private static let defaultRelevanceThreshold = 8
+
     private static let relevanceThreshold: [String: Int] = [
-        "swift": 10,
+        "swift": 10,     // common English words overlap Swift keywords
     ]
 
     /// Languages to pass as subset to highlightAuto (using highlight.js identifiers).
@@ -106,7 +117,7 @@ struct LanguageDetector {
             let preview = String(text.prefix(80)).replacingOccurrences(of: "\n", with: "\\n")
             NSLog("[AutoDetect] lang=%@ relevance=%d prose=%d ext=%@ text=\"%@\"",
                   canonical, auto.relevance, isProse ? 1 : 0, ext ?? "(none)", preview)
-            let threshold = Self.relevanceThreshold[canonical] ?? 7
+            let threshold = Self.relevanceThreshold[canonical] ?? Self.defaultRelevanceThreshold
             if auto.relevance >= threshold && !isProse {
                 return Result(lang: canonical, confidence: auto.relevance)
             }

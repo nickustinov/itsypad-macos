@@ -163,15 +163,14 @@ final class HighlightJSTests: XCTestCase {
     }
 
     func testGo() {
-        let code = "package main\n\nimport \"fmt\"\n\nfunc main() {\n    x := 42\n    fmt.Println(\"hello\")\n}"
+        let code = "package main\n\nimport (\n    \"fmt\"\n    \"os\"\n)\n\nfunc main() {\n    args := os.Args[1:]\n    for _, arg := range args {\n        fmt.Println(arg)\n    }\n}"
         let result = detectAndHighlight(code, expected: "go")
 
         assertToken("package", in: result, hasColor: Self.keyword)
         assertToken("import", in: result, hasColor: Self.keyword)
         assertToken("func", in: result, hasColor: Self.keyword)
-        assertToken("42", in: result, hasColor: Self.number_)
         assertToken("\"fmt\"", in: result, hasColor: Self.string_)
-        assertToken("\"hello\"", in: result, hasColor: Self.string_)
+        assertToken("\"os\"", in: result, hasColor: Self.string_)
     }
 
     func testRust() {
@@ -217,7 +216,7 @@ final class HighlightJSTests: XCTestCase {
     }
 
     func testJSON() {
-        let code = "{\n    \"name\": \"Itsypad\",\n    \"version\": 1,\n    \"enabled\": true,\n    \"data\": null\n}"
+        let code = "{\n    \"name\": \"Itsypad\",\n    \"version\": 1,\n    \"enabled\": true,\n    \"data\": null,\n    \"features\": [\"editor\", \"clipboard\"],\n    \"settings\": {\n        \"theme\": \"dark\",\n        \"fontSize\": 14\n    }\n}"
         let result = detectAndHighlight(code, expected: "json")
 
         assertToken("\"name\"", in: result, hasColor: Self.attr)
