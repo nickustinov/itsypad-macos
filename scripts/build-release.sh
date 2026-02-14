@@ -2,7 +2,7 @@
 set -e
 
 # Configuration
-APP_NAME="itsypad"
+APP_NAME="Itsypad"
 VERSION=$(grep 'MARKETING_VERSION:' project.yml | grep -v CFBundle | sed 's/.*: *"\(.*\)"/\1/')
 SIGNING_IDENTITY="Developer ID Application: Nikolajs Ustinovs (R892A93W42)"
 

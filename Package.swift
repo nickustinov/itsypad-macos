@@ -21,7 +21,7 @@ let package = Package(
             ]
         ),
         .executableTarget(
-            name: "itsypad",
+            name: "Itsypad",
             dependencies: ["ItsypadCore"],
             path: "Executable"
         ),
