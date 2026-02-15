@@ -409,6 +409,37 @@ class TabStore: ObservableObject {
         scheduleSave()
     }
 
+    func removeG2DeletedNotes(keeping remoteIDs: Set<UUID>, pendingPush: Set<UUID>) {
+        let before = tabs.count
+        let removedIDs = tabs
+            .filter { $0.fileURL == nil && !remoteIDs.contains($0.id) && !pendingPush.contains($0.id) }
+            .map { $0.id }
+        guard !removedIDs.isEmpty else { return }
+
+        var result = CloudMergeResult()
+        result.removedTabIDs = removedIDs
+
+        tabs = tabs.filter { !removedIDs.contains($0.id) }
+        print("[G2] tabs \(before) -> \(tabs.count)")
+
+        for id in removedIDs {
+            CloudSyncEngine.shared.recordDeleted(id, type: .scratchTab)
+        }
+
+        if tabs.isEmpty {
+            addNewTab()
+        } else if let sel = selectedTabID, !tabs.contains(where: { $0.id == sel }) {
+            selectedTabID = tabs.first?.id
+        }
+
+        NotificationCenter.default.post(
+            name: Self.cloudTabsMerged,
+            object: self,
+            userInfo: ["result": result]
+        )
+        scheduleSave()
+    }
+
     // MARK: - Session persistence
 
     func scheduleSave() {

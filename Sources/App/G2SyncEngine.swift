@@ -207,15 +207,13 @@ final class G2SyncEngine: ObservableObject {
             ]
         }
 
-        let newVersion = version + 1
-
         let url = URL(string: "\(Self.baseURL)/api/notes")!
         var request = URLRequest(url: url)
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue(authHeader, forHTTPHeaderField: "Authorization")
 
-        let body: [String: Any] = ["notes": notes, "version": newVersion]
+        let body: [String: Any] = ["notes": notes, "version": version + 1]
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         do {
@@ -223,8 +221,7 @@ final class G2SyncEngine: ObservableObject {
             guard let http = response as? HTTPURLResponse else { return }
 
             if http.statusCode == 200 {
-                version = newVersion
-                logger.info("Pushed \(notes.count) notes (v\(newVersion))")
+                logger.info("Pushed \(notes.count) notes")
             } else {
                 logger.error("Push all failed with status \(http.statusCode)")
             }
@@ -260,10 +257,6 @@ final class G2SyncEngine: ObservableObject {
             guard let http = response as? HTTPURLResponse else { return }
 
             if http.statusCode == 200 {
-                struct VersionResponse: Decodable { let version: Int }
-                if let vr = try? JSONDecoder().decode(VersionResponse.self, from: data) {
-                    version = vr.version
-                }
                 logger.info("Pushed note \(id.uuidString.prefix(8))")
             } else {
                 logger.error("Push note failed with status \(http.statusCode)")
@@ -282,14 +275,10 @@ final class G2SyncEngine: ObservableObject {
         request.setValue(authHeader, forHTTPHeaderField: "Authorization")
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else { return }
 
             if http.statusCode == 200 {
-                struct VersionResponse: Decodable { let version: Int }
-                if let vr = try? JSONDecoder().decode(VersionResponse.self, from: data) {
-                    version = vr.version
-                }
                 logger.info("Deleted note \(id.uuidString.prefix(8))")
             } else {
                 logger.error("Delete note failed with status \(http.statusCode)")
@@ -300,7 +289,12 @@ final class G2SyncEngine: ObservableObject {
     }
 
     private func pullNotes() async {
-        guard let authHeader else { return }
+        guard let authHeader else {
+            logger.warning("pullNotes: no authHeader, skipping")
+            return
+        }
+
+        logger.info("pullNotes: fetching...")
 
         let url = URL(string: "\(Self.baseURL)/api/notes")!
         var request = URLRequest(url: url)
@@ -308,7 +302,9 @@ final class G2SyncEngine: ObservableObject {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200 else { return }
+            guard let http = response as? HTTPURLResponse else { return }
+            logger.info("pullNotes: status \(http.statusCode)")
+            guard http.statusCode == 200 else { return }
 
             struct NotePayload: Decodable {
                 let id: String
@@ -322,11 +318,18 @@ final class G2SyncEngine: ObservableObject {
             }
 
             let store = try JSONDecoder().decode(NotesResponse.self, from: data)
-            guard store.version > version else { return }
+            let remoteIDs = Set(store.notes.compactMap { UUID(uuidString: $0.id) })
+
+            logger.info("pullNotes: \(store.notes.count) remote notes, v\(store.version)")
 
             let formatter = ISO8601DateFormatter()
 
             await MainActor.run {
+                let localScratch = TabStore.shared.tabs.filter { $0.fileURL == nil }
+                let localIDs = Set(localScratch.map { $0.id })
+                let toRemove = localIDs.subtracting(remoteIDs).subtracting(self.pendingPushIDs)
+                logger.info("pullNotes: \(localScratch.count) local scratch, \(toRemove.count) to remove")
+
                 for note in store.notes {
                     guard let noteId = UUID(uuidString: note.id) else { continue }
                     let lastModified = formatter.date(from: note.lastModified) ?? Date()
@@ -337,12 +340,12 @@ final class G2SyncEngine: ObservableObject {
                         lastModified: lastModified
                     )
                 }
+
+                TabStore.shared.removeG2DeletedNotes(keeping: remoteIDs, pendingPush: self.pendingPushIDs)
                 self.version = store.version
             }
-
-            logger.info("Pulled notes (v\(store.version))")
         } catch {
-            logger.error("Failed to pull notes: \(error)")
+            logger.error("pullNotes: \(error)")
         }
     }
 
@@ -368,6 +371,7 @@ final class G2SyncEngine: ObservableObject {
 
     private func startSyncTimers() {
         syncTimer?.invalidate()
+        logger.info("startSyncTimers: starting 30s poll")
         syncTimer = Timer.scheduledTimer(withTimeInterval: 30.0, repeats: true) { [weak self] _ in
             guard let self else { return }
             Task { await self.pullNotes() }
