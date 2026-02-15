@@ -4,7 +4,7 @@ import os.log
 final class G2SyncEngine: ObservableObject {
     static let shared = G2SyncEngine()
 
-    private static let baseURL = "http://localhost:3000"
+    private static let baseURL = "https://itsypad.app"
 
     enum State: Equatable {
         case disabled
