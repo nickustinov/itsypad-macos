@@ -82,6 +82,7 @@ struct SettingsView: View {
 struct GeneralSettingsView: View {
     @ObservedObject var store: SettingsStore
     @ObservedObject private var tabStore = TabStore.shared
+    @ObservedObject private var g2Engine = G2SyncEngine.shared
     @State private var now = Date()
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -116,6 +117,18 @@ struct GeneralSettingsView: View {
                             .onReceive(timer) { now = $0 }
                     }
                 }
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Even G2 sync", isOn: Binding(
+                        get: { store.g2SyncEnabled },
+                        set: { store.setG2Sync($0) }
+                    ))
+                    Text("Syncs scratch tabs with Even Realities G2 glasses.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if store.g2SyncEnabled {
+                        g2StatusView
+                    }
+                }
             }
 
             Section("About") {
@@ -134,6 +147,36 @@ struct GeneralSettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    @ViewBuilder
+    private var g2StatusView: some View {
+        switch g2Engine.state {
+        case .disabled:
+            EmptyView()
+        case .pairing(let code):
+            HStack(spacing: 6) {
+                Text("Pairing code:")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(code)
+                    .font(.system(.footnote, design: .monospaced))
+                    .fontWeight(.bold)
+            }
+            Text("Enter this code in the G2 app to connect.")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+        case .linked:
+            HStack(spacing: 6) {
+                Text("Connected")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("Unpair") {
+                    store.setG2Sync(false)
+                }
+                .controlSize(.small)
+            }
+        }
     }
 
     private var lastSyncLabel: String {

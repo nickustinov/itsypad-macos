@@ -111,9 +111,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         }
 
-        // Start CloudSyncEngine if enabled (deferred so init completes first)
+        // Start sync engines if enabled (deferred so init completes first)
         DispatchQueue.main.async {
             CloudSyncEngine.shared.startIfEnabled()
+            G2SyncEngine.shared.startIfEnabled()
         }
     }
 

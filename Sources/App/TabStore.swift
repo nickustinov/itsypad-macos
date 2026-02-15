@@ -94,6 +94,7 @@ class TabStore: ObservableObject {
         tabs.append(tab)
         selectedTabID = tab.id
         CloudSyncEngine.shared.recordChanged(tab.id, type: .scratchTab)
+        G2SyncEngine.shared.schedulePush(id: tab.id)
         scheduleSave()
     }
 
@@ -105,6 +106,7 @@ class TabStore: ObservableObject {
         }
         if isScratch {
             CloudSyncEngine.shared.recordDeleted(id, type: .scratchTab)
+            G2SyncEngine.shared.scheduleDelete(id: id)
         }
         tabs.remove(at: index)
 
@@ -146,6 +148,7 @@ class TabStore: ObservableObject {
 
         if tab.fileURL == nil {
             CloudSyncEngine.shared.recordChanged(id, type: .scratchTab)
+            G2SyncEngine.shared.schedulePush(id: id)
         }
 
         scheduleSave()
@@ -357,6 +360,9 @@ class TabStore: ObservableObject {
         lastICloudSync = Date()
 
         if changed {
+            for id in result.newTabIDs + result.updatedTabIDs {
+                G2SyncEngine.shared.schedulePush(id: id)
+            }
             NotificationCenter.default.post(
                 name: Self.cloudTabsMerged,
                 object: self,
@@ -373,6 +379,8 @@ class TabStore: ObservableObject {
         result.removedTabIDs.append(id)
         tabs.removeAll { $0.id == id }
 
+        G2SyncEngine.shared.scheduleDelete(id: id)
+
         if tabs.isEmpty {
             addNewTab()
         }
@@ -383,6 +391,21 @@ class TabStore: ObservableObject {
             object: self,
             userInfo: ["result": result]
         )
+        scheduleSave()
+    }
+
+    // MARK: - G2 sync
+
+    func applyG2Note(id: UUID, name: String, content: String, lastModified: Date) {
+        guard !tabs.contains(where: { $0.id == id }) else { return }
+        let tab = TabData(
+            id: id,
+            name: name,
+            content: content,
+            language: "plain",
+            lastModified: lastModified
+        )
+        tabs.append(tab)
         scheduleSave()
     }
 

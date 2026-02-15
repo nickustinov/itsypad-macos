@@ -178,6 +178,19 @@ class SettingsStore: ObservableObject {
     }
 
     @Published var icloudSync: Bool = false
+    @Published var g2SyncEnabled: Bool = false
+
+    func setG2Sync(_ enabled: Bool) {
+        g2SyncEnabled = enabled
+        defaults.set(enabled, forKey: "g2SyncEnabled")
+        defaults.synchronize()
+        if enabled {
+            G2SyncEngine.shared.enable()
+        } else {
+            G2SyncEngine.shared.disable()
+        }
+        NotificationCenter.default.post(name: .settingsChanged, object: nil)
+    }
 
     func setICloudSync(_ enabled: Bool) {
         icloudSync = enabled
@@ -320,6 +333,7 @@ class SettingsStore: ObservableObject {
         lineSpacing = savedLineSpacing > 0 ? savedLineSpacing : 1.0
         letterSpacing = defaults.double(forKey: "letterSpacing")
         icloudSync = defaults.bool(forKey: "icloudSync")
+        g2SyncEnabled = defaults.bool(forKey: "g2SyncEnabled")
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
