@@ -80,6 +80,8 @@ struct SettingsView: View {
 }
 
 struct GeneralSettingsView: View {
+    static let showG2Sync = true
+
     @ObservedObject var store: SettingsStore
     @ObservedObject private var tabStore = TabStore.shared
     @ObservedObject private var g2Engine = G2SyncEngine.shared
@@ -117,16 +119,18 @@ struct GeneralSettingsView: View {
                             .onReceive(timer) { now = $0 }
                     }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Even G2 sync", isOn: Binding(
-                        get: { store.g2SyncEnabled },
-                        set: { store.setG2Sync($0) }
-                    ))
-                    Text("Syncs scratch tabs with Even Realities G2 glasses.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    if store.g2SyncEnabled {
-                        g2StatusView
+                if Self.showG2Sync {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle("Even G2 sync", isOn: Binding(
+                            get: { store.g2SyncEnabled },
+                            set: { store.setG2Sync($0) }
+                        ))
+                        Text("Syncs scratch tabs with Even Realities G2 glasses.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        if store.g2SyncEnabled {
+                            g2StatusView
+                        }
                     }
                 }
             }
