@@ -616,12 +616,14 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             items.append(TabContextMenuItem(title: "Unpin tab", icon: "pin.slash") { [weak self] in
                 MainActor.assumeIsolated {
                     self?.controller.updateTab(tab.id, isPinned: false)
+                    self?.updatePinnedState(bonsplitTabID: tab.id, isPinned: false)
                 }
             })
         } else {
             items.append(TabContextMenuItem(title: "Pin tab", icon: "pin") { [weak self] in
                 MainActor.assumeIsolated {
                     self?.controller.updateTab(tab.id, isPinned: true)
+                    self?.updatePinnedState(bonsplitTabID: tab.id, isPinned: true)
                 }
             })
         }
@@ -647,6 +649,14 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     func saveActiveTabCursor() {
         saveCursorForSelectedTab()
         tabStore.currentLayout = LayoutSerializer.captureLayout(controller: controller, tabIDMap: tabIDMap, clipboardTabID: clipboardTabID)
+    }
+
+    @MainActor
+    private func updatePinnedState(bonsplitTabID: TabID, isPinned: Bool) {
+        guard let tabStoreID = reverseMap[bonsplitTabID],
+              let index = tabStore.tabs.firstIndex(where: { $0.id == tabStoreID }) else { return }
+        tabStore.tabs[index].isPinned = isPinned
+        tabStore.scheduleSave()
     }
 
     // MARK: - Private helpers

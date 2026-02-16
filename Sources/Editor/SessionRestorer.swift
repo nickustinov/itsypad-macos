@@ -36,7 +36,8 @@ struct SessionRestorer {
             if let bonsplitTabID = controller.createTab(
                 title: tab.name,
                 icon: nil,
-                isDirty: tab.isDirty
+                isDirty: tab.isDirty,
+                isPinned: tab.isPinned
             ) {
                 tabIDMap[tab.id] = bonsplitTabID
                 reverseMap[bonsplitTabID] = tab.id
@@ -71,7 +72,8 @@ struct SessionRestorer {
             if let bonsplitTabID = controller.createTab(
                 title: tab.name,
                 icon: nil,
-                isDirty: tab.isDirty
+                isDirty: tab.isDirty,
+                isPinned: tab.isPinned
             ) {
                 tabIDMap[tab.id] = bonsplitTabID
                 reverseMap[bonsplitTabID] = tab.id
@@ -118,6 +120,7 @@ struct SessionRestorer {
                     title: tab.name,
                     icon: nil,
                     isDirty: tab.isDirty,
+                    isPinned: tab.isPinned,
                     inPane: pane
                 ) {
                     tabIDMap[tab.id] = bonsplitTabID

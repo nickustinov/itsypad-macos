@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.2
+
+Fixes:
+- Fixed pinned tabs not persisting between app restarts – pin state is now saved to the session file and restored on launch
+
 ## 1.8.1
 
 Features:

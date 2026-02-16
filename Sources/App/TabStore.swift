@@ -9,6 +9,7 @@ struct TabData: Identifiable, Equatable {
     var bookmark: Data?
     var languageLocked: Bool
     var isDirty: Bool
+    var isPinned: Bool
     var cursorPosition: Int
     var lastModified: Date
 
@@ -21,6 +22,7 @@ struct TabData: Identifiable, Equatable {
         bookmark: Data? = nil,
         languageLocked: Bool = false,
         isDirty: Bool = false,
+        isPinned: Bool = false,
         cursorPosition: Int = 0,
         lastModified: Date = Date()
     ) {
@@ -32,6 +34,7 @@ struct TabData: Identifiable, Equatable {
         self.bookmark = bookmark
         self.languageLocked = languageLocked
         self.isDirty = isDirty
+        self.isPinned = isPinned
         self.cursorPosition = cursorPosition
         self.lastModified = lastModified
     }
@@ -48,6 +51,7 @@ extension TabData: Codable {
         bookmark = try c.decodeIfPresent(Data.self, forKey: .bookmark)
         languageLocked = try c.decode(Bool.self, forKey: .languageLocked)
         isDirty = try c.decodeIfPresent(Bool.self, forKey: .isDirty) ?? false
+        isPinned = try c.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
         cursorPosition = try c.decode(Int.self, forKey: .cursorPosition)
         lastModified = try c.decodeIfPresent(Date.self, forKey: .lastModified) ?? .distantPast
     }
