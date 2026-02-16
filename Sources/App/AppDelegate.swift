@@ -78,7 +78,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         }
 
         // Re-apply theme when macOS appearance changes (affects "system" mode)
-        appearanceObservation = NSApp.observe(\.effectiveAppearance) { [weak self] _, _ in
+        appearanceObservation = NSApp.observe(\.effectiveAppearance) { _, _ in
             MainActor.assumeIsolated {
                 guard SettingsStore.shared.appearanceOverride == "system" else { return }
                 NotificationCenter.default.post(name: .settingsChanged, object: nil)

@@ -253,7 +253,7 @@ final class G2SyncEngine: ObservableObject {
         request.httpBody = try? JSONSerialization.data(withJSONObject: body)
 
         do {
-            let (data, response) = try await URLSession.shared.data(for: request)
+            let (_, response) = try await URLSession.shared.data(for: request)
             guard let http = response as? HTTPURLResponse else { return }
 
             if http.statusCode == 200 {
@@ -322,9 +322,8 @@ final class G2SyncEngine: ObservableObject {
 
             logger.info("pullNotes: \(store.notes.count) remote notes, v\(store.version)")
 
-            let formatter = ISO8601DateFormatter()
-
             await MainActor.run {
+                let formatter = ISO8601DateFormatter()
                 let localScratch = TabStore.shared.tabs.filter { $0.fileURL == nil }
                 let localIDs = Set(localScratch.map { $0.id })
                 let toRemove = localIDs.subtracting(remoteIDs).subtracting(self.pendingPushIDs)
