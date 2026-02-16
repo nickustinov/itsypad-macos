@@ -5,6 +5,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
     case editor
     case appearance
     case clipboard
+    case labs
 
     var id: String { rawValue }
 
@@ -14,6 +15,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .editor: return "Editor"
         case .appearance: return "Appearance"
         case .clipboard: return "Clipboard"
+        case .labs: return "Labs"
         }
     }
 
@@ -23,6 +25,7 @@ enum SettingsTab: String, CaseIterable, Identifiable {
         case .editor: return "square.and.pencil"
         case .appearance: return "paintbrush"
         case .clipboard: return "paperclip"
+        case .labs: return "flask"
         }
     }
 }
@@ -68,6 +71,8 @@ struct SettingsView: View {
                     AppearanceSettingsView(store: store)
                 case .clipboard:
                     ClipboardSettingsView(store: store)
+                case .labs:
+                    LabsSettingsView(store: store)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -80,11 +85,8 @@ struct SettingsView: View {
 }
 
 struct GeneralSettingsView: View {
-    static let showG2Sync = true
-
     @ObservedObject var store: SettingsStore
     @ObservedObject private var tabStore = TabStore.shared
-    @ObservedObject private var g2Engine = G2SyncEngine.shared
     @State private var now = Date()
     private let timer = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
@@ -119,20 +121,6 @@ struct GeneralSettingsView: View {
                             .onReceive(timer) { now = $0 }
                     }
                 }
-                if Self.showG2Sync {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Toggle("Even G2 sync", isOn: Binding(
-                            get: { store.g2SyncEnabled },
-                            set: { store.setG2Sync($0) }
-                        ))
-                        Text("Syncs scratch tabs with Even Realities G2 glasses.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        if store.g2SyncEnabled {
-                            g2StatusView
-                        }
-                    }
-                }
             }
 
             Section("About") {
@@ -147,6 +135,46 @@ struct GeneralSettingsView: View {
                     Spacer()
                     Link("GitHub", destination: URL(string: githubURL)!)
                         .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var lastSyncLabel: String {
+        guard let date = tabStore.lastICloudSync else {
+            return "Not yet synced"
+        }
+        let seconds = Int(now.timeIntervalSince(date))
+        if seconds < 5 {
+            return "Last synced: just now"
+        } else if seconds < 60 {
+            return "Last synced: \(seconds)s ago"
+        } else {
+            let minutes = seconds / 60
+            return "Last synced: \(minutes) min ago"
+        }
+    }
+}
+
+struct LabsSettingsView: View {
+    @ObservedObject var store: SettingsStore
+    @ObservedObject private var g2Engine = G2SyncEngine.shared
+
+    var body: some View {
+        Form {
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle("Even G2 sync", isOn: Binding(
+                        get: { store.g2SyncEnabled },
+                        set: { store.setG2Sync($0) }
+                    ))
+                    Text("Syncs scratch tabs with Even Realities G2 glasses.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    if store.g2SyncEnabled {
+                        g2StatusView
+                    }
                 }
             }
         }
@@ -180,21 +208,6 @@ struct GeneralSettingsView: View {
                 }
                 .controlSize(.small)
             }
-        }
-    }
-
-    private var lastSyncLabel: String {
-        guard let date = tabStore.lastICloudSync else {
-            return "Not yet synced"
-        }
-        let seconds = Int(now.timeIntervalSince(date))
-        if seconds < 5 {
-            return "Last synced: just now"
-        } else if seconds < 60 {
-            return "Last synced: \(seconds)s ago"
-        } else {
-            let minutes = seconds / 60
-            return "Last synced: \(minutes) min ago"
         }
     }
 }

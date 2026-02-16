@@ -350,6 +350,7 @@ class TabStore: ObservableObject {
                 content: data.content,
                 language: data.language,
                 languageLocked: data.languageLocked,
+                isDirty: !data.content.isEmpty,
                 lastModified: data.lastModified
             )
             tabs.append(tab)
@@ -403,6 +404,7 @@ class TabStore: ObservableObject {
             name: name,
             content: content,
             language: "plain",
+            isDirty: !content.isEmpty,
             lastModified: lastModified
         )
         tabs.append(tab)
