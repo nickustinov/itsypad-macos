@@ -94,6 +94,7 @@ class TabStore: ObservableObject {
         tabs.append(tab)
         selectedTabID = tab.id
         CloudSyncEngine.shared.recordChanged(tab.id)
+        G2SyncEngine.shared.schedulePush(id: tab.id)
         scheduleSave()
     }
 
@@ -105,6 +106,7 @@ class TabStore: ObservableObject {
         }
         if isScratch {
             CloudSyncEngine.shared.recordDeleted(id)
+            G2SyncEngine.shared.scheduleDelete(id: id)
         }
         tabs.remove(at: index)
 
@@ -146,6 +148,7 @@ class TabStore: ObservableObject {
 
         if tab.fileURL == nil {
             CloudSyncEngine.shared.recordChanged(id)
+            G2SyncEngine.shared.schedulePush(id: id)
         }
 
         scheduleSave()
@@ -357,6 +360,9 @@ class TabStore: ObservableObject {
         lastICloudSync = Date()
 
         if changed {
+            for id in result.newTabIDs + result.updatedTabIDs {
+                G2SyncEngine.shared.schedulePush(id: id)
+            }
             NotificationCenter.default.post(
                 name: Self.cloudTabsMerged,
                 object: self,
@@ -373,11 +379,59 @@ class TabStore: ObservableObject {
         result.removedTabIDs.append(id)
         tabs.removeAll { $0.id == id }
 
+        G2SyncEngine.shared.scheduleDelete(id: id)
+
         if tabs.isEmpty {
             addNewTab()
         }
 
         lastICloudSync = Date()
+        NotificationCenter.default.post(
+            name: Self.cloudTabsMerged,
+            object: self,
+            userInfo: ["result": result]
+        )
+        scheduleSave()
+    }
+
+    // MARK: - G2 sync
+
+    func applyG2Note(id: UUID, name: String, content: String, lastModified: Date) {
+        guard !tabs.contains(where: { $0.id == id }) else { return }
+        let tab = TabData(
+            id: id,
+            name: name,
+            content: content,
+            language: "plain",
+            lastModified: lastModified
+        )
+        tabs.append(tab)
+        scheduleSave()
+    }
+
+    func removeG2DeletedNotes(keeping remoteIDs: Set<UUID>, pendingPush: Set<UUID>) {
+        let before = tabs.count
+        let removedIDs = tabs
+            .filter { $0.fileURL == nil && !remoteIDs.contains($0.id) && !pendingPush.contains($0.id) }
+            .map { $0.id }
+        guard !removedIDs.isEmpty else { return }
+
+        var result = CloudMergeResult()
+        result.removedTabIDs = removedIDs
+
+        tabs = tabs.filter { !removedIDs.contains($0.id) }
+        print("[G2] tabs \(before) -> \(tabs.count)")
+
+        for id in removedIDs {
+            CloudSyncEngine.shared.recordDeleted(id)
+        }
+
+        if tabs.isEmpty {
+            addNewTab()
+        } else if let sel = selectedTabID, !tabs.contains(where: { $0.id == sel }) {
+            selectedTabID = tabs.first?.id
+        }
+
         NotificationCenter.default.post(
             name: Self.cloudTabsMerged,
             object: self,
