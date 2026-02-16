@@ -84,6 +84,7 @@ class TabStore: ObservableObject {
             self.sessionURL = itsypadDir.appendingPathComponent("session.json")
         }
 
+        TabStore.migrateLegacyData(to: sessionURL ?? self.sessionURL)
         restoreSession()
 
         if tabs.isEmpty {
@@ -448,6 +449,68 @@ class TabStore: ObservableObject {
             userInfo: ["result": result]
         )
         scheduleSave()
+    }
+
+    // MARK: - Legacy data migration
+
+    private static func migrateLegacyData(to sandboxedURL: URL) {
+        let fm = FileManager.default
+
+        // Real home via getpwuid – sandbox changes NSHomeDirectory()
+        guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else { return }
+        let realHome = String(cString: home)
+        let oldDir = "\(realHome)/Library/Application Support/Itsypad"
+        let oldFile = "\(oldDir)/session.json"
+
+        NSLog("[Migration] session: oldFile=%@ sandboxed=%@ exists=%d",
+              oldFile, sandboxedURL.path, fm.fileExists(atPath: oldFile))
+
+        // Skip if old path is the same as sandboxed path (non-sandboxed build)
+        guard oldFile != sandboxedURL.path else { return }
+
+        // Skip if old file doesn't exist
+        guard fm.fileExists(atPath: oldFile) else { return }
+
+        // Decode old session
+        guard let oldData = try? Data(contentsOf: URL(fileURLWithPath: oldFile)),
+              let oldSession = try? JSONDecoder().decode(SessionData.self, from: oldData),
+              !oldSession.tabs.isEmpty else {
+            try? fm.removeItem(atPath: oldFile)
+            return
+        }
+
+        // Load existing sandboxed session (if any)
+        let existingSession: SessionData?
+        if let data = try? Data(contentsOf: sandboxedURL) {
+            existingSession = try? JSONDecoder().decode(SessionData.self, from: data)
+        } else {
+            existingSession = nil
+        }
+
+        // Merge: add old tabs that don't already exist in the sandboxed session
+        var mergedTabs: [TabData]
+        if let existing = existingSession {
+            let existingIDs = Set(existing.tabs.map { $0.id })
+            let newTabs = oldSession.tabs.filter { !existingIDs.contains($0.id) }
+            // If existing is just 1 empty default tab, replace it entirely
+            let isDefaultOnly = existing.tabs.count == 1 && existing.tabs[0].content.isEmpty
+            mergedTabs = isDefaultOnly ? oldSession.tabs : existing.tabs + newTabs
+        } else {
+            mergedTabs = oldSession.tabs
+        }
+
+        let selectedID = existingSession?.selectedTabID ?? oldSession.selectedTabID
+        let layout = existingSession?.layout ?? oldSession.layout
+        let merged = SessionData(tabs: mergedTabs, selectedTabID: selectedID, layout: layout)
+
+        do {
+            let encoded = try JSONEncoder().encode(merged)
+            try encoded.write(to: sandboxedURL, options: .atomic)
+            try? fm.removeItem(atPath: oldFile)
+            NSLog("[Migration] Merged %d legacy tabs into session", oldSession.tabs.count)
+        } catch {
+            NSLog("[Migration] Failed to migrate session.json: \(error)")
+        }
     }
 
     // MARK: - Session persistence

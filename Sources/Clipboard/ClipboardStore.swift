@@ -64,6 +64,7 @@ class ClipboardStore {
         try? FileManager.default.createDirectory(at: self.imagesDirectory, withIntermediateDirectories: true)
 
         lastChangeCount = NSPasteboard.general.changeCount
+        ClipboardStore.migrateLegacyData(to: self.storageURL, imagesDir: self.imagesDirectory)
         restoreEntries()
     }
 
@@ -293,6 +294,77 @@ class ClipboardStore {
         }
         scheduleSave()
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
+    }
+
+    // MARK: - Legacy data migration
+
+    private static func migrateLegacyData(to sandboxedURL: URL, imagesDir: URL) {
+        let fm = FileManager.default
+
+        guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else { return }
+        let realHome = String(cString: home)
+        let oldDir = "\(realHome)/Library/Application Support/Itsypad"
+        let oldFile = "\(oldDir)/clipboard.json"
+        let oldImagesDir = "\(oldDir)/clipboard-images"
+
+        NSLog("[Migration] clipboard: oldFile=%@ sandboxed=%@ exists=%d",
+              oldFile, sandboxedURL.path, fm.fileExists(atPath: oldFile))
+
+        guard oldFile != sandboxedURL.path else { return }
+
+        let oldFileExists = fm.fileExists(atPath: oldFile)
+        let oldImagesDirExists = fm.fileExists(atPath: oldImagesDir)
+        guard oldFileExists || oldImagesDirExists else { return }
+
+        // Merge clipboard entries
+        if oldFileExists {
+            let oldEntries: [ClipboardEntry]
+            if let data = try? Data(contentsOf: URL(fileURLWithPath: oldFile)),
+               let decoded = try? JSONDecoder().decode([ClipboardEntry].self, from: data) {
+                oldEntries = decoded
+            } else {
+                oldEntries = []
+            }
+
+            let existingEntries: [ClipboardEntry]
+            if let data = try? Data(contentsOf: sandboxedURL),
+               let decoded = try? JSONDecoder().decode([ClipboardEntry].self, from: data) {
+                existingEntries = decoded
+            } else {
+                existingEntries = []
+            }
+
+            if !oldEntries.isEmpty {
+                let existingIDs = Set(existingEntries.map { $0.id })
+                let newEntries = oldEntries.filter { !existingIDs.contains($0.id) }
+                let merged = (existingEntries + newEntries).sorted { $0.timestamp > $1.timestamp }
+
+                if let encoded = try? JSONEncoder().encode(merged) {
+                    try? encoded.write(to: sandboxedURL, options: .atomic)
+                }
+                NSLog("[Migration] Merged %d legacy clipboard entries", oldEntries.count)
+            }
+
+            try? fm.removeItem(atPath: oldFile)
+        }
+
+        // Merge clipboard images
+        if oldImagesDirExists {
+            let sandboxedImagesPath = imagesDir.path
+            try? fm.createDirectory(atPath: sandboxedImagesPath, withIntermediateDirectories: true)
+
+            if let files = try? fm.contentsOfDirectory(atPath: oldImagesDir) {
+                for file in files {
+                    let src = "\(oldImagesDir)/\(file)"
+                    let dst = "\(sandboxedImagesPath)/\(file)"
+                    if !fm.fileExists(atPath: dst) {
+                        try? fm.copyItem(atPath: src, toPath: dst)
+                    }
+                }
+            }
+            try? fm.removeItem(atPath: oldImagesDir)
+            NSLog("[Migration] Merged legacy clipboard-images")
+        }
     }
 
     // MARK: - Persistence
