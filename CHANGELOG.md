@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.8.1
+
+Features:
+- Added pin/unpin tab option to the tab context menu – pinned tabs stay fixed at the right end of the tab bar, with Clipboard always rightmost
+
+Fixes:
+- Pinned the Clipboard tab so it always stays visible at the right end of the tab bar (#38)
+
 ## 1.8.0
 
 Features:

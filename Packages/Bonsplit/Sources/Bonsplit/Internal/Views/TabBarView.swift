@@ -166,7 +166,12 @@ struct TabBarView: View {
                 pane.selectTab(tab.id)
                 controller.focusPane(pane.id)
             },
-            onClose: {}
+            onClose: {},
+            contextMenuItems: controller.delegate?.splitTabBar(
+                controller,
+                contextMenuItemsForTab: Tab(from: tab),
+                inPane: pane.id
+            ) ?? []
         )
     }
 
@@ -261,6 +266,7 @@ struct TabBarView: View {
             .buttonStyle(.borderless)
             .help("Split Down")
         }
+        .padding(.leading, 8)
         .padding(.trailing, 8)
     }
 

@@ -157,7 +157,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         // Create clipboard tab in the pane it was saved in (or last pane as fallback)
         if SettingsStore.shared.clipboardEnabled {
             let clipboardPane = LayoutSerializer.findClipboardPane(in: tabStore.savedLayout, controller: controller) ?? controller.allPaneIds.last
-            if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false, inPane: clipboardPane) {
+            if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false, isPinned: true, inPane: clipboardPane) {
                 clipboardTabID = clipTabID
             }
         }
@@ -612,6 +612,20 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         })
 
+        if tab.isPinned {
+            items.append(TabContextMenuItem(title: "Unpin tab", icon: "pin.slash") { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.controller.updateTab(tab.id, isPinned: false)
+                }
+            })
+        } else {
+            items.append(TabContextMenuItem(title: "Pin tab", icon: "pin") { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.controller.updateTab(tab.id, isPinned: true)
+                }
+            })
+        }
+
         return items
     }
 
@@ -804,7 +818,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         if enabled {
             ClipboardStore.shared.startMonitoring()
             if clipboardTabID == nil {
-                if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false) {
+                if let clipTabID = controller.createTab(title: "Clipboard", icon: "clipboardIcon", isClosable: false, isPinned: true) {
                     clipboardTabID = clipTabID
                 }
             }

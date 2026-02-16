@@ -19,7 +19,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.ap
 - **iCloud sync** — sync scratch tabs and clipboard history (text only) across Macs via iCloud
 
 ## Editor
-- **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder (tab bar by [Bonsplit](https://github.com/almonk/bonsplit))
+- **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder, pin tabs to keep them visible (tab bar by [Bonsplit](https://github.com/almonk/bonsplit))
 - **Syntax highlighting** — 185+ languages via [highlight.js](https://highlightjs.org), with automatic language detection
 - **Find and replace** — built-in find bar with next/previous match and use selection for find
 - **Session persistence** — all tabs, content, and cursor positions are preserved across restarts

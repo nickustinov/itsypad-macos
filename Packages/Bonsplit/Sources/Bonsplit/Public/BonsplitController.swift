@@ -104,7 +104,8 @@ public final class BonsplitController {
         _ tabId: TabID,
         title: String? = nil,
         icon: String?? = nil,
-        isDirty: Bool? = nil
+        isDirty: Bool? = nil,
+        isPinned: Bool? = nil
     ) {
         guard let (pane, tabIndex) = findTabInternal(tabId) else { return }
 
@@ -117,6 +118,20 @@ public final class BonsplitController {
         }
         if let isDirty = isDirty, pane.tabs[tabIndex].isDirty != isDirty {
             pane.tabs[tabIndex].isDirty = isDirty
+        }
+        if let isPinned = isPinned, pane.tabs[tabIndex].isPinned != isPinned {
+            pane.tabs[tabIndex].isPinned = isPinned
+            if isPinned {
+                // Move to pinned area, but before non-closable pinned tabs (e.g. Clipboard)
+                let anchorIndex = pane.tabs.lastIndex(where: { $0.isPinned && !$0.isClosable })
+                pane.moveTab(from: tabIndex, to: anchorIndex ?? pane.tabs.count)
+            } else {
+                // Move to just before the first pinned tab
+                let firstPinnedIndex = pane.tabs.firstIndex(where: { $0.isPinned }) ?? pane.tabs.count
+                if tabIndex != firstPinnedIndex {
+                    pane.moveTab(from: tabIndex, to: firstPinnedIndex)
+                }
+            }
         }
     }
 
