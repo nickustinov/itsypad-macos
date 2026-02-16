@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.8.0
+
+Features:
+- Added Help menu with links to the Itsypad website, release notes, and issue tracker
+- Added Labs settings tab with Even Realities G2 glasses sync
+
 ## 1.7.1
 
 Features:

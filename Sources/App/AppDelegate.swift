@@ -451,6 +451,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         mainMenu.addItem(builder.buildFileMenuItem(recentFilesMenu: recentMenu))
         mainMenu.addItem(builder.buildEditMenuItem())
         mainMenu.addItem(builder.buildViewMenuItem())
+        mainMenu.addItem(builder.buildHelpMenuItem())
         NSApp.mainMenu = mainMenu
     }
 
@@ -554,6 +555,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc func togglePreviewAction() {
         editorCoordinator?.togglePreview()
+    }
+
+    @objc func openHelpURL(_ sender: NSMenuItem) {
+        guard let urlString = sender.representedObject as? String,
+              let url = URL(string: urlString) else { return }
+        NSWorkspace.shared.open(url)
     }
 
     private func currentSelectedTabID() -> TabID? {

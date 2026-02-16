@@ -277,4 +277,32 @@ class MenuBuilder {
         item.submenu = menu
         return item
     }
+
+    func buildHelpMenuItem() -> NSMenuItem {
+        let menu = NSMenu(title: "Help")
+
+        let websiteItem = NSMenuItem(title: "Itsypad website", action: #selector(AppDelegate.openHelpURL(_:)), keyEquivalent: "")
+        websiteItem.image = NSImage(systemSymbolName: "globe", accessibilityDescription: nil)
+        websiteItem.representedObject = githubURL
+        websiteItem.target = target
+        menu.addItem(websiteItem)
+
+        #if !APPSTORE
+        let releasesItem = NSMenuItem(title: "Release notes", action: #selector(AppDelegate.openHelpURL(_:)), keyEquivalent: "")
+        releasesItem.image = NSImage(systemSymbolName: "arrow.up.circle", accessibilityDescription: nil)
+        releasesItem.representedObject = githubURL + "/releases"
+        releasesItem.target = target
+        menu.addItem(releasesItem)
+        #endif
+
+        let issuesItem = NSMenuItem(title: "Report an issue", action: #selector(AppDelegate.openHelpURL(_:)), keyEquivalent: "")
+        issuesItem.image = NSImage(systemSymbolName: "exclamationmark.bubble", accessibilityDescription: nil)
+        issuesItem.representedObject = githubURL + "/issues"
+        issuesItem.target = target
+        menu.addItem(issuesItem)
+
+        let item = NSMenuItem()
+        item.submenu = menu
+        return item
+    }
 }
