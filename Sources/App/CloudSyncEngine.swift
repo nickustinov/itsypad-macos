@@ -115,13 +115,13 @@ final class CloudSyncEngine: @unchecked Sendable {
         logger.info("CloudSyncEngine stopped")
     }
 
-    func recordChanged(_ id: UUID, type: RecordType) {
+    func recordChanged(_ id: UUID) {
         guard let engine = syncEngine else { return }
         let recordID = CKRecord.ID(recordName: id.uuidString, zoneID: zoneID)
         engine.state.add(pendingRecordZoneChanges: [.saveRecord(recordID)])
     }
 
-    func recordDeleted(_ id: UUID, type: RecordType) {
+    func recordDeleted(_ id: UUID) {
         guard let engine = syncEngine else { return }
         let recordID = CKRecord.ID(recordName: id.uuidString, zoneID: zoneID)
         engine.state.add(pendingRecordZoneChanges: [.deleteRecord(recordID)])
@@ -449,10 +449,6 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
         }
         if !newPendingRecordZoneChanges.isEmpty {
             syncEngine?.state.add(pendingRecordZoneChanges: newPendingRecordZoneChanges)
-        }
-
-        DispatchQueue.main.async {
-            TabStore.shared.lastICloudSync = Date()
         }
     }
 

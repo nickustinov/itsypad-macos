@@ -93,7 +93,7 @@ class TabStore: ObservableObject {
         let tab = TabData()
         tabs.append(tab)
         selectedTabID = tab.id
-        CloudSyncEngine.shared.recordChanged(tab.id, type: .scratchTab)
+        CloudSyncEngine.shared.recordChanged(tab.id)
         scheduleSave()
     }
 
@@ -104,7 +104,7 @@ class TabStore: ObservableObject {
             url.stopAccessingSecurityScopedResource()
         }
         if isScratch {
-            CloudSyncEngine.shared.recordDeleted(id, type: .scratchTab)
+            CloudSyncEngine.shared.recordDeleted(id)
         }
         tabs.remove(at: index)
 
@@ -145,7 +145,7 @@ class TabStore: ObservableObject {
         }
 
         if tab.fileURL == nil {
-            CloudSyncEngine.shared.recordChanged(id, type: .scratchTab)
+            CloudSyncEngine.shared.recordChanged(id)
         }
 
         scheduleSave()
@@ -183,7 +183,7 @@ class TabStore: ObservableObject {
         tabs[index].languageLocked = true
         tabs[index].lastModified = Date()
         if tabs[index].fileURL == nil {
-            CloudSyncEngine.shared.recordChanged(id, type: .scratchTab)
+            CloudSyncEngine.shared.recordChanged(id)
         }
         scheduleSave()
     }
