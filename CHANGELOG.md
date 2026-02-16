@@ -4,6 +4,7 @@
 
 Fixes:
 - Fixed pinned tabs not persisting between app restarts – pin state is now saved to the session file and restored on launch
+- Fixed local tabs being overwritten or deleted by stale CloudKit data during first sync after upgrade from 1.6.0 to 1.8.x – local state is now treated as authoritative until the first sync cycle completes
 
 ## 1.8.1
 

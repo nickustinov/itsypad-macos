@@ -43,6 +43,9 @@ final class CloudSyncEngine: @unchecked Sendable {
     // Cache of last-known server record data (system fields) per record ID, for conflict detection
     private var recordMetadata: [String: Data] = [:]
 
+    /// True during first sync cycle – local tabs are authoritative and must not be overwritten.
+    private(set) var isFirstSync = false
+
     private let logger = Logger(subsystem: "com.nickustinov.itsypad", category: "CloudSync")
 
     init() {
@@ -92,6 +95,12 @@ final class CloudSyncEngine: @unchecked Sendable {
             try? FileManager.default.removeItem(at: stateURL)
         }
 
+        // Set the instance flag BEFORE creating CKSyncEngine so no delegate
+        // callback can observe it as false.
+        if isFirstSync {
+            self.isFirstSync = true
+        }
+
         let stateSerialization = isFirstSync ? nil : loadStateSerialization()
         var configuration = CKSyncEngine.Configuration(
             database: database,
@@ -100,7 +109,7 @@ final class CloudSyncEngine: @unchecked Sendable {
         )
         configuration.automaticallySync = true
         syncEngine = CKSyncEngine(configuration)
-        logger.info("CloudSyncEngine started (firstSync=\(isFirstSync))")
+        logger.info("CloudSyncEngine started (firstSync=\(self.isFirstSync))")
 
         if isFirstSync {
             syncEngine?.state.add(pendingDatabaseChanges: [.saveZone(CKRecordZone(zoneID: zoneID))])
@@ -334,8 +343,14 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
                 logger.error("Failed zone save: code=\(failedZone.error.code.rawValue) \(failedZone.error.localizedDescription)")
             }
 
-        case .didFetchChanges, .didSendChanges:
+        case .didFetchChanges:
             DispatchQueue.main.async {
+                TabStore.shared.lastICloudSync = Date()
+            }
+
+        case .didSendChanges:
+            DispatchQueue.main.async {
+                self.isFirstSync = false
                 TabStore.shared.lastICloudSync = Date()
             }
 

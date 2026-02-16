@@ -335,6 +335,8 @@ class TabStore: ObservableObject {
         var result = CloudMergeResult()
 
         if let localIndex = tabs.firstIndex(where: { $0.id == data.id }) {
+            // During first sync, local tabs are authoritative – skip updates
+            if CloudSyncEngine.shared.isFirstSync { return }
             // Only accept cloud version if it's newer than local
             guard data.lastModified > tabs[localIndex].lastModified else { return }
             if tabs[localIndex].content != data.content
@@ -378,6 +380,8 @@ class TabStore: ObservableObject {
     }
 
     func removeCloudTab(id: UUID) {
+        // During first sync, local tabs are authoritative – skip removals
+        if CloudSyncEngine.shared.isFirstSync { return }
         guard tabs.contains(where: { $0.id == id }) else { return }
 
         var result = CloudMergeResult()
