@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.8.3
+
+Fixes:
+- Fixed tabs and clipboard history lost when switching from the direct-download version (≤1.6.0) to the App Store version – legacy iCloud KVS data is now imported on first launch
+
 ## 1.8.2
 
 Fixes:

@@ -43,6 +43,7 @@ class ClipboardStore {
     static let clipboardTabSelectedNotification = Notification.Name("clipboardTabSelected")
 
     private let maxEntries = 1000
+    private var kvsObserver: NSObjectProtocol?
 
     init(storageURL: URL? = nil, imagesDirectory: URL? = nil) {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -66,6 +67,7 @@ class ClipboardStore {
         lastChangeCount = NSPasteboard.general.changeCount
         ClipboardStore.migrateLegacyData(to: self.storageURL, imagesDir: self.imagesDirectory)
         restoreEntries()
+        migrateFromKVS()
     }
 
     // MARK: - Monitoring
@@ -296,7 +298,108 @@ class ClipboardStore {
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
 
-    // MARK: - Legacy data migration
+    // MARK: - KVS migration (v1.6.0 iCloud sync → App Store)
+    //
+    // Same situation as TabStore.migrateFromKVS – see detailed comment there.
+    //
+    // Versions up to 1.6.0 synced clipboard entries via NSUbiquitousKeyValueStore.
+    // The old code used a ClipboardCloudEntry struct (id, text, timestamp) – a
+    // text-only subset of ClipboardEntry (no images in KVS due to 1MB size limit).
+    // We re-declare it here as LegacyCloudClipboardEntry for decoding.
+    //
+    // KVS keys (from the old ClipboardStore):
+    //   "clipboard"           – JSON-encoded [ClipboardCloudEntry] (text entries only)
+    //   "deletedClipboardIDs" – JSON-encoded [String] of deleted entry UUIDs
+
+    // The original struct was called ClipboardCloudEntry and was deleted in the
+    // CloudKit migration (commit ddaf107). We need it back to decode KVS payloads.
+    private struct LegacyCloudClipboardEntry: Codable {
+        let id: UUID
+        let text: String
+        let timestamp: Date
+    }
+
+    private func migrateFromKVS() {
+        guard !UserDefaults.standard.bool(forKey: "kvsClipboardMigrated") else { return }
+
+        let kvs = NSUbiquitousKeyValueStore.default
+        kvs.synchronize()
+
+        if importKVSClipboard(from: kvs) { return }
+
+        // See TabStore.migrateFromKVS for why we need the observer fallback.
+        kvsObserver = NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: kvs, queue: .main
+        ) { [weak self] _ in
+            guard let self, !UserDefaults.standard.bool(forKey: "kvsClipboardMigrated") else { return }
+            self.importKVSClipboard(from: kvs)
+            UserDefaults.standard.set(true, forKey: "kvsClipboardMigrated")
+            if let observer = self.kvsObserver {
+                NotificationCenter.default.removeObserver(observer)
+                self.kvsObserver = nil
+            }
+        }
+    }
+
+    @discardableResult
+    private func importKVSClipboard(from kvs: NSUbiquitousKeyValueStore) -> Bool {
+        guard let data = kvs.data(forKey: "clipboard"),
+              let kvsEntries = try? JSONDecoder().decode([LegacyCloudClipboardEntry].self, from: data),
+              !kvsEntries.isEmpty else { return false }
+
+        let existingIDs = Set(entries.map { $0.id })
+        let existingTexts = Set(entries.compactMap { $0.text })
+        var imported = 0
+
+        for kvsEntry in kvsEntries {
+            guard !existingIDs.contains(kvsEntry.id) else { continue }
+            // Dedup by text content – Universal Clipboard can create duplicates
+            // with different UUIDs for the same text
+            guard !existingTexts.contains(kvsEntry.text) else { continue }
+
+            let entry = ClipboardEntry(
+                id: kvsEntry.id,
+                kind: .text,
+                text: kvsEntry.text,
+                timestamp: kvsEntry.timestamp
+            )
+            // Maintain newest-first sort order
+            let insertIndex = entries.firstIndex(where: { $0.timestamp < entry.timestamp }) ?? entries.endIndex
+            entries.insert(entry, at: insertIndex)
+            imported += 1
+        }
+
+        while entries.count > maxEntries {
+            let evicted = entries.removeLast()
+            cleanupImageFile(for: evicted)
+        }
+
+        if imported > 0 {
+            saveEntries()
+            NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
+        }
+
+        // Remove KVS keys to prevent re-import
+        kvs.removeObject(forKey: "clipboard")
+        kvs.removeObject(forKey: "deletedClipboardIDs")
+        kvs.synchronize()
+        UserDefaults.standard.set(true, forKey: "kvsClipboardMigrated")
+        NSLog("[KVS Migration] Imported %d clipboard entries from iCloud KVS", imported)
+        return true
+    }
+
+    // MARK: - Legacy data migration (non-sandboxed → sandboxed path)
+    //
+    // Same situation as TabStore.migrateLegacyData – see detailed comment there.
+    //
+    // Migrates clipboard.json and the clipboard-images/ directory from the old
+    // non-sandboxed path (~/Library/Application Support/Itsypad/) into the
+    // sandboxed container. Only works in the direct-download build which has the
+    // temporary-exception entitlement for the old path. The App Store build can't
+    // reach these files – clipboard recovery for App Store users coming from ≤1.6.0
+    // is handled by the KVS migration above (text entries only; images were never
+    // synced via KVS due to the 1MB size limit).
 
     private static func migrateLegacyData(to sandboxedURL: URL, imagesDir: URL) {
         let fm = FileManager.default
@@ -316,7 +419,6 @@ class ClipboardStore {
         let oldImagesDirExists = fm.fileExists(atPath: oldImagesDir)
         guard oldFileExists || oldImagesDirExists else { return }
 
-        // Merge clipboard entries
         if oldFileExists {
             let oldEntries: [ClipboardEntry]
             if let data = try? Data(contentsOf: URL(fileURLWithPath: oldFile)),
@@ -348,7 +450,6 @@ class ClipboardStore {
             try? fm.removeItem(atPath: oldFile)
         }
 
-        // Merge clipboard images
         if oldImagesDirExists {
             let sandboxedImagesPath = imagesDir.path
             try? fm.createDirectory(atPath: sandboxedImagesPath, withIntermediateDirectories: true)

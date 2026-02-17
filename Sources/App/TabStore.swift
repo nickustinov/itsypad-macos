@@ -69,6 +69,7 @@ class TabStore: ObservableObject {
     private var saveDebounceWork: DispatchWorkItem?
     private var languageDetectWork: DispatchWorkItem?
     private let sessionURL: URL
+    private var kvsObserver: NSObjectProtocol?
 
     var selectedTab: TabData? {
         tabs.first { $0.id == selectedTabID }
@@ -86,6 +87,7 @@ class TabStore: ObservableObject {
 
         TabStore.migrateLegacyData(to: sessionURL ?? self.sessionURL)
         restoreSession()
+        migrateFromKVS()
 
         if tabs.isEmpty {
             addNewTab()
@@ -451,12 +453,123 @@ class TabStore: ObservableObject {
         scheduleSave()
     }
 
-    // MARK: - Legacy data migration
+    // MARK: - KVS migration (v1.6.0 iCloud sync → App Store)
+    //
+    // Background: versions up to 1.6.0 used NSUbiquitousKeyValueStore (iCloud KVS)
+    // for tab sync. In 1.8.0 we migrated to CloudKit via CKSyncEngine and stripped
+    // all KVS code. However, users who had KVS sync enabled still have their tabs
+    // sitting in iCloud KVS under the key "tabs" (encoded [TabData]).
+    //
+    // Problem: when a user switches from the direct-download version to the paid
+    // App Store version, the App Store build is sandboxed and can't read the old
+    // local session.json (no temporary-exception entitlement). CloudKit users are
+    // fine – their tabs sync automatically via the shared iCloud container. But
+    // KVS-era users (v1.6.0 and earlier) would lose all their notes.
+    //
+    // Solution: on startup, read the legacy KVS keys. Both distributions share the
+    // same KVS identifier (TeamID + bundle ID), so the App Store build can access
+    // this data. We import any tabs found, then remove the KVS keys to prevent
+    // re-import on subsequent launches.
+    //
+    // KVS keys (from the old ICloudSyncManager):
+    //   "tabs"          – JSON-encoded [TabData] (scratch tabs only)
+    //   "deletedTabIDs" – JSON-encoded [String] of deleted tab UUIDs
+    //
+    // This migration can be removed once we're confident no users remain on ≤1.6.0.
+
+    private func migrateFromKVS() {
+        guard !UserDefaults.standard.bool(forKey: "kvsTabsMigrated") else { return }
+
+        let kvs = NSUbiquitousKeyValueStore.default
+        kvs.synchronize()
+
+        if importKVSTabs(from: kvs) { return }
+
+        // synchronize() only hints the system to pull data – KVS might not be
+        // available yet on first launch (e.g. slow network, fresh iCloud login).
+        // Register a one-shot observer: the didChangeExternallyNotification fires
+        // once initial sync completes, at which point the data is either there
+        // or genuinely doesn't exist.
+        kvsObserver = NotificationCenter.default.addObserver(
+            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
+            object: kvs, queue: .main
+        ) { [weak self] _ in
+            guard let self, !UserDefaults.standard.bool(forKey: "kvsTabsMigrated") else { return }
+            self.importKVSTabs(from: kvs)
+            // Mark done after first notification regardless – if no data was found,
+            // initial sync has completed and the KVS store is genuinely empty.
+            UserDefaults.standard.set(true, forKey: "kvsTabsMigrated")
+            if let observer = self.kvsObserver {
+                NotificationCenter.default.removeObserver(observer)
+                self.kvsObserver = nil
+            }
+        }
+    }
+
+    @discardableResult
+    private func importKVSTabs(from kvs: NSUbiquitousKeyValueStore) -> Bool {
+        // The old KVS sync stored tabs under the "tabs" key as JSON-encoded [TabData].
+        // TabData's Codable init handles missing optional fields (isPinned, bookmark, etc.)
+        // via defaults, so decoding old payloads works without a legacy struct.
+        guard let data = kvs.data(forKey: "tabs"),
+              let kvsTabs = try? JSONDecoder().decode([TabData].self, from: data),
+              !kvsTabs.isEmpty else { return false }
+
+        let existingIDs = Set(tabs.map { $0.id })
+        let newTabs = kvsTabs.filter { !existingIDs.contains($0.id) }
+
+        if !newTabs.isEmpty {
+            // If the only local tab is the empty default "Untitled" tab created on
+            // first launch, replace it entirely with the KVS tabs.
+            let isDefaultOnly = tabs.count == 1 && tabs[0].content.isEmpty
+            if isDefaultOnly {
+                tabs = kvsTabs
+                selectedTabID = kvsTabs.first?.id
+            } else {
+                tabs.append(contentsOf: newTabs)
+            }
+            scheduleSave()
+        }
+
+        // Remove KVS keys so the old data isn't re-imported if this code runs again
+        // (belt-and-suspenders alongside the UserDefaults flag).
+        kvs.removeObject(forKey: "tabs")
+        kvs.removeObject(forKey: "deletedTabIDs")
+        kvs.synchronize()
+        UserDefaults.standard.set(true, forKey: "kvsTabsMigrated")
+        NSLog("[KVS Migration] Imported %d tabs from iCloud KVS", newTabs.count)
+        return true
+    }
+
+    // MARK: - Legacy data migration (non-sandboxed → sandboxed path)
+    //
+    // Background: versions up to 1.6.0 ran without App Sandbox, so session.json
+    // lived at ~/Library/Application Support/Itsypad/session.json. Starting with
+    // 1.8.0 we enabled App Sandbox for App Store distribution, which moves the
+    // data directory into ~/Library/Containers/com.nickustinov.itsypad/Data/
+    // Library/Application Support/Itsypad/session.json.
+    //
+    // Problem: users upgrading from ≤1.6.0 to 1.8.x lost all their tabs because
+    // the sandboxed app couldn't see the old session.json at the non-sandboxed path.
+    //
+    // Solution: the direct-download build (itsypad-direct.entitlements) has a
+    // temporary-exception entitlement granting read-write access to the old path
+    // (com.apple.security.temporary-exception.files.home-relative-path.read-write).
+    // On first launch, this method reads the old session.json, merges its tabs
+    // into the new sandboxed session, and deletes the old file.
+    //
+    // Note: the App Store build does NOT have this entitlement (Apple would reject
+    // it), so this migration only works for users upgrading the direct-download
+    // version. App Store users coming from ≤1.6.0 are covered by the KVS migration
+    // above (if they had iCloud sync enabled) or are out of luck (no local file
+    // access from sandbox).
+    //
+    // Uses getpwuid() to find the real home directory because NSHomeDirectory()
+    // returns the sandbox container path when sandboxed.
 
     private static func migrateLegacyData(to sandboxedURL: URL) {
         let fm = FileManager.default
 
-        // Real home via getpwuid – sandbox changes NSHomeDirectory()
         guard let pw = getpwuid(getuid()), let home = pw.pointee.pw_dir else { return }
         let realHome = String(cString: home)
         let oldDir = "\(realHome)/Library/Application Support/Itsypad"
@@ -465,13 +578,11 @@ class TabStore: ObservableObject {
         NSLog("[Migration] session: oldFile=%@ sandboxed=%@ exists=%d",
               oldFile, sandboxedURL.path, fm.fileExists(atPath: oldFile))
 
-        // Skip if old path is the same as sandboxed path (non-sandboxed build)
+        // Same path means we're running non-sandboxed – nothing to migrate
         guard oldFile != sandboxedURL.path else { return }
 
-        // Skip if old file doesn't exist
         guard fm.fileExists(atPath: oldFile) else { return }
 
-        // Decode old session
         guard let oldData = try? Data(contentsOf: URL(fileURLWithPath: oldFile)),
               let oldSession = try? JSONDecoder().decode(SessionData.self, from: oldData),
               !oldSession.tabs.isEmpty else {
@@ -479,7 +590,6 @@ class TabStore: ObservableObject {
             return
         }
 
-        // Load existing sandboxed session (if any)
         let existingSession: SessionData?
         if let data = try? Data(contentsOf: sandboxedURL) {
             existingSession = try? JSONDecoder().decode(SessionData.self, from: data)
@@ -487,12 +597,10 @@ class TabStore: ObservableObject {
             existingSession = nil
         }
 
-        // Merge: add old tabs that don't already exist in the sandboxed session
         var mergedTabs: [TabData]
         if let existing = existingSession {
             let existingIDs = Set(existing.tabs.map { $0.id })
             let newTabs = oldSession.tabs.filter { !existingIDs.contains($0.id) }
-            // If existing is just 1 empty default tab, replace it entirely
             let isDefaultOnly = existing.tabs.count == 1 && existing.tabs[0].content.isEmpty
             mergedTabs = isDefaultOnly ? oldSession.tabs : existing.tabs + newTabs
         } else {
