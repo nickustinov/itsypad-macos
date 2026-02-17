@@ -258,8 +258,8 @@ Tests/
 └── TabStoreTests.swift
 scripts/
 ├── build-release.sh                    # Build, sign, and package DMG for direct distribution
-├── pull-translations                   # Pull translations from Lokalise into xcstrings
-└── push-translations                   # Push English source strings to Lokalise
+├── pull-translations.sh                # Pull translations from Lokalise into xcstrings
+└── push-translations.sh               # Push English source strings to Lokalise
 ```
 
 ## Requirements
@@ -344,7 +344,7 @@ cp lokalise.yml.example lokalise.yml
 Extracts English keys and values from the xcstrings file and uploads to Lokalise:
 
 ```bash
-scripts/push-translations
+scripts/push-translations.sh
 ```
 
 ### Pull translations from Lokalise
@@ -352,7 +352,7 @@ scripts/push-translations
 Downloads all translations from Lokalise and merges them into the xcstrings file:
 
 ```bash
-scripts/pull-translations
+scripts/pull-translations.sh
 ```
 
 ### How it works
