@@ -17,6 +17,7 @@ A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.ap
 - **Dock icon** — show or hide in Dock, as you prefer
 - **Open at login** — optional auto-start
 - **iCloud sync** — sync scratch tabs and clipboard history (text only) across Macs via iCloud
+- **12 languages** — English, Spanish, French, German, Russian, Japanese, Simplified Chinese, Traditional Chinese, Korean, Portuguese (Brazil), Italian, Polish
 
 ## Editor
 - **Multi-tab and split view** — work on multiple files/notes at once, drag to reorder, pin tabs to keep them visible (tab bar by [Bonsplit](https://github.com/almonk/bonsplit))
