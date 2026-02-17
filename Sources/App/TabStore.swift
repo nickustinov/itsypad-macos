@@ -69,7 +69,7 @@ class TabStore: ObservableObject {
     private var saveDebounceWork: DispatchWorkItem?
     private var languageDetectWork: DispatchWorkItem?
     private let sessionURL: URL
-    private var kvsObserver: NSObjectProtocol?
+    private var kvsMigration: KVSMigration?
 
     var selectedTab: TabData? {
         tabs.first { $0.id == selectedTabID }
@@ -87,7 +87,9 @@ class TabStore: ObservableObject {
 
         TabStore.migrateLegacyData(to: sessionURL ?? self.sessionURL)
         restoreSession()
-        migrateFromKVS()
+        kvsMigration = KVSMigration(flagKey: "kvsTabsMigrated") { [weak self] kvs in
+            self?.importKVSTabs(from: kvs) ?? false
+        }
 
         if tabs.isEmpty {
             addNewTab()
@@ -454,57 +456,6 @@ class TabStore: ObservableObject {
     }
 
     // MARK: - KVS migration (v1.6.0 iCloud sync → App Store)
-    //
-    // Background: versions up to 1.6.0 used NSUbiquitousKeyValueStore (iCloud KVS)
-    // for tab sync. In 1.8.0 we migrated to CloudKit via CKSyncEngine and stripped
-    // all KVS code. However, users who had KVS sync enabled still have their tabs
-    // sitting in iCloud KVS under the key "tabs" (encoded [TabData]).
-    //
-    // Problem: when a user switches from the direct-download version to the paid
-    // App Store version, the App Store build is sandboxed and can't read the old
-    // local session.json (no temporary-exception entitlement). CloudKit users are
-    // fine – their tabs sync automatically via the shared iCloud container. But
-    // KVS-era users (v1.6.0 and earlier) would lose all their notes.
-    //
-    // Solution: on startup, read the legacy KVS keys. Both distributions share the
-    // same KVS identifier (TeamID + bundle ID), so the App Store build can access
-    // this data. We import any tabs found, then remove the KVS keys to prevent
-    // re-import on subsequent launches.
-    //
-    // KVS keys (from the old ICloudSyncManager):
-    //   "tabs"          – JSON-encoded [TabData] (scratch tabs only)
-    //   "deletedTabIDs" – JSON-encoded [String] of deleted tab UUIDs
-    //
-    // This migration can be removed once we're confident no users remain on ≤1.6.0.
-
-    private func migrateFromKVS() {
-        guard !UserDefaults.standard.bool(forKey: "kvsTabsMigrated") else { return }
-
-        let kvs = NSUbiquitousKeyValueStore.default
-        kvs.synchronize()
-
-        if importKVSTabs(from: kvs) { return }
-
-        // synchronize() only hints the system to pull data – KVS might not be
-        // available yet on first launch (e.g. slow network, fresh iCloud login).
-        // Register a one-shot observer: the didChangeExternallyNotification fires
-        // once initial sync completes, at which point the data is either there
-        // or genuinely doesn't exist.
-        kvsObserver = NotificationCenter.default.addObserver(
-            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: kvs, queue: .main
-        ) { [weak self] _ in
-            guard let self, !UserDefaults.standard.bool(forKey: "kvsTabsMigrated") else { return }
-            self.importKVSTabs(from: kvs)
-            // Mark done after first notification regardless – if no data was found,
-            // initial sync has completed and the KVS store is genuinely empty.
-            UserDefaults.standard.set(true, forKey: "kvsTabsMigrated")
-            if let observer = self.kvsObserver {
-                NotificationCenter.default.removeObserver(observer)
-                self.kvsObserver = nil
-            }
-        }
-    }
 
     @discardableResult
     private func importKVSTabs(from kvs: NSUbiquitousKeyValueStore) -> Bool {

@@ -22,11 +22,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var cloudMergeObserver: Any?
     private var editorFocusObserver: Any?
 
-    // Markdown preview state
-    private var previewingTabs: Set<TabID> = []
-    private var previewHTMLCache: [TabID: String] = [:]
-    private var previewBaseURLCache: [TabID: URL] = [:]
-    private var previewDebounceWork: DispatchWorkItem?
+    private let previewManager = MarkdownPreviewManager()
 
     @MainActor
     init() {
@@ -56,11 +52,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 guard let self, let bonsplitID = self.tabIDMap[tabID] else { return }
                 self.highlighterForTab(bonsplitID)?.language = language
 
-                // Exit preview if language changed away from markdown
-                if language != "markdown" && self.previewingTabs.contains(bonsplitID) {
-                    self.previewingTabs.remove(bonsplitID)
-                    self.previewHTMLCache.removeValue(forKey: bonsplitID)
-                }
+                self.previewManager.exitIfNotMarkdown(for: bonsplitID, language: language)
 
                 self.postMarkdownState(for: bonsplitID)
             }
@@ -205,7 +197,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                     self.controller.updateTab(bonsplitID, title: tab.name, isDirty: tab.isDirty)
                 }
                 self.highlighterForTab(bonsplitID)?.language = tab.language
-                self.schedulePreviewUpdate(for: bonsplitID)
+                self.previewManager.scheduleUpdate(
+                    for: bonsplitID,
+                    content: tab.content,
+                    fileURL: tab.fileURL,
+                    theme: self.cssTheme
+                )
             }
         }
     }
@@ -242,15 +239,15 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     func isPreviewActive(for bonsplitTabID: TabID) -> Bool {
-        previewingTabs.contains(bonsplitTabID)
+        previewManager.isActive(for: bonsplitTabID)
     }
 
     func previewHTML(for bonsplitTabID: TabID) -> String? {
-        previewHTMLCache[bonsplitTabID]
+        previewManager.html(for: bonsplitTabID)
     }
 
     func previewBaseURL(for bonsplitTabID: TabID) -> URL? {
-        previewBaseURLCache[bonsplitTabID]
+        previewManager.baseURL(for: bonsplitTabID)
     }
 
     @MainActor
@@ -259,47 +256,24 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
               let selectedTab = controller.selectedTab(inPane: focusedPaneId),
               selectedTab.id != clipboardTabID else { return }
 
-        if previewingTabs.contains(selectedTab.id) {
-            previewingTabs.remove(selectedTab.id)
-            previewHTMLCache.removeValue(forKey: selectedTab.id)
-            previewBaseURLCache.removeValue(forKey: selectedTab.id)
-        } else {
-            guard highlighterForTab(selectedTab.id)?.language == "markdown" else { return }
-            renderPreview(for: selectedTab.id)
-            previewingTabs.insert(selectedTab.id)
-        }
-
-        postMarkdownState(for: selectedTab.id)
-    }
-
-    @MainActor
-    private func renderPreview(for bonsplitTabID: TabID) {
-        guard let tabStoreID = reverseMap[bonsplitTabID],
+        guard let tabStoreID = reverseMap[selectedTab.id],
               let tab = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return }
-        previewHTMLCache[bonsplitTabID] = MarkdownRenderer.shared.render(
-            markdown: tab.content,
+
+        previewManager.toggle(
+            for: selectedTab.id,
+            language: highlighterForTab(selectedTab.id)?.language,
+            content: tab.content,
+            fileURL: tab.fileURL,
             theme: cssTheme
         )
-        previewBaseURLCache[bonsplitTabID] = tab.fileURL?.deletingLastPathComponent()
-    }
 
-    @MainActor
-    private func schedulePreviewUpdate(for bonsplitTabID: TabID) {
-        guard previewingTabs.contains(bonsplitTabID) else { return }
-        previewDebounceWork?.cancel()
-        let work = DispatchWorkItem { [weak self] in
-            MainActor.assumeIsolated {
-                self?.renderPreview(for: bonsplitTabID)
-            }
-        }
-        previewDebounceWork = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
+        postMarkdownState(for: selectedTab.id)
     }
 
     func postMarkdownState(for bonsplitTabID: TabID) {
         let isMarkdown = bonsplitTabID != clipboardTabID
             && highlighterForTab(bonsplitTabID)?.language == "markdown"
-        let isPreviewing = previewingTabs.contains(bonsplitTabID)
+        let isPreviewing = previewManager.isActive(for: bonsplitTabID)
         NotificationCenter.default.post(
             name: Self.markdownStateChanged,
             object: nil,
@@ -527,9 +501,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             fileWatcher.stop(url: fileURL)
         }
         editorStates.removeValue(forKey: tabId)
-        previewingTabs.remove(tabId)
-        previewHTMLCache.removeValue(forKey: tabId)
-        previewBaseURLCache.removeValue(forKey: tabId)
+        previewManager.removeTab(tabId)
         tabIDMap.removeValue(forKey: tabStoreID)
         reverseMap.removeValue(forKey: tabId)
         tabStore.closeTab(id: tabStoreID)
@@ -818,9 +790,12 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         applyBonsplitTheme()
 
         // Re-render any active markdown previews with the new theme
-        for tabID in previewingTabs {
-            renderPreview(for: tabID)
+        let previewTabs: [(id: TabID, content: String, fileURL: URL?)] = controller.allTabIds.compactMap { bonsplitID in
+            guard let tabStoreID = reverseMap[bonsplitID],
+                  let tab = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return nil }
+            return (id: bonsplitID, content: tab.content, fileURL: tab.fileURL)
         }
+        previewManager.renderAll(tabs: previewTabs, theme: cssTheme)
     }
 
     @MainActor

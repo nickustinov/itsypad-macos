@@ -43,7 +43,7 @@ class ClipboardStore {
     static let clipboardTabSelectedNotification = Notification.Name("clipboardTabSelected")
 
     private let maxEntries = 1000
-    private var kvsObserver: NSObjectProtocol?
+    private var kvsMigration: KVSMigration?
 
     init(storageURL: URL? = nil, imagesDirectory: URL? = nil) {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
@@ -67,7 +67,9 @@ class ClipboardStore {
         lastChangeCount = NSPasteboard.general.changeCount
         ClipboardStore.migrateLegacyData(to: self.storageURL, imagesDir: self.imagesDirectory)
         restoreEntries()
-        migrateFromKVS()
+        kvsMigration = KVSMigration(flagKey: "kvsClipboardMigrated") { [weak self] kvs in
+            self?.importKVSClipboard(from: kvs) ?? false
+        }
     }
 
     // MARK: - Monitoring
@@ -299,17 +301,6 @@ class ClipboardStore {
     }
 
     // MARK: - KVS migration (v1.6.0 iCloud sync → App Store)
-    //
-    // Same situation as TabStore.migrateFromKVS – see detailed comment there.
-    //
-    // Versions up to 1.6.0 synced clipboard entries via NSUbiquitousKeyValueStore.
-    // The old code used a ClipboardCloudEntry struct (id, text, timestamp) – a
-    // text-only subset of ClipboardEntry (no images in KVS due to 1MB size limit).
-    // We re-declare it here as LegacyCloudClipboardEntry for decoding.
-    //
-    // KVS keys (from the old ClipboardStore):
-    //   "clipboard"           – JSON-encoded [ClipboardCloudEntry] (text entries only)
-    //   "deletedClipboardIDs" – JSON-encoded [String] of deleted entry UUIDs
 
     // The original struct was called ClipboardCloudEntry and was deleted in the
     // CloudKit migration (commit ddaf107). We need it back to decode KVS payloads.
@@ -317,29 +308,6 @@ class ClipboardStore {
         let id: UUID
         let text: String
         let timestamp: Date
-    }
-
-    private func migrateFromKVS() {
-        guard !UserDefaults.standard.bool(forKey: "kvsClipboardMigrated") else { return }
-
-        let kvs = NSUbiquitousKeyValueStore.default
-        kvs.synchronize()
-
-        if importKVSClipboard(from: kvs) { return }
-
-        // See TabStore.migrateFromKVS for why we need the observer fallback.
-        kvsObserver = NotificationCenter.default.addObserver(
-            forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification,
-            object: kvs, queue: .main
-        ) { [weak self] _ in
-            guard let self, !UserDefaults.standard.bool(forKey: "kvsClipboardMigrated") else { return }
-            self.importKVSClipboard(from: kvs)
-            UserDefaults.standard.set(true, forKey: "kvsClipboardMigrated")
-            if let observer = self.kvsObserver {
-                NotificationCenter.default.removeObserver(observer)
-                self.kvsObserver = nil
-            }
-        }
     }
 
     @discardableResult
