@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.1
+
+Fixes:
+- Fixed markdown preview showing a blank panel when toggled on a file tab – the sandbox blocked writing the temp HTML file next to the user's document; now writes to the app container instead
+
 ## 1.9.0
 
 Features:

@@ -36,21 +36,25 @@ final class MarkdownPreviewManager {
     }
 
     /// Debounced re-render on text change.
-    func scheduleUpdate(for tabID: TabID, content: String, fileURL: URL?, theme: EditorTheme) {
+    func scheduleUpdate(for tabID: TabID, content: String, fileURL: URL?, theme: EditorTheme, onChange: (() -> Void)? = nil) {
         guard previewingTabs.contains(tabID) else { return }
         debounceWork?.cancel()
         let work = DispatchWorkItem { [weak self] in
             self?.render(for: tabID, content: content, fileURL: fileURL, theme: theme)
+            onChange?()
         }
         debounceWork = work
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3, execute: work)
     }
 
     /// Re-render all active previews (e.g. after settings/theme change).
-    func renderAll(tabs: [(id: TabID, content: String, fileURL: URL?)], theme: EditorTheme) {
+    func renderAll(tabs: [(id: TabID, content: String, fileURL: URL?)], theme: EditorTheme, onChange: (() -> Void)? = nil) {
+        var didRender = false
         for tab in tabs where previewingTabs.contains(tab.id) {
             render(for: tab.id, content: tab.content, fileURL: tab.fileURL, theme: theme)
+            didRender = true
         }
+        if didRender { onChange?() }
     }
 
     /// Cleanup on tab close.

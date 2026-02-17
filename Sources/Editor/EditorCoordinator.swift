@@ -23,6 +23,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     private var editorFocusObserver: Any?
 
     private let previewManager = MarkdownPreviewManager()
+    private var previewRevision = 0
 
     @MainActor
     init() {
@@ -202,7 +203,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                     content: tab.content,
                     fileURL: tab.fileURL,
                     theme: self.cssTheme
-                )
+                ) { [weak self] in self?.previewRevision += 1 }
             }
         }
     }
@@ -239,15 +240,18 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     }
 
     func isPreviewActive(for bonsplitTabID: TabID) -> Bool {
-        previewManager.isActive(for: bonsplitTabID)
+        _ = previewRevision
+        return previewManager.isActive(for: bonsplitTabID)
     }
 
     func previewHTML(for bonsplitTabID: TabID) -> String? {
-        previewManager.html(for: bonsplitTabID)
+        _ = previewRevision
+        return previewManager.html(for: bonsplitTabID)
     }
 
     func previewBaseURL(for bonsplitTabID: TabID) -> URL? {
-        previewManager.baseURL(for: bonsplitTabID)
+        _ = previewRevision
+        return previewManager.baseURL(for: bonsplitTabID)
     }
 
     @MainActor
@@ -266,6 +270,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             fileURL: tab.fileURL,
             theme: cssTheme
         )
+        previewRevision += 1
 
         postMarkdownState(for: selectedTab.id)
     }
@@ -795,7 +800,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                   let tab = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return nil }
             return (id: bonsplitID, content: tab.content, fileURL: tab.fileURL)
         }
-        previewManager.renderAll(tabs: previewTabs, theme: cssTheme)
+        previewManager.renderAll(tabs: previewTabs, theme: cssTheme) { [weak self] in self?.previewRevision += 1 }
     }
 
     @MainActor

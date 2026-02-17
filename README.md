@@ -355,12 +355,48 @@ Downloads all translations from Lokalise and merges them into the xcstrings file
 scripts/pull-translations.sh
 ```
 
+### Adding new strings
+
+All user-facing strings use `String(localized:defaultValue:)` with a structured key:
+
+```swift
+// SwiftUI
+Toggle(String(localized: "settings.general.show_in_menu_bar", defaultValue: "Show in menu bar"), isOn: $store.showInMenuBar)
+Section(String(localized: "settings.editor.spacing", defaultValue: "Spacing")) { ... }
+
+// AppKit
+NSMenuItem(title: String(localized: "menu.file.new_tab", defaultValue: "New tab"), ...)
+alert.messageText = String(localized: "alert.save_changes.title", defaultValue: "Do you want to save changes to \"\(name)\"?")
+```
+
+### Key naming convention
+
+Keys use dot-separated structured names: `{area}.{context}.{name}`
+
+| Area | Example keys |
+|---|---|
+| `menu.*` | `menu.file.new_tab`, `menu.edit.copy`, `menu.view.always_on_top` |
+| `alert.*` | `alert.save_changes.title`, `alert.file_changed.reload` |
+| `settings.*` | `settings.general.title`, `settings.editor.font_size` |
+| `toolbar.*` | `toolbar.settings.label`, `toolbar.clipboard.tooltip` |
+| `clipboard.*` | `clipboard.empty_state`, `clipboard.search_placeholder` |
+| `tab.*` | `tab.context.copy_path`, `tab.context.pin` |
+| `time.*` | `time.just_now`, `time.minutes_ago` |
+| `accessibility.*` | `accessibility.alert.title` |
+| `update.*` | `update.available.message` |
+
+### Workflow after adding new strings
+
+1. Build the project – Xcode auto-populates new keys in `Localizable.xcstrings`
+2. Push source strings to Lokalise: `scripts/push-translations.sh`
+3. Translate in [Lokalise](https://app.lokalise.com) (or let translators handle it)
+4. Pull translations back: `scripts/pull-translations.sh`
+5. Build and verify
+
 ### How it works
 
-- SwiftUI literals (`Text("...")`, `Toggle("...", ...)`, etc.) auto-extract into the string catalog at build time
-- AppKit strings (`NSMenuItem`, `NSAlert`, `NSToolbarItem`, etc.) are wrapped with `String(localized:defaultValue:)`
-- All strings use structured keys (e.g. `menu.file.new_tab`) with English default values
-- Xcode populates the `.xcstrings` file with discovered keys when you build the project
+- All strings (SwiftUI and AppKit) use `String(localized:defaultValue:)` with structured keys
+- Xcode populates the `.xcstrings` file with discovered keys on each build
 - Push extracts English as `.strings` and uploads to Lokalise
 - Pull downloads `.strings` per language and merges back into the xcstrings file
 
