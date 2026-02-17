@@ -332,7 +332,7 @@ class SettingsStore: ObservableObject {
         let savedLineSpacing = defaults.double(forKey: "lineSpacing")
         lineSpacing = savedLineSpacing > 0 ? savedLineSpacing : 1.0
         letterSpacing = defaults.double(forKey: "letterSpacing")
-        icloudSync = defaults.bool(forKey: "icloudSync")
+        icloudSync = defaults.object(forKey: "icloudSync") as? Bool ?? true
         g2SyncEnabled = defaults.bool(forKey: "g2SyncEnabled")
         clipboardEnabled = defaults.object(forKey: "clipboardEnabled") as? Bool ?? true
         if let data = defaults.data(forKey: shortcutKeysKey),
