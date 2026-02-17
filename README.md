@@ -1,6 +1,12 @@
 # Itsypad
 
 [![Tests](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml/badge.svg)](https://github.com/nickustinov/itsypad-macos/actions/workflows/tests.yml)
+[![Release](https://img.shields.io/github/v/release/nickustinov/itsypad-macos)](https://github.com/nickustinov/itsypad-macos/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/nickustinov/itsypad-macos/total)](https://github.com/nickustinov/itsypad-macos/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Swift 5.9](https://img.shields.io/badge/swift-5.9-orange.svg)](https://swift.org)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-brightgreen.svg)](https://www.apple.com/macos/sonoma/)
+[![Homebrew](https://img.shields.io/badge/homebrew-tap-yellow.svg)](https://github.com/nickustinov/homebrew-tap)
 
 A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.app](https://itsypad.app)
 
