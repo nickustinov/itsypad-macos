@@ -185,6 +185,8 @@ Sources/
 │   ├── AppDelegate.swift                # Menu bar, toolbar, window, and panel setup
 │   ├── BonsplitRootView.swift           # SwiftUI root view rendering editor and clipboard tabs
 │   ├── CloudSyncEngine.swift            # CloudKit sync via CKSyncEngine for tabs and clipboard
+│   ├── G2SyncEngine.swift              # Even Realities G2 glasses sync (Labs)
+│   ├── KVSMigration.swift              # Legacy iCloud KVS data migration
 │   ├── Launch.swift                     # App entry point
 │   ├── MenuBuilder.swift                # Main menu bar construction
 │   ├── Models.swift                     # ShortcutKeys and shared data types
@@ -202,6 +204,7 @@ Sources/
 │   ├── LayoutSerializer.swift           # Split layout capture and restore for session persistence
 │   ├── LineNumberGutterView.swift       # Line number gutter drawn alongside the text view
 │   ├── ListHelper.swift                 # List/checklist parsing, continuation, and toggling
+│   ├── MarkdownPreviewManager.swift     # Markdown preview lifecycle and toolbar integration
 │   ├── MarkdownPreviewView.swift        # WKWebView wrapper for rendered markdown preview
 │   ├── MarkdownRenderer.swift           # Markdown-to-HTML via marked.js + highlight.js in JSContext
 │   ├── SessionRestorer.swift            # Session restore logic for tabs and editor state
@@ -225,7 +228,8 @@ Sources/
 │   ├── HotkeyManager.swift              # Global hotkeys and triple-tap modifier detection
 │   └── ModifierKeyDetection.swift       # Left/right modifier key identification from key codes
 ├── Resources/
-│   └── Assets.xcassets                  # App icon and custom images
+│   ├── Assets.xcassets                  # App icon and custom images
+│   └── Localizable.xcstrings           # String catalog for 12 languages
 ├── Info.plist                           # Bundle metadata and document types
 ├── itsypad.entitlements                 # App Store entitlements (sandbox, CloudKit, iCloud)
 └── itsypad-direct.entitlements          # Direct/DMG entitlements (adds network.client for update checker)
@@ -241,15 +245,21 @@ Tests/
 ├── EditorThemeTests.swift
 ├── FileWatcherTests.swift
 ├── HighlightJSTests.swift
+├── KVSMigrationTests.swift
 ├── LanguageDetectorTests.swift
 ├── LineNumberGutterViewTests.swift
 ├── ListHelperTests.swift
+├── MarkdownPreviewManagerTests.swift
 ├── MarkdownRendererTests.swift
 ├── ModifierKeyDetectionTests.swift
 ├── SettingsStoreTests.swift
 ├── ShortcutKeysTests.swift
 ├── SyntaxThemeRegistryTests.swift
 └── TabStoreTests.swift
+scripts/
+├── build-release.sh                    # Build, sign, and package DMG for direct distribution
+├── pull-translations                   # Pull translations from Lokalise into xcstrings
+└── push-translations                   # Push English source strings to Lokalise
 ```
 
 ## Requirements
