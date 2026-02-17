@@ -6,7 +6,7 @@ class ClipboardCardView: NSView {
     private let timestampLabel = CardTextField(label: "")
     private let deleteButton = NSButton()
     private let shortcutBadgeLabel = CardTextField(label: "")
-    private let copiedBadge = CardTextField(label: "Copied")
+    private let copiedBadge = CardTextField(label: String(localized: "clipboard.copied", defaultValue: "Copied"))
     private let zoomButton = NSButton()
     private var trackingArea: NSTrackingArea?
     private var isHovered = false { didSet { updateBackground(); updateHoverControls() } }
@@ -56,7 +56,7 @@ class ClipboardCardView: NSView {
         deleteButton.bezelStyle = .inline
         deleteButton.isBordered = false
         let smallConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
-        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: "Delete")?.withSymbolConfiguration(smallConfig)
+        deleteButton.image = NSImage(systemSymbolName: "trash", accessibilityDescription: String(localized: "clipboard.card.delete", defaultValue: "Delete"))?.withSymbolConfiguration(smallConfig)
         deleteButton.imagePosition = .imageOnly
         deleteButton.target = self
         deleteButton.action = #selector(deleteClicked)
@@ -79,7 +79,7 @@ class ClipboardCardView: NSView {
         zoomButton.bezelStyle = .inline
         zoomButton.isBordered = false
         let zoomConfig = NSImage.SymbolConfiguration(pointSize: 10, weight: .regular)
-        zoomButton.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Preview")?
+        zoomButton.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: String(localized: "clipboard.card.preview", defaultValue: "Preview"))?
             .withSymbolConfiguration(zoomConfig)
         zoomButton.imagePosition = .imageOnly
         zoomButton.target = self

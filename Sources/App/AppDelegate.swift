@@ -194,7 +194,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private func showMenu() {
         let menu = NSMenu()
 
-        let showItem = NSMenuItem(title: "Show Itsypad", action: #selector(showItsypad), keyEquivalent: "")
+        let showItsypadTitle = String(localized: "statusbar.show", defaultValue: "Show Itsypad")
+        let showItem = NSMenuItem(title: showItsypadTitle, action: #selector(showItsypad), keyEquivalent: "")
         showItem.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: nil)
         showItem.target = self
         if let keys = SettingsStore.shared.shortcutKeys {
@@ -207,7 +208,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
                 else { symbol = "" }
                 let side = mod.hasPrefix("left-") ? " L" : mod.hasPrefix("right-") ? " R" : ""
                 let hint = "  \(symbol)\(symbol)\(symbol)\(side)"
-                let attributed = NSMutableAttributedString(string: "Show Itsypad")
+                let attributed = NSMutableAttributedString(string: showItsypadTitle)
                 attributed.append(NSAttributedString(string: hint, attributes: [
                     .foregroundColor: NSColor.tertiaryLabelColor,
                 ]))
@@ -221,13 +222,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         menu.addItem(.separator())
 
-        let settingsItem = NSMenuItem(title: "Settings...", action: #selector(openSettings), keyEquivalent: ",")
+        let settingsItem = NSMenuItem(title: String(localized: "statusbar.settings", defaultValue: "Settings..."), action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.image = NSImage(systemSymbolName: "gearshape", accessibilityDescription: nil)
         settingsItem.target = self
         menu.addItem(settingsItem)
 
         #if !APPSTORE
-        let updateItem = NSMenuItem(title: "Check for updates...", action: #selector(checkForUpdates), keyEquivalent: "")
+        let updateItem = NSMenuItem(title: String(localized: "statusbar.check_for_updates", defaultValue: "Check for updates..."), action: #selector(checkForUpdates), keyEquivalent: "")
         updateItem.image = NSImage(systemSymbolName: "arrow.triangle.2.circlepath", accessibilityDescription: nil)
         updateItem.target = self
         menu.addItem(updateItem)
@@ -235,7 +236,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         menu.addItem(.separator())
 
-        let quitItem = NSMenuItem(title: "Quit Itsypad", action: #selector(quitApp), keyEquivalent: "q")
+        let quitItem = NSMenuItem(title: String(localized: "statusbar.quit", defaultValue: "Quit Itsypad"), action: #selector(quitApp), keyEquivalent: "q")
         quitItem.image = NSImage(systemSymbolName: "power", accessibilityDescription: nil)
         quitItem.target = self
         menu.addItem(quitItem)
@@ -353,9 +354,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         switch itemIdentifier {
         case .tabSwitcher:
             let menuItem = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
-            menuItem.image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: "Tabs")
-            menuItem.label = "Tabs"
-            menuItem.toolTip = "Switch tab"
+            menuItem.image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: String(localized: "toolbar.tabs", defaultValue: "Tabs"))
+            menuItem.label = String(localized: "toolbar.tabs", defaultValue: "Tabs")
+            menuItem.toolTip = String(localized: "toolbar.switch_tab", defaultValue: "Switch tab")
             menuItem.showsIndicator = true
             menuItem.menu = buildTabSwitcherMenu()
             return menuItem
@@ -367,34 +368,34 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         switch itemIdentifier {
         case .newTab:
-            item.image = NSImage(systemSymbolName: "plus", accessibilityDescription: "New tab")
-            item.label = "New tab"
-            item.toolTip = "New tab"
+            item.image = NSImage(systemSymbolName: "plus", accessibilityDescription: String(localized: "toolbar.new_tab", defaultValue: "New tab"))
+            item.label = String(localized: "toolbar.new_tab", defaultValue: "New tab")
+            item.toolTip = String(localized: "toolbar.new_tab", defaultValue: "New tab")
             item.target = self
             item.action = #selector(newTabAction)
         case .openFile:
-            item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: "Open")
-            item.label = "Open"
-            item.toolTip = "Open file"
+            item.image = NSImage(systemSymbolName: "folder", accessibilityDescription: String(localized: "toolbar.open", defaultValue: "Open"))
+            item.label = String(localized: "toolbar.open", defaultValue: "Open")
+            item.toolTip = String(localized: "toolbar.open_file", defaultValue: "Open file")
             item.target = self
             item.action = #selector(openFileAction)
         case .saveFile:
-            item.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: "Save")
-            item.label = "Save"
-            item.toolTip = "Save file"
+            item.image = NSImage(systemSymbolName: "square.and.arrow.down", accessibilityDescription: String(localized: "toolbar.save", defaultValue: "Save"))
+            item.label = String(localized: "toolbar.save", defaultValue: "Save")
+            item.toolTip = String(localized: "toolbar.save_file", defaultValue: "Save file")
             item.target = self
             item.action = #selector(saveFileAction)
         case .markdownPreview:
             let isPreviewing = currentSelectedTabID().flatMap { editorCoordinator?.isPreviewActive(for: $0) } ?? false
-            item.image = NSImage(systemSymbolName: isPreviewing ? "rectangle.split.2x1.fill" : "rectangle.split.2x1", accessibilityDescription: "Preview")
-            item.label = "Preview"
-            item.toolTip = "Toggle markdown preview (⇧⌘P)"
+            item.image = NSImage(systemSymbolName: isPreviewing ? "rectangle.split.2x1.fill" : "rectangle.split.2x1", accessibilityDescription: String(localized: "toolbar.preview", defaultValue: "Preview"))
+            item.label = String(localized: "toolbar.preview", defaultValue: "Preview")
+            item.toolTip = String(localized: "toolbar.toggle_preview", defaultValue: "Toggle markdown preview (⇧⌘P)")
             item.target = self
             item.action = #selector(togglePreviewAction)
         case .findReplace:
-            item.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Find")
-            item.label = "Find"
-            item.toolTip = "Find and replace (⌘F)"
+            item.image = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: String(localized: "toolbar.find", defaultValue: "Find"))
+            item.label = String(localized: "toolbar.find", defaultValue: "Find")
+            item.toolTip = String(localized: "toolbar.find_and_replace", defaultValue: "Find and replace (⌘F)")
             item.target = self
             item.action = #selector(toggleFindAction)
         default:
@@ -422,7 +423,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             backing: .buffered,
             defer: false
         )
-        window.title = "Itsypad settings"
+        window.title = String(localized: "settings.title", defaultValue: "Itsypad settings")
         window.contentViewController = hostingController
         window.isReleasedWhenClosed = false
 
@@ -442,7 +443,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private func setupMainMenu() {
         let builder = MenuBuilder(target: self)
 
-        let recentMenu = NSMenu(title: "Open recent")
+        let recentMenu = NSMenu(title: String(localized: "statusbar.open_recent", defaultValue: "Open recent"))
         recentMenu.delegate = self
         recentFilesMenu = recentMenu
 
@@ -594,7 +595,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private func updateTabSwitcherMenu(_ menu: NSMenu) {
         menu.removeAllItems()
         // NSMenuToolbarItem hides the first item; add a dummy so all tabs show
-        let dummy = NSMenuItem(title: "Tabs", action: nil, keyEquivalent: "")
+        let dummy = NSMenuItem(title: String(localized: "toolbar.tabs", defaultValue: "Tabs"), action: nil, keyEquivalent: "")
         dummy.isHidden = true
         menu.addItem(dummy)
         guard let coordinator = editorCoordinator else { return }
@@ -635,7 +636,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         let recentURLs = NSDocumentController.shared.recentDocumentURLs
         if recentURLs.isEmpty {
-            let emptyItem = NSMenuItem(title: "No recent files", action: nil, keyEquivalent: "")
+            let emptyItem = NSMenuItem(title: String(localized: "statusbar.no_recent_files", defaultValue: "No recent files"), action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             menu.addItem(emptyItem)
             return
@@ -650,7 +651,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         }
 
         menu.addItem(.separator())
-        let clearItem = NSMenuItem(title: "Clear menu", action: #selector(clearRecentFiles), keyEquivalent: "")
+        let clearItem = NSMenuItem(title: String(localized: "statusbar.clear_menu", defaultValue: "Clear menu"), action: #selector(clearRecentFiles), keyEquivalent: "")
         clearItem.target = self
         menu.addItem(clearItem)
     }

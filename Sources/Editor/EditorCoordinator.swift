@@ -570,7 +570,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         let hasFile = tabData.fileURL != nil
 
-        items.append(TabContextMenuItem(title: "Copy path", icon: "doc.on.doc", isEnabled: hasFile) {
+        items.append(TabContextMenuItem(title: String(localized: "context_menu.copy_path", defaultValue: "Copy path"), icon: "doc.on.doc", isEnabled: hasFile) {
             if let url = tabData.fileURL {
                 let pasteboard = NSPasteboard.general
                 pasteboard.clearContents()
@@ -578,21 +578,21 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         })
 
-        items.append(TabContextMenuItem(title: "Reveal in Finder", icon: "folder", isEnabled: hasFile) {
+        items.append(TabContextMenuItem(title: String(localized: "context_menu.reveal_in_finder", defaultValue: "Reveal in Finder"), icon: "folder", isEnabled: hasFile) {
             if let url = tabData.fileURL {
                 NSWorkspace.shared.activateFileViewerSelecting([url])
             }
         })
 
         if tab.isPinned {
-            items.append(TabContextMenuItem(title: "Unpin tab", icon: "pin.slash") { [weak self] in
+            items.append(TabContextMenuItem(title: String(localized: "context_menu.unpin_tab", defaultValue: "Unpin tab"), icon: "pin.slash") { [weak self] in
                 MainActor.assumeIsolated {
                     self?.controller.updateTab(tab.id, isPinned: false)
                     self?.updatePinnedState(bonsplitTabID: tab.id, isPinned: false)
                 }
             })
         } else {
-            items.append(TabContextMenuItem(title: "Pin tab", icon: "pin") { [weak self] in
+            items.append(TabContextMenuItem(title: String(localized: "context_menu.pin_tab", defaultValue: "Pin tab"), icon: "pin") { [weak self] in
                 MainActor.assumeIsolated {
                     self?.controller.updateTab(tab.id, isPinned: true)
                     self?.updatePinnedState(bonsplitTabID: tab.id, isPinned: true)
@@ -654,11 +654,11 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         guard tab.isDirty else { return true }
 
         let alert = NSAlert()
-        alert.messageText = "Do you want to save changes to \"\(tab.name)\"?"
-        alert.informativeText = "Your changes will be lost if you don't save them."
-        alert.addButton(withTitle: "Save")
-        alert.addButton(withTitle: "Don't save")
-        alert.addButton(withTitle: "Cancel")
+        alert.messageText = String(localized: "alert.save_changes.title", defaultValue: "Do you want to save changes to \"\(tab.name)\"?")
+        alert.informativeText = String(localized: "alert.save_changes.message", defaultValue: "Your changes will be lost if you don't save them.")
+        alert.addButton(withTitle: String(localized: "alert.save_changes.save", defaultValue: "Save"))
+        alert.addButton(withTitle: String(localized: "alert.save_changes.dont_save", defaultValue: "Don't save"))
+        alert.addButton(withTitle: String(localized: "alert.save_changes.cancel", defaultValue: "Cancel"))
         alert.alertStyle = .warning
 
         let response = alert.runModal()
@@ -696,10 +696,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
         if tabStore.tabs[index].isDirty {
             let alert = NSAlert()
-            alert.messageText = "\"\(tabStore.tabs[index].name)\" has been modified externally."
-            alert.informativeText = "Do you want to reload it from disk or keep your changes?"
-            alert.addButton(withTitle: "Reload")
-            alert.addButton(withTitle: "Keep my changes")
+            alert.messageText = String(localized: "alert.file_changed.title", defaultValue: "\"\(tabStore.tabs[index].name)\" has been modified externally.")
+            alert.informativeText = String(localized: "alert.file_changed.message", defaultValue: "Do you want to reload it from disk or keep your changes?")
+            alert.addButton(withTitle: String(localized: "alert.file_changed.reload", defaultValue: "Reload"))
+            alert.addButton(withTitle: String(localized: "alert.file_changed.keep", defaultValue: "Keep my changes"))
             alert.alertStyle = .informational
 
             let response = alert.runModal()

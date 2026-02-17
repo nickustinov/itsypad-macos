@@ -1,0 +1,16 @@
+# Lokalise CLI v2 config
+# Copy to lokalise.yml and fill in your token.
+#
+# Push source strings:
+#   lokalise2 --config lokalise.yml file upload \
+#     --file Sources/Resources/Localizable.xcstrings \
+#     --lang-iso en
+#
+# Pull translations:
+#   lokalise2 --config lokalise.yml file download \
+#     --format xcstrings \
+#     --original-filenames true \
+#     --directory-prefix ""
+
+token: "<your-api-token>"
+project-id: "6914735069946074d9cf58.82536789"

@@ -33,10 +33,10 @@ func clipboardNumberFromKeyCode(_ keyCode: UInt16) -> Int? {
 
 func clipboardRelativeTime(from date: Date) -> String {
     let interval = -date.timeIntervalSinceNow
-    if interval < 60 { return "just now" }
-    if interval < 3600 { return "\(Int(interval / 60))m ago" }
-    if interval < 86400 { return "\(Int(interval / 3600))h ago" }
+    if interval < 60 { return String(localized: "time.just_now", defaultValue: "just now") }
+    if interval < 3600 { return String(localized: "time.minutes_ago", defaultValue: "\(Int(interval / 60))m ago") }
+    if interval < 86400 { return String(localized: "time.hours_ago", defaultValue: "\(Int(interval / 3600))h ago") }
     let days = Int(interval / 86400)
-    if days == 1 { return "yesterday" }
-    return "\(days)d ago"
+    if days == 1 { return String(localized: "time.yesterday", defaultValue: "yesterday") }
+    return String(localized: "time.days_ago", defaultValue: "\(days)d ago")
 }

@@ -313,6 +313,46 @@ shasum -a 256 dist/itsypad-<VERSION>.dmg
 4. Upload to App Store Connect via Xcode Organizer
 5. Submit for review in App Store Connect
 
+## Localization
+
+Itsypad uses a Swift String Catalog (`Sources/Resources/Localizable.xcstrings`) for localization. Translations are managed via [Lokalise](https://lokalise.com).
+
+Languages: English (base), Spanish, French, German, Russian, Japanese, Simplified Chinese, Traditional Chinese, Korean, Portuguese (Brazil), Italian, Polish.
+
+### Setup
+
+```bash
+brew tap lokalise/cli-2
+brew install lokalise2
+cp lokalise.yml.example lokalise.yml
+# Edit lokalise.yml and add your API token
+```
+
+### Push source strings to Lokalise
+
+Extracts English keys and values from the xcstrings file and uploads to Lokalise:
+
+```bash
+scripts/push-translations
+```
+
+### Pull translations from Lokalise
+
+Downloads all translations from Lokalise and merges them into the xcstrings file:
+
+```bash
+scripts/pull-translations
+```
+
+### How it works
+
+- SwiftUI literals (`Text("...")`, `Toggle("...", ...)`, etc.) auto-extract into the string catalog at build time
+- AppKit strings (`NSMenuItem`, `NSAlert`, `NSToolbarItem`, etc.) are wrapped with `String(localized:defaultValue:)`
+- All strings use structured keys (e.g. `menu.file.new_tab`) with English default values
+- Xcode populates the `.xcstrings` file with discovered keys when you build the project
+- Push extracts English as `.strings` and uploads to Lokalise
+- Pull downloads `.strings` per language and merges back into the xcstrings file
+
 ## License
 
 MIT — see [LICENSE](LICENSE).

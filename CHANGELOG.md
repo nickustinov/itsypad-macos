@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.0
+
+Features:
+- Localization – the app is now fully localized in 12 languages: English, Spanish, French, German, Russian, Japanese, Simplified Chinese, Traditional Chinese, Korean, Portuguese (Brazil), Italian, and Polish
+
 ## 1.8.3
 
 Fixes:

@@ -55,7 +55,7 @@ class ClipboardPreviewOverlay: NSView {
         closeButton.bezelStyle = .inline
         closeButton.isBordered = false
         let closeConfig = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-        closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: "Close")?
+        closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill", accessibilityDescription: String(localized: "clipboard.preview.close", defaultValue: "Close"))?
             .withSymbolConfiguration(closeConfig)
         closeButton.imagePosition = .imageOnly
         closeButton.target = self
@@ -68,7 +68,7 @@ class ClipboardPreviewOverlay: NSView {
         panelView.addSubview(timestampLabel)
 
         copyButton.translatesAutoresizingMaskIntoConstraints = false
-        copyButton.title = "Copy"
+        copyButton.title = String(localized: "clipboard.preview.copy", defaultValue: "Copy")
         copyButton.bezelStyle = .accessoryBarAction
         copyButton.font = NSFont.systemFont(ofSize: 11)
         copyButton.target = self
@@ -212,9 +212,9 @@ class ClipboardPreviewOverlay: NSView {
     @objc private func copyClicked() {
         guard let entry else { return }
         ClipboardStore.shared.copyToClipboard(entry)
-        copyButton.title = "Copied!"
+        copyButton.title = String(localized: "clipboard.preview.copied", defaultValue: "Copied!")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
-            self?.copyButton.title = "Copy"
+            self?.copyButton.title = String(localized: "clipboard.preview.copy", defaultValue: "Copy")
         }
     }
 

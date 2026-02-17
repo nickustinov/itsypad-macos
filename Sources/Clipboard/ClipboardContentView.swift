@@ -47,7 +47,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
 
         // Search field
         searchField.translatesAutoresizingMaskIntoConstraints = false
-        searchField.placeholderString = "Search clipboard..."
+        searchField.placeholderString = String(localized: "clipboard.search_placeholder", defaultValue: "Search clipboard...")
         searchField.target = self
         searchField.action = #selector(searchChanged)
         searchField.sendsSearchStringImmediately = true
@@ -56,7 +56,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
 
         // Clear all button
         clearAllButton.translatesAutoresizingMaskIntoConstraints = false
-        clearAllButton.title = "Clear all"
+        clearAllButton.title = String(localized: "clipboard.clear_all", defaultValue: "Clear all")
         clearAllButton.bezelStyle = .accessoryBarAction
         clearAllButton.font = NSFont.systemFont(ofSize: 11)
         clearAllButton.target = self
@@ -207,11 +207,11 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     @objc private func clearAllClicked() {
         guard !ClipboardStore.shared.entries.isEmpty else { return }
         let alert = NSAlert()
-        alert.messageText = "Clear clipboard history?"
-        alert.informativeText = "This will delete all \(ClipboardStore.shared.entries.count) entries. This cannot be undone."
+        alert.messageText = String(localized: "clipboard.clear_alert.title", defaultValue: "Clear clipboard history?")
+        alert.informativeText = String(localized: "clipboard.clear_alert.message", defaultValue: "This will delete all \(ClipboardStore.shared.entries.count) entries. This cannot be undone.")
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "Clear all")
-        alert.addButton(withTitle: "Cancel")
+        alert.addButton(withTitle: String(localized: "clipboard.clear_alert.confirm", defaultValue: "Clear all"))
+        alert.addButton(withTitle: String(localized: "clipboard.clear_alert.cancel", defaultValue: "Cancel"))
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         ClipboardStore.shared.clearAll()
     }
@@ -224,7 +224,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
 
         let isEmpty = filteredEntries.isEmpty
         emptyLabel.isHidden = !isEmpty
-        emptyLabel.stringValue = query.isEmpty ? "Clipboard history is empty" : "No matches"
+        emptyLabel.stringValue = query.isEmpty ? String(localized: "clipboard.empty", defaultValue: "Clipboard history is empty") : String(localized: "clipboard.no_matches", defaultValue: "No matches")
 
         collectionView.reloadData()
     }

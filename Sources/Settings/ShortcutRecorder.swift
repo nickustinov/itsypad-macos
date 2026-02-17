@@ -18,10 +18,10 @@ struct ShortcutRecorderView: View {
                     isRecording.toggle()
                 } label: {
                     if isRecording {
-                        Text("Press keys...")
+                        Text(String(localized: "shortcut.press_keys", defaultValue: "Press keys..."))
                             .foregroundStyle(.orange)
                     } else if shortcut.isEmpty {
-                        Text("Click to record")
+                        Text(String(localized: "shortcut.click_to_record", defaultValue: "Click to record"))
                             .foregroundStyle(.secondary)
                     } else {
                         Text(shortcut)
@@ -49,7 +49,7 @@ struct ShortcutRecorderView: View {
                 }
             }
 
-            Text("Record a key combination (e.g. ⌃⌥Space) or tap a modifier key 3 times for a triple-tap shortcut. Left and right modifier keys are distinguished.")
+            Text(String(localized: "shortcut.hint", defaultValue: "Record a key combination (e.g. ⌃⌥Space) or tap a modifier key 3 times for a triple-tap shortcut. Left and right modifier keys are distinguished."))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }

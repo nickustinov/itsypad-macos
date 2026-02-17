@@ -11,11 +11,11 @@ enum SettingsTab: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .general: return "General"
-        case .editor: return "Editor"
-        case .appearance: return "Appearance"
-        case .clipboard: return "Clipboard"
-        case .labs: return "Labs"
+        case .general: return String(localized: "settings.tab.general", defaultValue: "General")
+        case .editor: return String(localized: "settings.tab.editor", defaultValue: "Editor")
+        case .appearance: return String(localized: "settings.tab.appearance", defaultValue: "Appearance")
+        case .clipboard: return String(localized: "settings.tab.clipboard", defaultValue: "Clipboard")
+        case .labs: return String(localized: "settings.tab.labs", defaultValue: "Labs")
         }
     }
 
@@ -93,25 +93,25 @@ struct GeneralSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Open at login", isOn: $store.launchAtLogin)
+                Toggle(String(localized: "settings.general.open_at_login", defaultValue: "Open at login"), isOn: $store.launchAtLogin)
                 ShortcutRecorderView(
-                    label: "Show Itsypad",
+                    label: String(localized: "settings.general.show_itsypad", defaultValue: "Show Itsypad"),
                     shortcut: $store.shortcut,
                     shortcutKeys: Binding(
                         get: { store.shortcutKeys },
                         set: { store.shortcutKeys = $0 }
                     )
                 )
-                Toggle("Show in dock", isOn: $store.showInDock)
+                Toggle(String(localized: "settings.general.show_in_dock", defaultValue: "Show in dock"), isOn: $store.showInDock)
                     .disabled(!store.showInMenuBar)
-                Toggle("Show in menu bar", isOn: $store.showInMenuBar)
+                Toggle(String(localized: "settings.general.show_in_menu_bar", defaultValue: "Show in menu bar"), isOn: $store.showInMenuBar)
                     .disabled(!store.showInDock)
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("iCloud sync", isOn: Binding(
+                    Toggle(String(localized: "settings.general.icloud_sync", defaultValue: "iCloud sync"), isOn: Binding(
                         get: { store.icloudSync },
                         set: { store.setICloudSync($0) }
                     ))
-                    Text("Syncs scratch tabs and clipboard history (text only) across devices. File-backed tabs are not synced.")
+                    Text(String(localized: "settings.general.icloud_sync_description", defaultValue: "Syncs scratch tabs and clipboard history (text only) across devices. File-backed tabs are not synced."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if store.icloudSync {
@@ -123,17 +123,17 @@ struct GeneralSettingsView: View {
                 }
             }
 
-            Section("About") {
+            Section(String(localized: "settings.general.about", defaultValue: "About")) {
                 HStack {
-                    Text("Version")
+                    Text(String(localized: "settings.general.version", defaultValue: "Version"))
                     Spacer()
                     Text(appVersion)
                         .foregroundStyle(.secondary)
                 }
                 HStack {
-                    Text("Source code")
+                    Text(String(localized: "settings.general.source_code", defaultValue: "Source code"))
                     Spacer()
-                    Link("GitHub", destination: URL(string: githubURL)!)
+                    Link(String(localized: "settings.general.github", defaultValue: "GitHub"), destination: URL(string: githubURL)!)
                         .foregroundStyle(.secondary)
                 }
             }
@@ -143,16 +143,16 @@ struct GeneralSettingsView: View {
 
     private var lastSyncLabel: String {
         guard let date = tabStore.lastICloudSync else {
-            return "Not yet synced"
+            return String(localized: "settings.general.sync_not_yet", defaultValue: "Not yet synced")
         }
         let seconds = Int(now.timeIntervalSince(date))
         if seconds < 5 {
-            return "Last synced: just now"
+            return String(localized: "settings.general.sync_just_now", defaultValue: "Last synced: just now")
         } else if seconds < 60 {
-            return "Last synced: \(seconds)s ago"
+            return String(localized: "settings.general.sync_seconds_ago", defaultValue: "Last synced: \(seconds)s ago")
         } else {
             let minutes = seconds / 60
-            return "Last synced: \(minutes) min ago"
+            return String(localized: "settings.general.sync_minutes_ago", defaultValue: "Last synced: \(minutes) min ago")
         }
     }
 }
@@ -165,11 +165,11 @@ struct LabsSettingsView: View {
         Form {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle("Even G2 sync", isOn: Binding(
+                    Toggle(String(localized: "settings.labs.g2_sync", defaultValue: "Even G2 sync"), isOn: Binding(
                         get: { store.g2SyncEnabled },
                         set: { store.setG2Sync($0) }
                     ))
-                    Text("Syncs scratch tabs with Even Realities G2 glasses.")
+                    Text(String(localized: "settings.labs.g2_sync_description", defaultValue: "Syncs scratch tabs with Even Realities G2 glasses."))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if store.g2SyncEnabled {
@@ -188,22 +188,22 @@ struct LabsSettingsView: View {
             EmptyView()
         case .pairing(let code):
             HStack(spacing: 6) {
-                Text("Pairing code:")
+                Text(String(localized: "settings.labs.pairing_code", defaultValue: "Pairing code:"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Text(code)
                     .font(.system(.footnote, design: .monospaced))
                     .fontWeight(.bold)
             }
-            Text("Enter this code in the G2 app to connect.")
+            Text(String(localized: "settings.labs.pairing_hint", defaultValue: "Enter this code in the G2 app to connect."))
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
         case .linked:
             HStack(spacing: 6) {
-                Text("Connected")
+                Text(String(localized: "settings.labs.connected", defaultValue: "Connected"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                Button("Unpair") {
+                Button(String(localized: "settings.labs.unpair", defaultValue: "Unpair")) {
                     store.setG2Sync(false)
                 }
                 .controlSize(.small)
@@ -218,24 +218,24 @@ struct EditorSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Word wrap", isOn: $store.wordWrap)
-                Toggle("Show line numbers", isOn: $store.showLineNumbers)
-                Toggle("Highlight current line", isOn: $store.highlightCurrentLine)
-                Toggle("Clickable links", isOn: $store.clickableLinks)
+                Toggle(String(localized: "settings.editor.word_wrap", defaultValue: "Word wrap"), isOn: $store.wordWrap)
+                Toggle(String(localized: "settings.editor.show_line_numbers", defaultValue: "Show line numbers"), isOn: $store.showLineNumbers)
+                Toggle(String(localized: "settings.editor.highlight_current_line", defaultValue: "Highlight current line"), isOn: $store.highlightCurrentLine)
+                Toggle(String(localized: "settings.editor.clickable_links", defaultValue: "Clickable links"), isOn: $store.clickableLinks)
             }
 
-            Section("Indentation") {
-                Toggle("Indent using spaces", isOn: $store.indentUsingSpaces)
-                Picker("Tab width", selection: $store.tabWidth) {
+            Section(String(localized: "settings.editor.indentation", defaultValue: "Indentation")) {
+                Toggle(String(localized: "settings.editor.indent_using_spaces", defaultValue: "Indent using spaces"), isOn: $store.indentUsingSpaces)
+                Picker(String(localized: "settings.editor.tab_width", defaultValue: "Tab width"), selection: $store.tabWidth) {
                     ForEach(1...8, id: \.self) { n in
                         Text("\(n)").tag(n)
                     }
                 }
             }
 
-            Section("Spacing") {
+            Section(String(localized: "settings.editor.spacing", defaultValue: "Spacing")) {
                 HStack {
-                    Text("Line spacing")
+                    Text(String(localized: "settings.editor.line_spacing", defaultValue: "Line spacing"))
                     Spacer()
                     TextField("", value: $store.lineSpacing, format: .number.precision(.fractionLength(1)))
                         .frame(width: 60)
@@ -246,7 +246,7 @@ struct EditorSettingsView: View {
                         .controlSize(.small)
                 }
                 HStack {
-                    Text("Letter spacing")
+                    Text(String(localized: "settings.editor.letter_spacing", defaultValue: "Letter spacing"))
                     Spacer()
                     TextField("", value: $store.letterSpacing, format: .number.precision(.fractionLength(1)))
                         .frame(width: 60)
@@ -258,10 +258,10 @@ struct EditorSettingsView: View {
                 }
             }
 
-            Section("Lists") {
-                Toggle("Bullet lists", isOn: $store.bulletListsEnabled)
-                Toggle("Numbered lists", isOn: $store.numberedListsEnabled)
-                Toggle("Checklists", isOn: $store.checklistsEnabled)
+            Section(String(localized: "settings.editor.lists", defaultValue: "Lists")) {
+                Toggle(String(localized: "settings.editor.bullet_lists", defaultValue: "Bullet lists"), isOn: $store.bulletListsEnabled)
+                Toggle(String(localized: "settings.editor.numbered_lists", defaultValue: "Numbered lists"), isOn: $store.numberedListsEnabled)
+                Toggle(String(localized: "settings.editor.checklists", defaultValue: "Checklists"), isOn: $store.checklistsEnabled)
             }
 
         }
@@ -274,28 +274,28 @@ struct AppearanceSettingsView: View {
 
     var body: some View {
         Form {
-            Section("Theme") {
-                Picker("Appearance", selection: $store.appearanceOverride) {
-                    Text("System").tag("system")
-                    Text("Light").tag("light")
-                    Text("Dark").tag("dark")
+            Section(String(localized: "settings.appearance.theme", defaultValue: "Theme")) {
+                Picker(String(localized: "settings.appearance.appearance", defaultValue: "Appearance"), selection: $store.appearanceOverride) {
+                    Text(String(localized: "settings.appearance.system", defaultValue: "System")).tag("system")
+                    Text(String(localized: "settings.appearance.light", defaultValue: "Light")).tag("light")
+                    Text(String(localized: "settings.appearance.dark", defaultValue: "Dark")).tag("dark")
                 }
-                Picker("Syntax theme", selection: $store.syntaxTheme) {
+                Picker(String(localized: "settings.appearance.syntax_theme", defaultValue: "Syntax theme"), selection: $store.syntaxTheme) {
                     ForEach(SyntaxThemeRegistry.themes, id: \.id) { theme in
                         Text(theme.displayName).tag(theme.id)
                     }
                 }
             }
 
-            Section("Font") {
-                Picker("Font", selection: $store.editorFontName) {
+            Section(String(localized: "settings.appearance.font", defaultValue: "Font")) {
+                Picker(String(localized: "settings.appearance.font", defaultValue: "Font"), selection: $store.editorFontName) {
                     ForEach(SettingsStore.availableFonts, id: \.name) { font in
                         Text(font.displayName).tag(font.name)
                     }
                 }
 
                 HStack {
-                    Text("Size")
+                    Text(String(localized: "settings.appearance.size", defaultValue: "Size"))
                     Spacer()
                     TextField("", value: $store.editorFontSize, format: .number)
                         .frame(width: 50)
@@ -316,10 +316,10 @@ struct ClipboardSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Enable clipboard manager", isOn: $store.clipboardEnabled)
+                Toggle(String(localized: "settings.clipboard.enable", defaultValue: "Enable clipboard manager"), isOn: $store.clipboardEnabled)
                 if store.clipboardEnabled {
                     ShortcutRecorderView(
-                        label: "Show clipboard",
+                        label: String(localized: "settings.clipboard.show_clipboard", defaultValue: "Show clipboard"),
                         shortcut: $store.clipboardShortcut,
                         shortcutKeys: Binding(
                             get: { store.clipboardShortcutKeys },
@@ -330,37 +330,37 @@ struct ClipboardSettingsView: View {
             }
 
             if store.clipboardEnabled {
-                Section("Behaviour") {
-                    Picker("Default action", selection: $store.clipboardClickAction) {
-                        Text("Copy to clipboard").tag("copy")
-                        Text("Paste into active app").tag("paste")
+                Section(String(localized: "settings.clipboard.behaviour", defaultValue: "Behaviour")) {
+                    Picker(String(localized: "settings.clipboard.default_action", defaultValue: "Default action"), selection: $store.clipboardClickAction) {
+                        Text(String(localized: "settings.clipboard.copy_to_clipboard", defaultValue: "Copy to clipboard")).tag("copy")
+                        Text(String(localized: "settings.clipboard.paste_into_app", defaultValue: "Paste into active app")).tag("paste")
                     }
                 }
 
-                Section("History") {
+                Section(String(localized: "settings.clipboard.history", defaultValue: "History")) {
                     VStack(alignment: .leading, spacing: 4) {
-                        Picker("Auto-delete entries older than", selection: $store.clipboardAutoDelete) {
-                            Text("Never").tag("never")
-                            Text("1 hour").tag("1h")
-                            Text("12 hours").tag("12h")
-                            Text("1 day").tag("1d")
-                            Text("7 days").tag("7d")
-                            Text("14 days").tag("14d")
-                            Text("30 days").tag("30d")
+                        Picker(String(localized: "settings.clipboard.auto_delete", defaultValue: "Auto-delete entries older than"), selection: $store.clipboardAutoDelete) {
+                            Text(String(localized: "settings.clipboard.never", defaultValue: "Never")).tag("never")
+                            Text(String(localized: "settings.clipboard.1_hour", defaultValue: "1 hour")).tag("1h")
+                            Text(String(localized: "settings.clipboard.12_hours", defaultValue: "12 hours")).tag("12h")
+                            Text(String(localized: "settings.clipboard.1_day", defaultValue: "1 day")).tag("1d")
+                            Text(String(localized: "settings.clipboard.7_days", defaultValue: "7 days")).tag("7d")
+                            Text(String(localized: "settings.clipboard.14_days", defaultValue: "14 days")).tag("14d")
+                            Text(String(localized: "settings.clipboard.30_days", defaultValue: "30 days")).tag("30d")
                         }
-                        Text("Clipboard history stores up to 1,000 entries maximum.")
+                        Text(String(localized: "settings.clipboard.max_entries", defaultValue: "Clipboard history stores up to 1,000 entries maximum."))
                             .font(.footnote)
                             .foregroundStyle(.secondary)
                     }
                 }
 
-                Section("Display") {
-                    Picker("View mode", selection: $store.clipboardViewMode) {
-                        Text("Grid").tag("grid")
-                        Text("Panels").tag("panels")
+                Section(String(localized: "settings.clipboard.display", defaultValue: "Display")) {
+                    Picker(String(localized: "settings.clipboard.view_mode", defaultValue: "View mode"), selection: $store.clipboardViewMode) {
+                        Text(String(localized: "settings.clipboard.grid", defaultValue: "Grid")).tag("grid")
+                        Text(String(localized: "settings.clipboard.panels", defaultValue: "Panels")).tag("panels")
                     }
                     HStack {
-                        Text("Preview lines")
+                        Text(String(localized: "settings.clipboard.preview_lines", defaultValue: "Preview lines"))
                         Spacer()
                         TextField("", value: $store.clipboardPreviewLines, format: .number)
                             .frame(width: 50)
@@ -370,7 +370,7 @@ struct ClipboardSettingsView: View {
                             .controlSize(.small)
                     }
                     HStack {
-                        Text("Font size")
+                        Text(String(localized: "settings.clipboard.font_size", defaultValue: "Font size"))
                         Spacer()
                         TextField("", value: $store.clipboardFontSize, format: .number)
                             .frame(width: 50)
@@ -388,4 +388,3 @@ struct ClipboardSettingsView: View {
         }
     }
 }
-

@@ -28,7 +28,7 @@ struct BonsplitRootView: View {
                         EditorContentView(editorState: state, isSelected: isSelected)
                     }
                 } else {
-                    Text("Tab not found")
+                    Text(String(localized: "editor.tab_not_found", defaultValue: "Tab not found"))
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
@@ -39,7 +39,7 @@ struct BonsplitRootView: View {
                 }
             }
         } emptyPane: { paneId in
-            Text("No open tabs")
+            Text(String(localized: "editor.no_open_tabs", defaultValue: "No open tabs"))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

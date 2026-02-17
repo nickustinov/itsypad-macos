@@ -60,11 +60,11 @@ enum UpdateChecker {
 
     private static func showUpdateAvailable(version: String, url: String) {
         let alert = NSAlert()
-        alert.messageText = "Update available: \(version)"
-        alert.informativeText = "A new version of Itsypad is available."
+        alert.messageText = String(localized: "update.available.title", defaultValue: "Update available: \(version)")
+        alert.informativeText = String(localized: "update.available.message", defaultValue: "A new version of Itsypad is available.")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "Open downloads")
-        alert.addButton(withTitle: "Later")
+        alert.addButton(withTitle: String(localized: "update.available.open_downloads", defaultValue: "Open downloads"))
+        alert.addButton(withTitle: String(localized: "update.available.later", defaultValue: "Later"))
         let response = alert.runModal()
         if response == .alertFirstButtonReturn, let url = URL(string: url) {
             NSWorkspace.shared.open(url)
@@ -73,20 +73,20 @@ enum UpdateChecker {
 
     private static func showUpToDate(version: String) {
         let alert = NSAlert()
-        alert.messageText = "You're up to date"
-        alert.informativeText = "Itsypad \(version) is the latest version."
+        alert.messageText = String(localized: "update.up_to_date.title", defaultValue: "You're up to date")
+        alert.informativeText = String(localized: "update.up_to_date.message", defaultValue: "Itsypad \(version) is the latest version.")
         alert.alertStyle = .informational
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "update.up_to_date.ok", defaultValue: "OK"))
         alert.runModal()
     }
 
     private static func showAlert(message: String) {
         log.error("\(message)")
         let alert = NSAlert()
-        alert.messageText = "Update check failed"
+        alert.messageText = String(localized: "update.failed.title", defaultValue: "Update check failed")
         alert.informativeText = message
         alert.alertStyle = .warning
-        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: String(localized: "update.failed.ok", defaultValue: "OK"))
         alert.runModal()
     }
 }
