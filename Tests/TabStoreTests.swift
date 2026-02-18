@@ -21,10 +21,24 @@ final class TabStoreTests: XCTestCase {
 
     // MARK: - Init
 
-    func testInitStartsWithOneUntitledTab() {
+    func testFirstLaunchCreatesWelcomeTab() {
         XCTAssertEqual(store.tabs.count, 1)
-        XCTAssertEqual(store.tabs.first?.name, "Untitled")
+        XCTAssertEqual(store.tabs.first?.name, "Welcome to Itsypad")
+        XCTAssertEqual(store.tabs.first?.language, "markdown")
+        XCTAssertTrue(store.tabs.first?.content.contains("# Welcome to Itsypad") == true)
         XCTAssertNotNil(store.selectedTabID)
+    }
+
+    func testExistingEmptySessionCreatesUntitledTab() {
+        // Simulate an existing session with no tabs (user closed all tabs previously)
+        let emptySession = SessionData(tabs: [], selectedTabID: nil)
+        let data = try! JSONEncoder().encode(emptySession)
+        try! data.write(to: tempURL)
+
+        let restored = TabStore(sessionURL: tempURL)
+        XCTAssertEqual(restored.tabs.count, 1)
+        XCTAssertEqual(restored.tabs.first?.name, "Untitled")
+        XCTAssertEqual(restored.tabs.first?.language, "plain")
     }
 
     // MARK: - addNewTab

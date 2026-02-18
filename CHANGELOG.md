@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.2
+
+Features:
+- Added a welcome tab with a markdown checklist on first launch to help new users discover features
+
 ## 1.9.1
 
 Fixes:

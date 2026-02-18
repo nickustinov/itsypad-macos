@@ -14247,6 +14247,160 @@
           }
         }
       }
+    },
+    "welcome.tab_name": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Welcome to Itsypad"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Добро пожаловать в Itsypad"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenido a Itsypad"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bienvenue dans Itsypad"
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Willkommen bei Itsypad"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itsypadへようこそ"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "欢迎使用 Itsypad"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "歡迎使用 Itsypad"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Itsypad에 오신 것을 환영합니다"
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bem-vindo ao Itsypad"
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Benvenuto in Itsypad"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Witamy w Itsypad"
+          }
+        }
+      }
+    },
+    "welcome.content": {
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "# Welcome to Itsypad\n\nA tiny, fast scratchpad that lives in your menu bar.\n\nHere's what you can do:\n\n- [x] Download Itsypad\n- [ ] Write notes, ideas, code snippets\n- [ ] Use automatic checklists, bullet and numbered lists\n- [ ] Split the editor into multiple panes\n- [ ] Browse clipboard history\n- [ ] Try Itsypad for iOS\n- [ ] Sync tabs across devices with iCloud\n- [ ] Switch between themes in settings\n\nHappy writing! Close this tab whenever you're ready to start."
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Добро пожаловать в Itsypad\n\nМаленький и быстрый блокнот, который живёт в строке меню.\n\nВот что вы можете делать:\n\n- [x] Скачать Itsypad\n- [ ] Писать заметки, идеи, фрагменты кода\n- [ ] Использовать автоматические чек-листы, маркированные и нумерованные списки\n- [ ] Разделить редактор на несколько панелей\n- [ ] Просматривать историю буфера обмена\n- [ ] Попробовать Itsypad для iOS\n- [ ] Синхронизировать вкладки между устройствами через iCloud\n- [ ] Переключаться между темами в настройках\n\nПриятного использования! Закройте эту вкладку, когда будете готовы начать."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Bienvenido a Itsypad\n\nUn pequeño y rápido bloc de notas que vive en la barra de menús.\n\nEsto es lo que puedes hacer:\n\n- [x] Descargar Itsypad\n- [ ] Escribir notas, ideas, fragmentos de código\n- [ ] Usar listas automáticas de verificación, viñetas y numeradas\n- [ ] Dividir el editor en varios paneles\n- [ ] Explorar el historial del portapapeles\n- [ ] Probar Itsypad para iOS\n- [ ] Sincronizar pestañas entre dispositivos con iCloud\n- [ ] Cambiar entre temas en los ajustes\n\n¡Feliz escritura! Cierra esta pestaña cuando estés listo para empezar."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Bienvenue dans Itsypad\n\nUn petit bloc-notes rapide qui vit dans la barre des menus.\n\nVoici ce que vous pouvez faire :\n\n- [x] Télécharger Itsypad\n- [ ] Écrire des notes, des idées, des extraits de code\n- [ ] Utiliser les listes à cocher, à puces et numérotées automatiques\n- [ ] Diviser l'éditeur en plusieurs panneaux\n- [ ] Parcourir l'historique du presse-papiers\n- [ ] Essayer Itsypad pour iOS\n- [ ] Synchroniser les onglets entre appareils avec iCloud\n- [ ] Changer de thème dans les réglages\n\nBonne écriture ! Fermez cet onglet quand vous êtes prêt à commencer."
+          }
+        },
+        "de": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Willkommen bei Itsypad\n\nEin kleiner, schneller Notizblock, der in deiner Menüleiste lebt.\n\nDas kannst du alles machen:\n\n- [x] Itsypad herunterladen\n- [ ] Notizen, Ideen und Code-Schnipsel schreiben\n- [ ] Automatische Checklisten, Aufzählungs- und nummerierte Listen verwenden\n- [ ] Den Editor in mehrere Bereiche aufteilen\n- [ ] Zwischenablage-Verlauf durchsuchen\n- [ ] Itsypad für iOS ausprobieren\n- [ ] Tabs über iCloud zwischen Geräten synchronisieren\n- [ ] Zwischen Themes in den Einstellungen wechseln\n\nViel Spaß beim Schreiben! Schließe diesen Tab, wenn du bereit bist loszulegen."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Itsypadへようこそ\n\nメニューバーに常駐する、小さくて高速なメモ帳。\n\nできること：\n\n- [x] Itsypadをダウンロード\n- [ ] メモ、アイデア、コードスニペットを書く\n- [ ] チェックリスト、箇条書き、番号付きリストを自動で使う\n- [ ] エディターを複数のペインに分割する\n- [ ] クリップボード履歴を閲覧する\n- [ ] iOS版Itsypadを試す\n- [ ] iCloudでデバイス間のタブを同期する\n- [ ] 設定でテーマを切り替える\n\n楽しいライティングを！準備ができたら、このタブを閉じてください。"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# 欢迎使用 Itsypad\n\n一个小巧、快速的便签本，常驻在菜单栏中。\n\n你可以做的事情：\n\n- [x] 下载 Itsypad\n- [ ] 写笔记、想法、代码片段\n- [ ] 使用自动清单、项目符号和编号列表\n- [ ] 将编辑器拆分为多个面板\n- [ ] 浏览剪贴板历史记录\n- [ ] 试用 iOS 版 Itsypad\n- [ ] 通过 iCloud 在设备间同步标签页\n- [ ] 在设置中切换主题\n\n祝你写作愉快！准备好后请关闭此标签页。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# 歡迎使用 Itsypad\n\n一個小巧、快速的便條本，常駐在選單列中。\n\n你可以做的事情：\n\n- [x] 下載 Itsypad\n- [ ] 寫筆記、想法、程式碼片段\n- [ ] 使用自動清單、項目符號和編號列表\n- [ ] 將編輯器拆分為多個面板\n- [ ] 瀏覽剪貼簿歷史記錄\n- [ ] 試用 iOS 版 Itsypad\n- [ ] 透過 iCloud 在裝置間同步分頁\n- [ ] 在設定中切換主題\n\n祝你寫作愉快！準備好後請關閉此分頁。"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Itsypad에 오신 것을 환영합니다\n\n메뉴 막대에 상주하는 작고 빠른 메모장입니다.\n\n할 수 있는 것들:\n\n- [x] Itsypad 다운로드\n- [ ] 메모, 아이디어, 코드 스니펫 작성\n- [ ] 자동 체크리스트, 글머리 기호 및 번호 목록 사용\n- [ ] 편집기를 여러 패널로 분할\n- [ ] 클립보드 기록 탐색\n- [ ] iOS용 Itsypad 사용해 보기\n- [ ] iCloud로 기기 간 탭 동기화\n- [ ] 설정에서 테마 전환\n\n즐거운 글쓰기 되세요! 시작할 준비가 되면 이 탭을 닫아주세요."
+          }
+        },
+        "pt-BR": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Bem-vindo ao Itsypad\n\nUm bloco de notas pequeno e rápido que fica na barra de menus.\n\nVeja o que você pode fazer:\n\n- [x] Baixar o Itsypad\n- [ ] Escrever notas, ideias, trechos de código\n- [ ] Usar checklists, listas com marcadores e numeradas automáticas\n- [ ] Dividir o editor em vários painéis\n- [ ] Navegar pelo histórico da área de transferência\n- [ ] Experimentar o Itsypad para iOS\n- [ ] Sincronizar abas entre dispositivos com o iCloud\n- [ ] Alternar entre temas nas configurações\n\nBoa escrita! Feche esta aba quando estiver pronto para começar."
+          }
+        },
+        "it": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Benvenuto in Itsypad\n\nUn piccolo e veloce blocco note che vive nella barra dei menu.\n\nEcco cosa puoi fare:\n\n- [x] Scaricare Itsypad\n- [ ] Scrivere appunti, idee, frammenti di codice\n- [ ] Usare checklist, elenchi puntati e numerati automatici\n- [ ] Dividere l'editor in più pannelli\n- [ ] Sfogliare la cronologia degli appunti\n- [ ] Provare Itsypad per iOS\n- [ ] Sincronizzare le schede tra dispositivi con iCloud\n- [ ] Cambiare tema nelle impostazioni\n\nBuona scrittura! Chiudi questa scheda quando sei pronto per iniziare."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "# Witamy w Itsypad\n\nMały, szybki notatnik, który żyje w pasku menu.\n\nOto co możesz zrobić:\n\n- [x] Pobrać Itsypad\n- [ ] Pisać notatki, pomysły, fragmenty kodu\n- [ ] Używać automatycznych list kontrolnych, punktowanych i numerowanych\n- [ ] Podzielić edytor na wiele paneli\n- [ ] Przeglądać historię schowka\n- [ ] Wypróbować Itsypad na iOS\n- [ ] Synchronizować karty między urządzeniami przez iCloud\n- [ ] Przełączać między motywami w ustawieniach\n\nMiłego pisania! Zamknij tę kartę, gdy będziesz gotowy, aby zacząć."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

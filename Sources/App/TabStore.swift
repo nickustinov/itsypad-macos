@@ -85,6 +85,8 @@ class TabStore: ObservableObject {
             self.sessionURL = itsypadDir.appendingPathComponent("session.json")
         }
 
+        let isFirstLaunch = !FileManager.default.fileExists(atPath: self.sessionURL.path)
+
         TabStore.migrateLegacyData(to: sessionURL ?? self.sessionURL)
         restoreSession()
         kvsMigration = KVSMigration(flagKey: "kvsTabsMigrated") { [weak self] kvs in
@@ -92,7 +94,11 @@ class TabStore: ObservableObject {
         }
 
         if tabs.isEmpty {
-            addNewTab()
+            if isFirstLaunch {
+                addWelcomeTab()
+            } else {
+                addNewTab()
+            }
         }
     }
 
@@ -104,6 +110,38 @@ class TabStore: ObservableObject {
         selectedTabID = tab.id
         CloudSyncEngine.shared.recordChanged(tab.id)
         G2SyncEngine.shared.schedulePush(id: tab.id)
+        scheduleSave()
+    }
+
+    static var welcomeContent: String {
+        String(localized: "welcome.content", defaultValue: """
+        # Welcome to Itsypad
+
+        A tiny, fast scratchpad that lives in your menu bar.
+
+        Here's what you can do:
+
+        - [x] Download Itsypad
+        - [ ] Write notes, ideas, code snippets
+        - [ ] Use automatic checklists, bullet and numbered lists
+        - [ ] Split the editor into multiple panes
+        - [ ] Browse clipboard history
+        - [ ] Try Itsypad for iOS
+        - [ ] Sync tabs across devices with iCloud
+        - [ ] Switch between themes in settings
+
+        Happy writing! Close this tab whenever you're ready to start.
+        """)
+    }
+
+    func addWelcomeTab() {
+        let tab = TabData(
+            name: String(localized: "welcome.tab_name", defaultValue: "Welcome to Itsypad"),
+            content: Self.welcomeContent,
+            language: "markdown"
+        )
+        tabs.append(tab)
+        selectedTabID = tab.id
         scheduleSave()
     }
 
