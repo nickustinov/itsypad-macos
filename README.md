@@ -8,9 +8,13 @@
 [![macOS 14+](https://img.shields.io/badge/macOS-14%2B-brightgreen.svg)](https://www.apple.com/macos/sonoma/)
 [![Homebrew](https://img.shields.io/badge/homebrew-tap-yellow.svg)](https://github.com/nickustinov/homebrew-tap)
 
-A tiny, fast scratchpad and clipboard manager for Mac. Free forever. [itsypad.app](https://itsypad.app)
+A tiny, fast scratchpad and clipboard manager for Mac. [itsypad.app](https://itsypad.app)
+
+[![Download on the Mac App Store](https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-mac-app-store.svg)](https://apps.apple.com/app/itsypad/id6758999332)
 
 ![Itsypad screenshot](itsypad-screenshot-v2.png)
+
+❤️ If you enjoy Itsypad, grab the [App Store version](https://apps.apple.com/app/itsypad/id6758999332) to support development and get automatic updates. You can also download the DMG from [GitHub releases](https://github.com/nickustinov/itsypad-macos/releases) or install via Homebrew.
 
 ## Features
 
@@ -137,9 +141,9 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 
 If you like Itsypad, check out my other macOS apps - same philosophy of native, lightweight, no-bloat design.
 
-**[Itsyhome](https://itsyhome.app)** - Control your entire smart home from the macOS menu bar. Cameras, lights, thermostats, locks, scenes, and 18+ HomeKit device types. Global keyboard shortcuts, Stream Deck support, deeplinks, and webhooks for power users. Free and [open source](https://github.com/nickustinov/itsyhome-macos).
+**[Itsyhome](https://itsyhome.app)** – control your entire smart home from the macOS menu bar. Cameras, lights, thermostats, locks, scenes, and 18+ HomeKit device types. Global keyboard shortcuts, Stream Deck support, deeplinks, and webhooks for power users. [Open source](https://github.com/nickustinov/itsyhome-macos).
 
-**[Itsytv](https://itsytv.app)** - The missing Apple TV remote for macOS. Full D-pad and playback controls, now-playing widget, app launcher, text input, and multi-device support. Free and [open source](https://github.com/nickustinov/itsytv-macos).
+**[Itsytv](https://itsytv.app)** – the missing Apple TV remote for macOS. Full D-pad and playback controls, now-playing widget, app launcher, text input, and multi-device support. [Open source](https://github.com/nickustinov/itsytv-macos).
 
 ## Distribution
 
