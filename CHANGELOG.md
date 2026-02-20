@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.3
+
+Features:
+- The app now moves to the currently active desktop when activated via the hotkey, instead of switching back to the desktop where it was last visible
+
 ## 1.9.2
 
 Features:

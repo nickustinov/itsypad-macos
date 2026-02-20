@@ -266,7 +266,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         panel.tabbingMode = .disallowed
         panel.isFloatingPanel = false
         panel.level = .normal
-        panel.collectionBehavior = [.fullScreenPrimary]
+        panel.collectionBehavior = [.fullScreenPrimary, .moveToActiveSpace]
         panel.minSize = NSSize(width: 320, height: 400)
         panel.contentView = hostingView
         panel.isReleasedWhenClosed = false
