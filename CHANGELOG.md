@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.9.4
+
+Fixes:
+- Fixed the app occasionally jumping to the foreground with no user interaction – the window restore logic now only activates when the frontmost app terminates, not background processes (#51)
+- Fixed clearing the global shortcut not persisting across app restarts – the default triple-tap shortcut would silently reappear on relaunch (#50)
+
 ## 1.9.3
 
 Features:

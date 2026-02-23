@@ -338,6 +338,9 @@ class SettingsStore: ObservableObject {
         if let data = defaults.data(forKey: shortcutKeysKey),
            let keys = try? JSONDecoder().decode(ShortcutKeys.self, from: data) {
             shortcutKeys = keys
+        } else if shortcut.isEmpty {
+            // User deliberately cleared the shortcut – don't restore default
+            shortcutKeys = nil
         } else {
             shortcutKeys = ShortcutKeys(modifiers: 0, keyCode: 0, isTripleTap: true, tapModifier: "left-option")
         }

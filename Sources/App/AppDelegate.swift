@@ -28,6 +28,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var settingsWindow: NSWindow?
     private var windowWasVisible = false
     private var workspaceObserver: Any?
+    private var activationObserver: Any?
+    private var lastFrontmostBundleID: String?
     private var settingsObserver: Any?
     private var appearanceObservation: NSKeyValueObservation?
     private var recentFilesMenu: NSMenu?
@@ -55,13 +57,27 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             name: NSWindow.willCloseNotification,
             object: editorWindow
         )
+        activationObserver = NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            MainActor.assumeIsolated {
+                guard let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication,
+                      app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
+                self?.lastFrontmostBundleID = app.bundleIdentifier
+            }
+        }
         workspaceObserver = NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.didTerminateApplicationNotification,
             object: nil,
             queue: .main
-        ) { [weak self] _ in
+        ) { [weak self] notification in
             MainActor.assumeIsolated {
-                self?.restoreWindowIfNeeded()
+                guard let self else { return }
+                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication
+                guard app?.bundleIdentifier == self.lastFrontmostBundleID else { return }
+                self.restoreWindowIfNeeded()
             }
         }
         // Apply theme to window when settings change
