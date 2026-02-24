@@ -204,7 +204,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        showMenu()
+        // If window is hidden or not key, show it directly
+        if let window = editorWindow, !window.isVisible || !window.isKeyWindow {
+            showItsypad()
+        } else {
+            // Window is visible and active, show menu
+            showMenu()
+        }
     }
 
     private func showMenu() {
