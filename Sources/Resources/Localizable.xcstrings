@@ -11942,6 +11942,17 @@
         }
       }
     },
+    "statusbar.hide" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Hide Itsypad"
+          }
+        }
+      }
+    },
     "statusbar.no_recent_files" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
