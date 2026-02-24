@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.5
+
+Features:
+- Menu bar icon now shows the window directly when Itsypad is hidden, and shows the menu only when the window is already active (#47)
+
 ## 1.9.4
 
 Fixes:

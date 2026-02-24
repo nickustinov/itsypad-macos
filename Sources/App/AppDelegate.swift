@@ -204,15 +204,23 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
-        showMenu()
+        if let window = editorWindow, !window.isVisible || !window.isKeyWindow {
+            showItsypad()
+        } else {
+            showMenu()
+        }
     }
 
     private func showMenu() {
         let menu = NSMenu()
 
-        let showItsypadTitle = String(localized: "statusbar.show", defaultValue: "Show Itsypad")
-        let showItem = NSMenuItem(title: showItsypadTitle, action: #selector(showItsypad), keyEquivalent: "")
-        showItem.image = NSImage(systemSymbolName: "macwindow", accessibilityDescription: nil)
+        let windowIsActive = editorWindow?.isKeyWindow == true
+        let toggleTitle = windowIsActive
+            ? String(localized: "statusbar.hide", defaultValue: "Hide Itsypad")
+            : String(localized: "statusbar.show", defaultValue: "Show Itsypad")
+        let toggleIcon = windowIsActive ? "macwindow.badge.minus" : "macwindow"
+        let showItem = NSMenuItem(title: toggleTitle, action: #selector(showItsypad), keyEquivalent: "")
+        showItem.image = NSImage(systemSymbolName: toggleIcon, accessibilityDescription: nil)
         showItem.target = self
         if let keys = SettingsStore.shared.shortcutKeys {
             if keys.isTripleTap, let mod = keys.tapModifier {
@@ -224,7 +232,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
                 else { symbol = "" }
                 let side = mod.hasPrefix("left-") ? " L" : mod.hasPrefix("right-") ? " R" : ""
                 let hint = "  \(symbol)\(symbol)\(symbol)\(side)"
-                let attributed = NSMutableAttributedString(string: showItsypadTitle)
+                let attributed = NSMutableAttributedString(string: toggleTitle)
                 attributed.append(NSAttributedString(string: hint, attributes: [
                     .foregroundColor: NSColor.tertiaryLabelColor,
                 ]))
