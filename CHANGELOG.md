@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.9.6
+
+Features:
+- Middle-click on a tab to close it (#55)
+
+Fixes:
+- Fixed files not opening when launched via `open -a Itsypad file.txt` with the app not running (#52)
+
 ## 1.9.5
 
 Features:

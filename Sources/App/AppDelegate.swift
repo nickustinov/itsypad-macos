@@ -36,6 +36,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var isPinned = false
     private var markdownObserver: Any?
     private var showMarkdownPreview = false
+    private var pendingFileURLs: [URL] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -118,6 +119,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         if let isMarkdown = editorCoordinator?.isCurrentTabMarkdown {
             updateMarkdownToolbarItem(isMarkdown: isMarkdown, isPreviewing: false)
         }
+
+        for url in pendingFileURLs {
+            showWindowAndOpen(url: url)
+        }
+        pendingFileURLs.removeAll()
     }
 
     @objc private func editorWindowWillClose(_ note: Notification) {
@@ -167,7 +173,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     private func showWindowAndOpen(url: URL) {
-        guard let window = editorWindow else { return }
+        guard let window = editorWindow else {
+            pendingFileURLs.append(url)
+            return
+        }
         windowWasVisible = true
         window.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)

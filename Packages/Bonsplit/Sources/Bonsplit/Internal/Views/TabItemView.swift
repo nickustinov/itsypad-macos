@@ -46,6 +46,11 @@ struct TabItemView: View {
         .padding(.bottom, isSelected ? 1 : 0)
         .background(tabBackground)
         .contentShape(Rectangle())
+        .overlay {
+            if tab.isClosable {
+                MiddleClickOverlay { onClose() }
+            }
+        }
         .onTapGesture {
             onSelect()
         }
@@ -145,5 +150,33 @@ struct TabItemView: View {
         .frame(width: TabBarMetrics.closeButtonSize, height: TabBarMetrics.closeButtonSize)
         .animation(.easeInOut(duration: TabBarMetrics.hoverDuration), value: isHovered)
         .animation(.easeInOut(duration: TabBarMetrics.hoverDuration), value: isCloseHovered)
+    }
+}
+
+// MARK: - Middle-click overlay
+
+private struct MiddleClickOverlay: NSViewRepresentable {
+    let action: () -> Void
+
+    func makeNSView(context: Context) -> MiddleClickNSView {
+        let view = MiddleClickNSView()
+        view.action = action
+        return view
+    }
+
+    func updateNSView(_ nsView: MiddleClickNSView, context: Context) {
+        nsView.action = action
+    }
+}
+
+private class MiddleClickNSView: NSView {
+    var action: (() -> Void)?
+
+    override func otherMouseUp(with event: NSEvent) {
+        if event.buttonNumber == 2 {
+            action?()
+        } else {
+            super.otherMouseUp(with: event)
+        }
     }
 }
