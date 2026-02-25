@@ -7,6 +7,7 @@ Features:
 
 Fixes:
 - Fixed files not opening when launched via `open -a Itsypad file.txt` with the app not running (#52)
+- Fixed oversized dock icon on macOS Sequoia and Sonoma (#58)
 
 ## 1.9.5
 
