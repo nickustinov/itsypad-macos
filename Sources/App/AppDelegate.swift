@@ -170,9 +170,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         guard let window = editorWindow else { return }
         windowWasVisible = true
         window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
         updateDockVisibility()
         editorCoordinator?.openFile(url: url)
+        // Activate after file opens to ensure window gets focus
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
     // MARK: - Status item

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.6
+
+Fixes:
+- Fixed window not coming into focus when opening files from the command line with `open -a Itsypad file.txt` (#52)
+
 ## 1.9.5
 
 Features:
