@@ -179,4 +179,9 @@ private class MiddleClickNSView: NSView {
             super.otherMouseUp(with: event)
         }
     }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        // Allow clicks to pass through to subviews (like the close button)
+        return nil
+    }
 }
