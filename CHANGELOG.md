@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.9.7
+
+Fixes:
+- Fixed clipboard shortcut still activating after disabling clipboard manager (#60)
+
 ## 1.9.6
 
 Features:

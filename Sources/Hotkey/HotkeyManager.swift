@@ -96,7 +96,8 @@ class HotkeyManager {
     }
 
     private func registerClipboard() {
-        guard let keys = SettingsStore.shared.clipboardShortcutKeys, !keys.isTripleTap else { return }
+        guard SettingsStore.shared.clipboardEnabled,
+              let keys = SettingsStore.shared.clipboardShortcutKeys, !keys.isTripleTap else { return }
 
         let id = EventHotKeyID(signature: OSType(0x4950_4144), id: 2)
         var ref: EventHotKeyRef?
@@ -187,7 +188,8 @@ class HotkeyManager {
             }
 
             // Check clipboard shortcut
-            if let keys = settings.clipboardShortcutKeys,
+            if settings.clipboardEnabled,
+               let keys = settings.clipboardShortcutKeys,
                keys.isTripleTap,
                let tap = keys.tapModifier,
                modifier == tap || baseModifier == tap {
