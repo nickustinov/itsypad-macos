@@ -4,6 +4,7 @@
 
 Fixes:
 - Fixed clipboard shortcut still activating after disabling clipboard manager (#60)
+- Fixed close button on tabs not responding to clicks (#62)
 
 ## 1.9.6
 

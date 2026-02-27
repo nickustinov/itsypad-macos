@@ -171,12 +171,30 @@ private struct MiddleClickOverlay: NSViewRepresentable {
 
 private class MiddleClickNSView: NSView {
     var action: (() -> Void)?
+    private var monitor: Any?
 
-    override func otherMouseUp(with event: NSEvent) {
-        if event.buttonNumber == 2 {
-            action?()
-        } else {
-            super.otherMouseUp(with: event)
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window != nil, monitor == nil {
+            monitor = NSEvent.addLocalMonitorForEvents(matching: .otherMouseUp) { [weak self] event in
+                guard let self, event.buttonNumber == 2,
+                      self.window != nil else { return event }
+                let point = self.convert(event.locationInWindow, from: nil)
+                guard self.bounds.contains(point) else { return event }
+                self.action?()
+                return nil
+            }
+        } else if window == nil, let monitor {
+            NSEvent.removeMonitor(monitor)
+            self.monitor = nil
         }
+    }
+
+    deinit {
+        if let monitor { NSEvent.removeMonitor(monitor) }
     }
 }
