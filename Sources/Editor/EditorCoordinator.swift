@@ -589,6 +589,22 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             }
         })
 
+        let isPlainText = tabData.language == "plain" && tabData.languageLocked
+        items.append(TabContextMenuItem(title: String(localized: "context_menu.plain_text", defaultValue: "Plain text"), isChecked: isPlainText) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                if isPlainText {
+                    self.tabStore.unlockLanguage(id: tabStoreID)
+                } else {
+                    self.tabStore.updateLanguage(id: tabStoreID, language: "plain")
+                    guard let bonsplitID = self.tabIDMap[tabStoreID] else { return }
+                    self.highlighterForTab(bonsplitID)?.language = "plain"
+                    self.previewManager.exitIfNotMarkdown(for: bonsplitID, language: "plain")
+                    self.postMarkdownState(for: bonsplitID)
+                }
+            }
+        })
+
         if tab.isPinned {
             items.append(TabContextMenuItem(title: String(localized: "context_menu.unpin_tab", defaultValue: "Unpin tab"), icon: "pin.slash") { [weak self] in
                 MainActor.assumeIsolated {

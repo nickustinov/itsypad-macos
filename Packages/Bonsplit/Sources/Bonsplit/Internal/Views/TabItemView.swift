@@ -8,7 +8,7 @@ struct TabItemView: View {
     var isFocused: Bool = true
     let onSelect: () -> Void
     let onClose: () -> Void
-    var contextMenuItems: [TabContextMenuItem] = []
+    var contextMenuItems: () -> [TabContextMenuItem] = { [] }
 
     @State private var isHovered = false
     @State private var isCloseHovered = false
@@ -60,13 +60,16 @@ struct TabItemView: View {
             }
         }
         .contextMenu {
-            if !contextMenuItems.isEmpty {
-                ForEach(contextMenuItems) { item in
+            let items = contextMenuItems()
+            if !items.isEmpty {
+                ForEach(items) { item in
                     Button {
                         item.action()
                     } label: {
                         if let icon = item.icon {
                             Label(item.title, systemImage: icon)
+                        } else if item.isChecked == true {
+                            Label(item.title, systemImage: "checkmark")
                         } else {
                             Text(item.title)
                         }
@@ -168,6 +171,7 @@ private struct MiddleClickOverlay: NSViewRepresentable {
         nsView.action = action
     }
 }
+
 
 private class MiddleClickNSView: NSView {
     var action: (() -> Void)?

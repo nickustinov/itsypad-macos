@@ -6,12 +6,14 @@ public struct TabContextMenuItem: Identifiable {
     public let title: String
     public let icon: String?
     public let isEnabled: Bool
+    public let isChecked: Bool?
     public let action: () -> Void
 
-    public init(title: String, icon: String? = nil, isEnabled: Bool = true, action: @escaping () -> Void) {
+    public init(title: String, icon: String? = nil, isEnabled: Bool = true, isChecked: Bool? = nil, action: @escaping () -> Void) {
         self.title = title
         self.icon = icon
         self.isEnabled = isEnabled
+        self.isChecked = isChecked
         self.action = action
     }
 }

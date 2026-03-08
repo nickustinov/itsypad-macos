@@ -151,6 +151,16 @@ final class TabStoreTests: XCTestCase {
         XCTAssertTrue(store.tabs.first!.languageLocked)
     }
 
+    // MARK: - unlockLanguage
+
+    func testUnlockLanguageResetsLock() {
+        let tabID = store.tabs.first!.id
+        store.updateLanguage(id: tabID, language: "plain")
+        XCTAssertTrue(store.tabs.first!.languageLocked)
+        store.unlockLanguage(id: tabID)
+        XCTAssertFalse(store.tabs.first!.languageLocked)
+    }
+
     // MARK: - moveTab
 
     func testMoveTabForward() {

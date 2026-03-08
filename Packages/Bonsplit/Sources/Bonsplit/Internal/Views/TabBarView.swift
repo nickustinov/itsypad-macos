@@ -130,11 +130,13 @@ struct TabBarView: View {
                     _ = controller.closeTab(TabID(id: tab.id), inPane: pane.id)
                 }
             },
-            contextMenuItems: controller.delegate?.splitTabBar(
-                controller,
-                contextMenuItemsForTab: Tab(from: tab),
-                inPane: pane.id
-            ) ?? []
+            contextMenuItems: { [weak controller] in
+                controller?.delegate?.splitTabBar(
+                    controller!,
+                    contextMenuItemsForTab: Tab(from: tab),
+                    inPane: pane.id
+                ) ?? []
+            }
         )
         .onDrag {
             createItemProvider(for: tab)
@@ -167,11 +169,13 @@ struct TabBarView: View {
                 controller.focusPane(pane.id)
             },
             onClose: {},
-            contextMenuItems: controller.delegate?.splitTabBar(
-                controller,
-                contextMenuItemsForTab: Tab(from: tab),
-                inPane: pane.id
-            ) ?? []
+            contextMenuItems: { [weak controller] in
+                controller?.delegate?.splitTabBar(
+                    controller!,
+                    contextMenuItemsForTab: Tab(from: tab),
+                    inPane: pane.id
+                ) ?? []
+            }
         )
     }
 

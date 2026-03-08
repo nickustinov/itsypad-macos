@@ -238,6 +238,15 @@ class TabStore: ObservableObject {
         scheduleSave()
     }
 
+    func unlockLanguage(id: UUID) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs[index].languageLocked = false
+        tabs[index].lastModified = Date()
+        let tab = tabs[index]
+        scheduleLanguageDetection(id: id, content: tab.content, name: tab.name, fileURL: tab.fileURL)
+        scheduleSave()
+    }
+
     func updateCursorPosition(id: UUID, position: Int) {
         guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
         tabs[index].cursorPosition = position
