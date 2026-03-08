@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.10.0
+
+Features:
+- Drag-and-drop file opening now works even when no tabs are open (#70)
+
+Fixes:
+- Fixed French translations and localized the "Untitled" tab name (#67)
+
 ## 1.9.7
 
 Fixes:
