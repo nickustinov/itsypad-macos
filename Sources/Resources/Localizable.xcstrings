@@ -7731,7 +7731,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Taille de police"
+            "value" : "Taille de la police"
           }
         },
         "it" : {
@@ -7962,7 +7962,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L’historique du presse-papiers stocke jusqu’à 1 000 entrées."
+            "value" : "L’historique du presse-papiers peut stocker jusqu’à 1 000 entrées."
           }
         },
         "it" : {
@@ -8270,7 +8270,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Lignes d’aperçu"
+            "value" : "Nombre de lignes pour l’aperçu"
           }
         },
         "it" : {
@@ -8732,7 +8732,7 @@
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Surligner la ligne actuelle"
+            "value" : "Surligner la ligne courante"
           }
         },
         "it" : {
@@ -12334,6 +12334,83 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "顯示 Itsypad"
+          }
+        }
+      }
+    },
+    "tab.untitled" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unbenannt"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Untitled"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin título"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans titre"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Senza titolo"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無題"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "제목 없음"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bez nazwy"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem título"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без названия"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未命名"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "未命名"
           }
         }
       }

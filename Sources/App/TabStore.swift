@@ -15,7 +15,7 @@ struct TabData: Identifiable, Equatable {
 
     init(
         id: UUID = UUID(),
-        name: String = "Untitled",
+        name: String = String(localized: "tab.untitled", defaultValue: "Untitled"),
         content: String = "",
         language: String = "plain",
         fileURL: URL? = nil,
@@ -182,7 +182,7 @@ class TabStore: ObservableObject {
         if tab.fileURL == nil {
             let firstLine = content.prefix(while: { $0 != "\n" && $0 != "\r" })
             let trimmed = firstLine.trimmingCharacters(in: .whitespacesAndNewlines)
-            let newName = trimmed.isEmpty ? "Untitled" : String(trimmed.prefix(30))
+            let newName = trimmed.isEmpty ? String(localized: "tab.untitled", defaultValue: "Untitled") : String(trimmed.prefix(30))
             tab.name = newName
         }
 
