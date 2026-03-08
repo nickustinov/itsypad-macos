@@ -40,6 +40,11 @@ struct EditorTheme {
     // Link color
     var linkColor: NSColor { isDark ? Self.hex(0x78b9f2) : Self.hex(0x0969b2) }
 
+    // Highlight marker (==text==) background color
+    var highlightMarkerBackground: NSColor {
+        NSColor(srgbRed: 1.0, green: 0.9, blue: 0.0, alpha: isDark ? 0.25 : 0.35)
+    }
+
     // MARK: - Hex color helper
 
     private static func hex(_ value: UInt32) -> NSColor {

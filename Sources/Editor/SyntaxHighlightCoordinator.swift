@@ -164,6 +164,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 // Apply bullet dash highlighting on top
                 self.applyListMarkers(tv: tv, text: textSnapshot, theme: currentTheme)
                 self.applyLinkHighlighting(tv: tv, text: textSnapshot, theme: currentTheme)
+                self.applyHighlightMarkers(tv: tv, text: textSnapshot, theme: currentTheme)
 
                 tv.textStorage?.endEditing()
                 self.applyWrapIndent(to: tv, font: userFont)
@@ -199,6 +200,7 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
         applyListMarkers(tv: tv, text: text, theme: theme)
         applyLinkHighlighting(tv: tv, text: text, theme: theme)
+        applyHighlightMarkers(tv: tv, text: text, theme: theme)
 
         tv.textStorage?.endEditing()
         applyWrapIndent(to: tv, font: font)
@@ -231,6 +233,11 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private static let checkboxRegex = try! NSRegularExpression(
         pattern: "^([ \\t]*[-*] )(\\[[ x]\\])( )(.*)",
         options: .anchorsMatchLines
+    )
+
+    // Pre-compiled regex for ==highlight== markers
+    private static let highlightMarkerRegex = try! NSRegularExpression(
+        pattern: "==[^=](?:[^=]|=[^=])*?==", options: []
     )
 
     private func applyListMarkers(tv: EditorTextView, text: String, theme: EditorTheme) {
@@ -280,6 +287,18 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                     tv.textStorage?.addAttribute(.strikethroughColor, value: theme.foreground.withAlphaComponent(0.4), range: contentRange)
                 }
             }
+        }
+    }
+
+    private func applyHighlightMarkers(tv: EditorTextView, text: String, theme: EditorTheme) {
+        guard language == "plain" || language == "markdown" else { return }
+
+        let ns = text as NSString
+        let fullRange = NSRange(location: 0, length: ns.length)
+        let bgColor = theme.highlightMarkerBackground
+
+        for match in Self.highlightMarkerRegex.matches(in: text, range: fullRange) {
+            tv.textStorage?.addAttribute(.backgroundColor, value: bgColor, range: match.range)
         }
     }
 

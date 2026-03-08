@@ -131,6 +131,35 @@ final class MarkdownRendererTests: XCTestCase {
         XCTAssertEqual(result, markdown, "Should not strip frontmatter that doesn't start at beginning")
     }
 
+    // MARK: - Highlight markers
+
+    func testRenderHighlightMarker() {
+        let html = Self.renderer.render(markdown: "This is ==highlighted== text", theme: theme)
+        XCTAssertTrue(html.contains("<mark>highlighted</mark>"), "Expected <mark> tag for ==highlighted== syntax")
+    }
+
+    func testRenderHighlightMarkerMultiple() {
+        let html = Self.renderer.render(markdown: "==one== and ==two==", theme: theme)
+        XCTAssertTrue(html.contains("<mark>one</mark>"), "Expected first <mark> tag")
+        XCTAssertTrue(html.contains("<mark>two</mark>"), "Expected second <mark> tag")
+    }
+
+    func testRenderHighlightMarkerWithInlineFormatting() {
+        let html = Self.renderer.render(markdown: "==**bold** inside==", theme: theme)
+        XCTAssertTrue(html.contains("<mark>"), "Expected <mark> tag")
+        XCTAssertTrue(html.contains("<strong>bold</strong>"), "Expected nested bold inside highlight")
+    }
+
+    func testRenderHighlightMarkerNotTriggeredBySingleEquals() {
+        let html = Self.renderer.render(markdown: "a = b and c = d", theme: theme)
+        XCTAssertFalse(html.contains("<mark>"), "Single equals should not trigger highlight")
+    }
+
+    func testRenderHighlightCSS() {
+        let html = Self.renderer.render(markdown: "==test==", theme: theme)
+        XCTAssertTrue(html.contains("mark {"), "Expected mark CSS in output")
+    }
+
     func testRenderFrontmatterDocument() {
         let markdown = "---\ntitle: My Post\ndate: 2026-01-01\n---\n# Hello world"
         let html = Self.renderer.render(markdown: markdown, theme: theme)

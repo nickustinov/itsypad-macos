@@ -28,6 +28,26 @@ class MarkdownRenderer {
               let markedSrc = try? String(contentsOfFile: markedPath) else { return nil }
         ctx.evaluateScript(markedSrc)
 
+        // Register ==highlight== extension for <mark> tags
+        ctx.evaluateScript("""
+        marked.use({ extensions: [{
+            name: 'highlight',
+            level: 'inline',
+            start: function(src) { return src.indexOf('=='); },
+            tokenizer: function(src) {
+                var match = src.match(/^==([^=](?:[^=]|=[^=])*?)==/);
+                if (match) {
+                    var token = { type: 'highlight', raw: match[0], text: match[1], tokens: [] };
+                    this.lexer.inline(token.text, token.tokens);
+                    return token;
+                }
+            },
+            renderer: function(token) {
+                return '<mark>' + this.parser.parseInline(token.tokens) + '</mark>';
+            }
+        }]});
+        """)
+
         // Load highlight.min.js for code block highlighting
         if let hljsPath = Self.appBundle.path(forResource: "highlight.min", ofType: "js"),
            let hljsSrc = try? String(contentsOfFile: hljsPath) {
@@ -205,6 +225,13 @@ class MarkdownRenderer {
 
         ul, ol { padding-left: 2em; margin: 0.5em 0; }
         li { margin: 0.3em 0; }
+
+        mark {
+            background: rgba(255, 230, 0, 0.35);
+            color: inherit;
+            padding: 0.1em 0.2em;
+            border-radius: 2px;
+        }
 
         /* Checklist styling */
         ul li input[type="checkbox"] {
