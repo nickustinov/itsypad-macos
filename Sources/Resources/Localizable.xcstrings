@@ -9896,6 +9896,28 @@
         }
       }
     },
+    "settings.general.new_tab_on_launch" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "New tab on launch"
+          }
+        }
+      }
+    },
+    "settings.general.new_tab_on_launch_description" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Creates an empty tab on launch if none exists."
+          }
+        }
+      }
+    },
     "settings.general.open_at_login" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

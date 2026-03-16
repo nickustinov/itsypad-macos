@@ -89,6 +89,13 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var newTabOnLaunch: Bool = false {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(newTabOnLaunch, forKey: "newTabOnLaunch")
+        }
+    }
+
     @Published var showLineNumbers: Bool = true {
         didSet {
             guard !isLoading else { return }
@@ -327,6 +334,7 @@ class SettingsStore: ObservableObject {
         syntaxTheme = SyntaxThemeRegistry.themes.contains(where: { $0.id == savedTheme }) ? savedTheme : "itsypad"
         showInDock = defaults.object(forKey: "showInDock") as? Bool ?? true
         showInMenuBar = defaults.object(forKey: "showInMenuBar") as? Bool ?? true
+        newTabOnLaunch = defaults.bool(forKey: "newTabOnLaunch")
         showLineNumbers = defaults.object(forKey: "showLineNumbers") as? Bool ?? true
         highlightCurrentLine = defaults.bool(forKey: "highlightCurrentLine")
         indentUsingSpaces = defaults.object(forKey: "indentUsingSpaces") as? Bool ?? true

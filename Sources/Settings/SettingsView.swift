@@ -107,6 +107,12 @@ struct GeneralSettingsView: View {
                 Toggle(String(localized: "settings.general.show_in_menu_bar", defaultValue: "Show in menu bar"), isOn: $store.showInMenuBar)
                     .disabled(!store.showInDock)
                 VStack(alignment: .leading, spacing: 4) {
+                    Toggle(String(localized: "settings.general.new_tab_on_launch", defaultValue: "New tab on launch"), isOn: $store.newTabOnLaunch)
+                    Text(String(localized: "settings.general.new_tab_on_launch_description", defaultValue: "Creates an empty tab on launch if none exists."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                VStack(alignment: .leading, spacing: 4) {
                     Toggle(String(localized: "settings.general.icloud_sync", defaultValue: "iCloud sync"), isOn: Binding(
                         get: { store.icloudSync },
                         set: { store.setICloudSync($0) }

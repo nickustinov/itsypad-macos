@@ -154,6 +154,13 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
             updateMarkdownToolbarItem(isMarkdown: isMarkdown, isPreviewing: false)
         }
 
+        if SettingsStore.shared.newTabOnLaunch {
+            let hasEmptyTab = TabStore.shared.tabs.contains { $0.content.isEmpty && $0.fileURL == nil }
+            if !hasEmptyTab {
+                editorCoordinator?.newTab()
+            }
+        }
+
         for url in pendingFileURLs {
             showWindowAndOpen(url: url)
         }

@@ -4,6 +4,7 @@
 
 Features:
 - Spell checking setting for plain text and markdown tabs
+- Option to create a new empty tab on launch if none exists (#61)
 
 Fixes:
 - Fixed line number gutter desync when scrolling plain-text lines that begin with digits
