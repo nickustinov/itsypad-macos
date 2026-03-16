@@ -28,6 +28,7 @@ enum EditorStateFactory {
         let highlighter = createHighlighter(for: textView, settings: settings)
         setupContent(textView: textView, highlighter: highlighter, tab: tab)
 
+        applySpellChecking(textView: textView, language: tab.language, settings: settings)
         applyTheme(textView: textView, gutter: gutter, coordinator: highlighter)
         highlighter.applyWrapIndent(to: textView, font: settings.editorFont)
         highlighter.scheduleHighlightIfNeeded()
@@ -107,6 +108,12 @@ enum EditorStateFactory {
         let pos = min(tab.cursorPosition, (textView.string as NSString).length)
         textView.setSelectedRange(NSRange(location: pos, length: 0))
         textView.scrollRangeToVisible(NSRange(location: pos, length: 0))
+    }
+
+    static func applySpellChecking(textView: EditorTextView, language: String?, settings: SettingsStore = .shared) {
+        let enabled = settings.spellChecking && (language == nil || language == "plain" || language == "markdown")
+        textView.isContinuousSpellCheckingEnabled = enabled
+        textView.isGrammarCheckingEnabled = enabled
     }
 
     static func applyTheme(textView: EditorTextView, gutter: LineNumberGutterView, coordinator: SyntaxHighlightCoordinator) {

@@ -53,6 +53,10 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                 guard let self, let bonsplitID = self.tabIDMap[tabID] else { return }
                 self.highlighterForTab(bonsplitID)?.language = language
 
+                if let state = self.editorStates[bonsplitID] {
+                    EditorStateFactory.applySpellChecking(textView: state.textView, language: language)
+                }
+
                 self.previewManager.exitIfNotMarkdown(for: bonsplitID, language: language)
 
                 self.postMarkdownState(for: bonsplitID)
@@ -362,6 +366,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             reverseMap[bonsplitTabID] = newTab.id
             editorStates[bonsplitTabID] = createEditorState(for: newTab)
             controller.selectTab(bonsplitTabID)
+            postMarkdownState(for: bonsplitTabID)
         }
         NSDocumentController.shared.noteNewRecentDocumentURL(url)
     }
@@ -599,6 +604,9 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
                     self.tabStore.updateLanguage(id: tabStoreID, language: "plain")
                     guard let bonsplitID = self.tabIDMap[tabStoreID] else { return }
                     self.highlighterForTab(bonsplitID)?.language = "plain"
+                    if let state = self.editorStates[bonsplitID] {
+                        EditorStateFactory.applySpellChecking(textView: state.textView, language: "plain")
+                    }
                     self.previewManager.exitIfNotMarkdown(for: bonsplitID, language: "plain")
                     self.postMarkdownState(for: bonsplitID)
                 }
@@ -803,6 +811,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             state.textView.textContainerInset = NSSize(width: showGutter ? 4 : 12, height: 12)
             state.highlightCoordinator.font = font
             state.highlightCoordinator.updateTheme()
+            EditorStateFactory.applySpellChecking(textView: state.textView, language: state.highlightCoordinator.language, settings: settings)
 
             EditorStateFactory.applyTheme(textView: state.textView, gutter: state.gutterView, coordinator: state.highlightCoordinator)
         }

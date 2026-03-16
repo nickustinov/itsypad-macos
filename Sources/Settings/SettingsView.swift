@@ -222,6 +222,12 @@ struct EditorSettingsView: View {
                 Toggle(String(localized: "settings.editor.show_line_numbers", defaultValue: "Show line numbers"), isOn: $store.showLineNumbers)
                 Toggle(String(localized: "settings.editor.highlight_current_line", defaultValue: "Highlight current line"), isOn: $store.highlightCurrentLine)
                 Toggle(String(localized: "settings.editor.clickable_links", defaultValue: "Clickable links"), isOn: $store.clickableLinks)
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(String(localized: "settings.editor.spell_checking", defaultValue: "Spell checking"), isOn: $store.spellChecking)
+                    Text(String(localized: "settings.editor.spell_checking_description", defaultValue: "Enabled for plain text and markdown only."))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section(String(localized: "settings.editor.indentation", defaultValue: "Indentation")) {

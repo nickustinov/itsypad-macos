@@ -161,6 +161,14 @@ class SettingsStore: ObservableObject {
         }
     }
 
+    @Published var spellChecking: Bool = true {
+        didSet {
+            guard !isLoading else { return }
+            defaults.set(spellChecking, forKey: "spellChecking")
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+        }
+    }
+
     @Published var lineSpacing: Double = 1.0 {
         didSet {
             guard !isLoading else { return }
@@ -329,6 +337,7 @@ class SettingsStore: ObservableObject {
         numberedListsEnabled = defaults.object(forKey: "numberedListsEnabled") as? Bool ?? true
         checklistsEnabled = defaults.object(forKey: "checklistsEnabled") as? Bool ?? true
         clickableLinks = defaults.object(forKey: "clickableLinks") as? Bool ?? true
+        spellChecking = defaults.object(forKey: "spellChecking") as? Bool ?? true
         let savedLineSpacing = defaults.double(forKey: "lineSpacing")
         lineSpacing = savedLineSpacing > 0 ? savedLineSpacing : 1.0
         letterSpacing = defaults.double(forKey: "letterSpacing")

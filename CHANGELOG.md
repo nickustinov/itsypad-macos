@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.11.0
+
+Features:
+- Spell checking setting for plain text and markdown tabs
+
+Fixes:
+- Fixed line number gutter desync when scrolling plain-text lines that begin with digits
+- Fixed markdown preview button not appearing in toolbar when opening a .md file via drag-and-drop (#78)
+
 ## 1.10.0
 
 Features:
@@ -9,7 +18,6 @@ Features:
 
 Fixes:
 - Fixed French translations and localized the "Untitled" tab name (#67)
-- Fixed line number gutter desync when scrolling plain-text lines that begin with digits
 
 ## 1.9.7
 

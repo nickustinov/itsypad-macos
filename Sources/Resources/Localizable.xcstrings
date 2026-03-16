@@ -9412,6 +9412,28 @@
         }
       }
     },
+    "settings.editor.spell_checking" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Spell checking"
+          }
+        }
+      }
+    },
+    "settings.editor.spell_checking_description" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Enabled for plain text and markdown only."
+          }
+        }
+      }
+    },
     "settings.editor.tab_width" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
