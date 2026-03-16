@@ -55,12 +55,13 @@ final class LineNumberGutterView: NSView {
         dirtyRect.fill()
 
         guard showLineNumbers,
-              let textView, let scrollView,
+              let textView,
               let layoutManager = textView.layoutManager,
               let textContainer = textView.textContainer else { return }
 
-        let visibleRect = scrollView.contentView.bounds
-        let inset = textView.textContainerInset
+        let textVisibleRect = textView.visibleRect
+        let textContainerVisibleRect = visibleTextContainerRect(for: textView)
+        let textContainerOrigin = textView.textContainerOrigin
         let ns = textView.string as NSString
         let totalLength = ns.length
 
@@ -72,19 +73,23 @@ final class LineNumberGutterView: NSView {
         guard totalLength > 0 else {
             let s = "1" as NSString
             let size = s.size(withAttributes: attrs)
-            s.draw(at: NSPoint(x: bounds.width - size.width - Self.rightPadding, y: inset.height), withAttributes: attrs)
+            s.draw(
+                at: NSPoint(
+                    x: bounds.width - size.width - Self.rightPadding,
+                    y: textContainerOrigin.y
+                ),
+                withAttributes: attrs
+            )
             return
         }
 
-        let visibleGlyphRange = layoutManager.glyphRange(forBoundingRect: visibleRect, in: textContainer)
+        let visibleGlyphRange = layoutManager.glyphRange(
+            forBoundingRectWithoutAdditionalLayout: textContainerVisibleRect,
+            in: textContainer
+        )
         let visibleCharRange = layoutManager.characterRange(forGlyphRange: visibleGlyphRange, actualGlyphRange: nil)
 
-        var lineNumber = 1
-        let scanEnd = min(visibleCharRange.location, totalLength)
-        if scanEnd > 0 {
-            let pre = ns.substring(with: NSRange(location: 0, length: scanEnd))
-            for ch in pre where ch == "\n" { lineNumber += 1 }
-        }
+        var lineNumber = Self.lineNumber(atCharacterLocation: visibleCharRange.location, in: ns)
 
         let glyphEnd = min(visibleGlyphRange.location + visibleGlyphRange.length, layoutManager.numberOfGlyphs)
         guard glyphEnd > visibleGlyphRange.location else { return }
@@ -98,7 +103,7 @@ final class LineNumberGutterView: NSView {
 
             let isNewLine = charRange.location == 0 || ns.character(at: charRange.location - 1) == 0x0A
             if isNewLine {
-                let y = fragRect.origin.y + inset.height - visibleRect.origin.y
+                let y = fragRect.origin.y + textContainerOrigin.y - textVisibleRect.origin.y
                 let lineStr = "\(lineNumber)" as NSString
                 let size = lineStr.size(withAttributes: attrs)
                 lineStr.draw(
@@ -114,7 +119,7 @@ final class LineNumberGutterView: NSView {
 
         // Draw line number for trailing empty line after final newline
         if totalLength > 0, ns.character(at: totalLength - 1) == 0x0A {
-            let y = lastFragRect.maxY + inset.height - visibleRect.origin.y
+            let y = lastFragRect.maxY + textContainerOrigin.y - textVisibleRect.origin.y
             let lineStr = "\(lineNumber)" as NSString
             let size = lineStr.size(withAttributes: attrs)
             lineStr.draw(
@@ -123,5 +128,24 @@ final class LineNumberGutterView: NSView {
                 withAttributes: attrs
             )
         }
+    }
+
+    static func lineNumber(atCharacterLocation location: Int, in text: NSString) -> Int {
+        let scanEnd = min(max(0, location), text.length)
+        guard scanEnd > 0 else { return 1 }
+
+        var completedLines = 0
+        (text as String).enumerateSubstrings(
+            in: Range(NSRange(location: 0, length: scanEnd), in: text as String) ?? (text as String).startIndex..<(text as String).startIndex,
+            options: [.byLines, .substringNotRequired]
+        ) { _, _, _, _ in
+            completedLines += 1
+        }
+        return completedLines + 1
+    }
+
+    private func visibleTextContainerRect(for textView: NSTextView) -> NSRect {
+        let origin = textView.textContainerOrigin
+        return textView.visibleRect.offsetBy(dx: -origin.x, dy: -origin.y)
     }
 }

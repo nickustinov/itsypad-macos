@@ -2240,6 +2240,17 @@
         }
       }
     },
+    "context_menu.plain_text" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Plain text"
+          }
+        }
+      }
+    },
     "context_menu.reveal_in_finder" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

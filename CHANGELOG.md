@@ -9,6 +9,7 @@ Features:
 
 Fixes:
 - Fixed French translations and localized the "Untitled" tab name (#67)
+- Fixed line number gutter desync when scrolling plain-text lines that begin with digits
 
 ## 1.9.7
 
