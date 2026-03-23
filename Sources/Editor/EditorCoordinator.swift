@@ -262,14 +262,23 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
     func togglePreview() {
         guard let focusedPaneId = controller.focusedPaneId,
               let selectedTab = controller.selectedTab(inPane: focusedPaneId),
-              selectedTab.id != clipboardTabID else { return }
+              selectedTab.id != clipboardTabID else {
+            NSLog("[Preview] togglePreview: no focused pane or clipboard tab")
+            return
+        }
 
         guard let tabStoreID = reverseMap[selectedTab.id],
-              let tab = tabStore.tabs.first(where: { $0.id == tabStoreID }) else { return }
+              let tab = tabStore.tabs.first(where: { $0.id == tabStoreID }) else {
+            NSLog("[Preview] togglePreview: tab not found in store")
+            return
+        }
+
+        let lang = highlighterForTab(selectedTab.id)?.language
+        NSLog("[Preview] togglePreview: tab=%@, language=%@", tab.name, lang ?? "nil")
 
         previewManager.toggle(
             for: selectedTab.id,
-            language: highlighterForTab(selectedTab.id)?.language,
+            language: lang,
             content: tab.content,
             fileURL: tab.fileURL,
             theme: cssTheme
@@ -814,6 +823,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
             EditorStateFactory.applySpellChecking(textView: state.textView, language: state.highlightCoordinator.language, settings: settings)
 
             EditorStateFactory.applyTheme(textView: state.textView, gutter: state.gutterView, coordinator: state.highlightCoordinator)
+            state.highlightCoordinator.applyWrapIndent(to: state.textView, font: font)
+            state.gutterView.needsDisplay = true
         }
 
         refreshCSSTheme()

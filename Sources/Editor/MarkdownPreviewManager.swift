@@ -23,14 +23,20 @@ final class MarkdownPreviewManager {
     @discardableResult
     func toggle(for tabID: TabID, language: String?, content: String, fileURL: URL?, theme: EditorTheme) -> Bool {
         if previewingTabs.contains(tabID) {
+            NSLog("[Preview] toggle OFF for %@", "\(tabID)")
             previewingTabs.remove(tabID)
             htmlCache.removeValue(forKey: tabID)
             baseURLCache.removeValue(forKey: tabID)
             return false
         } else {
-            guard language == "markdown" else { return false }
+            NSLog("[Preview] toggle ON for %@, language=%@, contentLen=%d", "\(tabID)", language ?? "nil", content.count)
+            guard language == "markdown" else {
+                NSLog("[Preview] REJECTED – language is not markdown")
+                return false
+            }
             render(for: tabID, content: content, fileURL: fileURL, theme: theme)
             previewingTabs.insert(tabID)
+            NSLog("[Preview] rendered, htmlLen=%d", htmlCache[tabID]?.count ?? 0)
             return true
         }
     }

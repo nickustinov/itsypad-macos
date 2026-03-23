@@ -38,18 +38,16 @@ struct MarkdownPreviewView: NSViewRepresentable {
 
     private func loadHTML(in webView: WKWebView) {
         if let baseURL {
-            // Write HTML to a temp file inside the app container, then grant
-            // WKWebView read access to the original file's directory so that
-            // relative image paths still resolve.
-            let tempDir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("markdown-preview", isDirectory: true)
-            try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-            let tempFile = tempDir.appendingPathComponent("preview.html")
-            try? html.write(to: tempFile, atomically: true, encoding: .utf8)
-            webView.loadFileURL(tempFile, allowingReadAccessTo: baseURL)
-        } else {
-            webView.loadHTMLString(html, baseURL: nil)
+            // Write HTML to a temp file inside the base directory so that
+            // WKWebView's allowingReadAccessTo covers both the temp file
+            // and relative image paths.
+            let tempFile = baseURL.appendingPathComponent(".itsypad-preview.html")
+            if let _ = try? html.write(to: tempFile, atomically: true, encoding: .utf8) {
+                webView.loadFileURL(tempFile, allowingReadAccessTo: baseURL)
+                return
+            }
         }
+        webView.loadHTMLString(html, baseURL: nil)
     }
 
     class Coordinator: NSObject, WKNavigationDelegate {

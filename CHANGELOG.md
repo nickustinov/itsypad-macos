@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.0
+
+Features:
+- File browser sidebar – toggle with Cmd+B, open a folder and browse files in a tree view
+- New lines now inherit correct line spacing immediately
+
+Fixes:
+- Fixed scroll jumping when typing at end of long files
+- Fixed line numbers disappearing after editing
+- Fixed current line highlight covering two lines on the last line
+
 ## 1.12.0
 
 Features:
