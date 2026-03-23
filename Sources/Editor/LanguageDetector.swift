@@ -123,7 +123,36 @@ struct LanguageDetector {
             }
         }
 
+        // Markdown content detection — excluded from highlight.js auto-detect
+        // because it produces false positives, but targeted patterns are reliable.
+        if Self.looksLikeMarkdown(text) {
+            return Result(lang: "markdown", confidence: 10)
+        }
+
         return Result(lang: "plain", confidence: 0)
+    }
+
+    /// Returns true when text contains distinctive markdown syntax.
+    private static let markdownPatterns: [NSRegularExpression] = {
+        let patterns = [
+            "\\*\\*[^*]+\\*\\*",           // **bold**
+            "(?:^|\\n)#{1,6} \\S",         // # heading
+            "(?:^|\\n)- \\[[ xX]\\] ",     // - [ ] checklist
+            "\\[[^\\]]+\\]\\([^)]+\\)",     // [link](url)
+            "==[^=]+==" ,                   // ==highlight==
+            "(?:^|\\n)> ",                  // > blockquote
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0) }
+    }()
+
+    private static func looksLikeMarkdown(_ text: String) -> Bool {
+        let range = NSRange(location: 0, length: min((text as NSString).length, 4000))
+        for pattern in markdownPatterns {
+            if pattern.firstMatch(in: text, range: range) != nil {
+                return true
+            }
+        }
+        return false
     }
 
     /// Returns true when text is predominantly natural-language prose.

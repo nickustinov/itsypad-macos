@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.12.0
+
+Features:
+- Auto-detect markdown from content in scratch tabs (bold, headings, checklists, links, highlights, blockquotes)
+
+Fixes:
+- Fixed current line highlight showing on wrong line after edits
+- Fixed Cmd-A select all hiding text when current line highlight is enabled
+
 ## 1.11.0
 
 Features:

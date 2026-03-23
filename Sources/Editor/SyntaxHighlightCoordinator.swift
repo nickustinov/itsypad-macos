@@ -22,7 +22,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private var lastHighlightedText: String = ""
     private var lastLanguage: String?
     private var lastAppearance: String?
-    private var previousHighlightedLineRange: NSRange?
 
     override init() {
         super.init()
@@ -173,7 +172,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
                 let safeLength = min(sel.length, ns.length - safeLocation)
                 tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
 
-                self.previousHighlightedLineRange = nil
                 self.lastHighlightedText = textSnapshot
                 self.lastLanguage = self.language
                 self.lastAppearance = SettingsStore.shared.appearanceOverride
@@ -209,7 +207,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let safeLength = min(sel.length, ns.length - safeLocation)
         tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
 
-        previousHighlightedLineRange = nil
         lastHighlightedText = text
         lastLanguage = language
         lastAppearance = SettingsStore.shared.appearanceOverride
@@ -383,39 +380,11 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         guard let tv = notification.object as? EditorTextView else { return }
         let text = tv.string
         tv.onTextChange?(text)
-        updateCaretStatusAndHighlight()
+        tv.needsDisplay = true
         scheduleHighlightIfNeeded(text: text)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {
-        updateCaretStatusAndHighlight()
-    }
-
-    private func updateCaretStatusAndHighlight() {
-        guard let tv = textView else { return }
-        let ns = tv.string as NSString
-
-        tv.textStorage?.beginEditing()
-
-        // Only clear the previously highlighted line, not the entire document
-        if let prev = previousHighlightedLineRange, prev.location + prev.length <= ns.length {
-            tv.textStorage?.removeAttribute(.backgroundColor, range: prev)
-        }
-
-        if SettingsStore.shared.highlightCurrentLine {
-            let sel = tv.selectedRange()
-            let location = min(sel.location, ns.length)
-            let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
-            tv.textStorage?.addAttribute(
-                .backgroundColor,
-                value: NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12),
-                range: lineRange
-            )
-            previousHighlightedLineRange = lineRange
-        } else {
-            previousHighlightedLineRange = nil
-        }
-
-        tv.textStorage?.endEditing()
+        textView?.needsDisplay = true
     }
 }

@@ -70,6 +70,43 @@ final class LanguageDetectorTests: XCTestCase {
         XCTAssertEqual(result.lang, "plain")
     }
 
+    // MARK: - Markdown content detection
+
+    func testBoldTextDetectedAsMarkdown() {
+        let result = detector.detect(text: "**hello**\n", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testHeadingDetectedAsMarkdown() {
+        let result = detector.detect(text: "# My heading\nSome text", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testChecklistDetectedAsMarkdown() {
+        let result = detector.detect(text: "- [ ] todo item\n- [x] done item", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testLinkDetectedAsMarkdown() {
+        let result = detector.detect(text: "Visit [example](https://example.com) for details", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testHighlightMarkerDetectedAsMarkdown() {
+        let result = detector.detect(text: "This is ==important== text", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testBlockquoteDetectedAsMarkdown() {
+        let result = detector.detect(text: "> quoted text\nresponse", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testPlainTextNotDetectedAsMarkdown() {
+        let result = detector.detect(text: "just some normal text", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "plain")
+    }
+
     // MARK: - detectFromExtension
 
     func testDetectFromExtensionKnown() {

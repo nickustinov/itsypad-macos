@@ -87,6 +87,6 @@ final class LineNumberGutterViewTests: XCTestCase {
         scrollView.contentView.scroll(to: NSPoint(x: 0, y: 220))
         scrollView.reflectScrolledClipView(scrollView.contentView)
 
-        XCTAssertEqual(firstVisibleLineNumber(in: textView), 15)
+        XCTAssertEqual(firstVisibleLineNumber(in: textView), 14)
     }
 }

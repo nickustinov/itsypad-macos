@@ -8,6 +8,32 @@ final class EditorTextView: NSTextView {
     override var mouseDownCanMoveWindow: Bool { false }
     override var isOpaque: Bool { false }
 
+    // MARK: - Current line highlight
+
+    override func drawBackground(in rect: NSRect) {
+        super.drawBackground(in: rect)
+
+        guard SettingsStore.shared.highlightCurrentLine,
+              let layoutManager, let textContainer else { return }
+
+        let ns = string as NSString
+        guard ns.length > 0 else { return }
+        let sel = selectedRange()
+        let location = min(sel.location, ns.length)
+        let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
+
+        let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
+        var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+        lineRect.origin.x = bounds.minX
+        lineRect.origin.y += textContainerOrigin.y
+        lineRect.size.width = bounds.width
+
+        guard lineRect.intersects(rect) else { return }
+
+        NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12).setFill()
+        lineRect.fill()
+    }
+
     var onTextChange: ((String) -> Void)?
     var isActiveTab: Bool = true
 
