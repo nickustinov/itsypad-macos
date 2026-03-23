@@ -197,6 +197,18 @@ class MenuBuilder {
     func buildViewMenuItem() -> NSMenuItem {
         let menu = NSMenu(title: String(localized: "menu.view", defaultValue: "View"))
 
+        let sidebarItem = NSMenuItem(title: String(localized: "menu.view.toggle_sidebar", defaultValue: "Toggle sidebar"), action: #selector(AppDelegate.toggleFileBrowser), keyEquivalent: "b")
+        sidebarItem.image = NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: nil)
+        sidebarItem.target = target
+        menu.addItem(sidebarItem)
+
+        let openFolderItem = NSMenuItem(title: String(localized: "menu.view.open_folder_in_sidebar", defaultValue: "Open folder in sidebar..."), action: #selector(AppDelegate.openFolderInSidebar), keyEquivalent: "")
+        openFolderItem.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)
+        openFolderItem.target = target
+        menu.addItem(openFolderItem)
+
+        menu.addItem(.separator())
+
         let zoomInItem = NSMenuItem(title: String(localized: "menu.view.increase_font_size", defaultValue: "Increase font size"), action: #selector(AppDelegate.increaseFontSize), keyEquivalent: "+")
         zoomInItem.image = NSImage(systemSymbolName: "plus.magnifyingglass", accessibilityDescription: nil)
         zoomInItem.target = target

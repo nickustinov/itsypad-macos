@@ -10,61 +10,51 @@ final class EditorTextView: NSTextView {
 
     // MARK: - Current line highlight
 
-    private var previousHighlightLineRect: NSRect?
+    private var highlightView: NSView?
 
-    override func drawBackground(in rect: NSRect) {
-        super.drawBackground(in: rect)
-
-        guard SettingsStore.shared.highlightCurrentLine,
-              let layoutManager, let textContainer else { return }
-
-        let ns = string as NSString
-        guard ns.length > 0 else { return }
-
-        // Don't trigger layout during drawing – only use already-laid-out content
-        let lineRange: NSRange
-        let sel = selectedRange()
-        let location = min(sel.location, ns.length)
-        lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
-        guard layoutManager.firstUnlaidCharacterIndex() > lineRange.upperBound else { return }
-
-        let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
-        guard glyphRange.length > 0 else { return }
-        var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
-        lineRect.origin.x = bounds.minX
-        lineRect.origin.y += textContainerOrigin.y
-        lineRect.size.width = bounds.width
-
-        guard lineRect.intersects(rect) else { return }
-
-        NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12).setFill()
-        lineRect.fill()
-        previousHighlightLineRect = lineRect
-    }
-
-    func invalidateCurrentLineHighlight() {
-        // Invalidate the old highlight rect
-        if let prev = previousHighlightLineRect {
-            setNeedsDisplay(prev)
-        }
-        // Invalidate the new line rect
-        guard let layoutManager, let textContainer else { return }
-        let ns = string as NSString
-        guard ns.length > 0 else { return }
-        let sel = selectedRange()
-        let location = min(sel.location, ns.length)
-        let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
-        guard layoutManager.firstUnlaidCharacterIndex() > lineRange.upperBound else {
-            needsDisplay = true
+    func updateLineHighlight() {
+        guard SettingsStore.shared.highlightCurrentLine else {
+            highlightView?.isHidden = true
             return
         }
-        let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
-        guard glyphRange.length > 0 else { return }
-        var lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+
+        guard let layoutManager, let textContainer else { return }
+
+        let ns = string as NSString
+        let sel = selectedRange()
+        let location = min(sel.location, ns.length)
+
+        var lineRect: NSRect
+
+        if ns.length == 0 {
+            lineRect = NSRect(x: 0, y: textContainerOrigin.y, width: bounds.width, height: font?.pointSize ?? 14)
+        } else if location == ns.length, ns.character(at: ns.length - 1) == 0x0A {
+            let extra = layoutManager.extraLineFragmentRect
+            guard extra.height > 0 else { return }
+            lineRect = extra
+            lineRect.origin.y += textContainerOrigin.y
+        } else {
+            let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
+            let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
+            guard glyphRange.length > 0 else { return }
+            lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+            lineRect.origin.y += textContainerOrigin.y
+        }
+
         lineRect.origin.x = bounds.minX
-        lineRect.origin.y += textContainerOrigin.y
         lineRect.size.width = bounds.width
-        setNeedsDisplay(lineRect)
+
+        if highlightView == nil {
+            let v = NSView()
+            v.wantsLayer = true
+            v.layer?.backgroundColor = NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12).cgColor
+            addSubview(v, positioned: .below, relativeTo: nil)
+            highlightView = v
+        }
+
+        highlightView?.frame = lineRect
+        highlightView?.layer?.backgroundColor = NSColor.selectedTextBackgroundColor.withAlphaComponent(0.12).cgColor
+        highlightView?.isHidden = false
     }
 
     var onTextChange: ((String) -> Void)?

@@ -52,6 +52,7 @@ private extension NSToolbarItem.Identifier {
     static let findReplace = NSToolbarItem.Identifier("findReplace")
     static let tabSwitcher = NSToolbarItem.Identifier("tabSwitcher")
     static let markdownPreview = NSToolbarItem.Identifier("markdownPreview")
+    static let fileBrowser = NSToolbarItem.Identifier("fileBrowser")
 }
 
 @MainActor
@@ -59,6 +60,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var statusItem: NSStatusItem!
     private var editorWindow: NSPanel?
     private var editorCoordinator: EditorCoordinator?
+    private var fileBrowserSplitVC: FileBrowserSplitViewController?
     private var settingsWindow: NSWindow?
     private var windowWasVisible = false
     private var workspaceObserver: Any?
@@ -328,6 +330,20 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         let rootView = BonsplitRootView(coordinator: coordinator)
         let hostingView = NSHostingView(rootView: rootView)
+        hostingView.autoresizingMask = [.width, .height]
+
+        // Wrap hosting view in a container so FileDropView isn't a direct subview of NSHostingView
+        let contentContainer = NSView()
+        let dropView = FileDropView(frame: .zero)
+        dropView.autoresizingMask = [.width, .height]
+        contentContainer.addSubview(dropView)
+        contentContainer.addSubview(hostingView)
+
+        let splitVC = FileBrowserSplitViewController(contentView: contentContainer)
+        splitVC.onFileSelected = { [weak coordinator] url in
+            coordinator?.openFile(url: url)
+        }
+        fileBrowserSplitVC = splitVC
 
         let panel = EditorPanel(
             contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
@@ -342,7 +358,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         panel.level = .normal
         panel.collectionBehavior = [.fullScreenPrimary, .moveToActiveSpace]
         panel.minSize = NSSize(width: 320, height: 400)
-        panel.contentView = hostingView
+        panel.contentView = splitVC.view
         panel.isReleasedWhenClosed = false
         panel.center()
         panel.setFrameAutosaveName("EditorWindow")
@@ -351,11 +367,6 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         toolbar.delegate = self
         toolbar.displayMode = .iconOnly
         panel.toolbar = toolbar
-
-        let dropView = FileDropView(frame: .zero)
-        dropView.autoresizingMask = [.width, .height]
-        hostingView.addSubview(dropView, positioned: .below, relativeTo: nil)
-        dropView.frame = hostingView.bounds
 
         editorWindow = panel
 
@@ -417,7 +428,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     // MARK: - NSToolbarDelegate
 
     func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        var items: [NSToolbarItem.Identifier] = [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space]
+        var items: [NSToolbarItem.Identifier] = [.fileBrowser, .newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space]
         if showMarkdownPreview {
             items.append(.markdownPreview)
         }
@@ -426,11 +437,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     }
 
     func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [.newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .markdownPreview, .findReplace]
+        [.fileBrowser, .newTab, .openFile, .saveFile, .flexibleSpace, .tabSwitcher, .space, .markdownPreview, .findReplace]
     }
 
     func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier, willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? {
         switch itemIdentifier {
+        case .fileBrowser:
+            let item = NSToolbarItem(itemIdentifier: itemIdentifier)
+            item.image = NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: String(localized: "toolbar.sidebar", defaultValue: "Sidebar"))
+            item.label = String(localized: "toolbar.sidebar", defaultValue: "Sidebar")
+            item.toolTip = String(localized: "toolbar.toggle_sidebar", defaultValue: "Toggle sidebar (⌘B)")
+            item.target = self
+            item.action = #selector(toggleFileBrowser)
+            return item
         case .tabSwitcher:
             let menuItem = NSMenuToolbarItem(itemIdentifier: itemIdentifier)
             menuItem.image = NSImage(systemSymbolName: "list.bullet", accessibilityDescription: String(localized: "toolbar.tabs", defaultValue: "Tabs"))
@@ -637,6 +656,14 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         editorCoordinator?.togglePreview()
     }
 
+    @objc func toggleFileBrowser() {
+        fileBrowserSplitVC?.toggleSidebar()
+    }
+
+    @objc func openFolderInSidebar() {
+        fileBrowserSplitVC?.openFolder()
+    }
+
     @objc func openHelpURL(_ sender: NSMenuItem) {
         guard let urlString = sender.representedObject as? String,
               let url = URL(string: urlString) else { return }
@@ -766,6 +793,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         }
         if menuItem.action == #selector(togglePin) {
             menuItem.state = isPinned ? .on : .off
+        }
+        if menuItem.action == #selector(toggleFileBrowser) {
+            menuItem.state = fileBrowserSplitVC?.isSidebarVisible == true ? .on : .off
         }
         if menuItem.action == #selector(togglePreviewAction) {
             let isMarkdown = editorCoordinator?.isCurrentTabMarkdown ?? false

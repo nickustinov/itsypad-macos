@@ -2559,6 +2559,83 @@
         }
       }
     },
+    "file_browser.close_folder_tooltip" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Close folder"
+          }
+        }
+      }
+    },
+    "file_browser.copy_path" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Copy path"
+          }
+        }
+      }
+    },
+    "file_browser.open_folder_button" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open folder..."
+          }
+        }
+      }
+    },
+    "file_browser.open_folder_message" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Choose a folder to browse"
+          }
+        }
+      }
+    },
+    "file_browser.open_folder_prompt" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open"
+          }
+        }
+      }
+    },
+    "file_browser.open_folder_tooltip" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open folder"
+          }
+        }
+      }
+    },
+    "file_browser.reveal_in_finder" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Reveal in Finder"
+          }
+        }
+      }
+    },
     "menu.app.about" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -5562,6 +5639,17 @@
         }
       }
     },
+    "menu.view.open_folder_in_sidebar" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Open folder in sidebar..."
+          }
+        }
+      }
+    },
     "menu.view.previous_tab" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -6097,6 +6185,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切換預覽"
+          }
+        }
+      }
+    },
+    "menu.view.toggle_sidebar" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle sidebar"
           }
         }
       }
@@ -13471,6 +13570,17 @@
         }
       }
     },
+    "toolbar.sidebar" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sidebar"
+          }
+        }
+      }
+    },
     "toolbar.switch_tab" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {
@@ -13698,6 +13808,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "切換 Markdown 預覽 (⇧⌘P)"
+          }
+        }
+      }
+    },
+    "toolbar.toggle_sidebar" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Toggle sidebar (⌘B)"
           }
         }
       }

@@ -380,11 +380,11 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         guard let tv = notification.object as? EditorTextView else { return }
         let text = tv.string
         tv.onTextChange?(text)
+        tv.updateLineHighlight()
         scheduleHighlightIfNeeded(text: text)
     }
 
     func textViewDidChangeSelection(_ notification: Notification) {
-        guard let tv = textView, SettingsStore.shared.highlightCurrentLine else { return }
-        tv.invalidateCurrentLineHighlight()
+        textView?.updateLineHighlight()
     }
 }
