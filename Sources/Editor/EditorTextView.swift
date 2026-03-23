@@ -18,7 +18,7 @@ final class EditorTextView: NSTextView {
             return
         }
 
-        guard let layoutManager, let textContainer else { return }
+        guard let layoutManager else { return }
 
         let ns = string as NSString
         let sel = selectedRange()
@@ -35,9 +35,8 @@ final class EditorTextView: NSTextView {
             lineRect.origin.y += textContainerOrigin.y
         } else {
             let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
-            let glyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
-            guard glyphRange.length > 0 else { return }
-            lineRect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+            let glyphIndex = layoutManager.glyphIndexForCharacter(at: lineRange.location)
+            lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
             lineRect.origin.y += textContainerOrigin.y
         }
 

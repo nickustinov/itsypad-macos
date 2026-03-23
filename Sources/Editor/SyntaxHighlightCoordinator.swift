@@ -137,40 +137,33 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
                 let ns = textSnapshot as NSString
                 let fullRange = NSRange(location: 0, length: ns.length)
-                let sel = tv.selectedRange()
 
                 tv.textStorage?.beginEditing()
 
+                // Apply attributes without replacing text – preserves scroll and selection
                 let kern = SettingsStore.shared.letterSpacing
+                var baseAttrs: [NSAttributedString.Key: Any] = [
+                    .font: userFont,
+                    .foregroundColor: currentTheme.foreground,
+                ]
+                if kern != 0 { baseAttrs[.kern] = kern }
+                tv.textStorage?.setAttributes(baseAttrs, range: fullRange)
+
+                // Apply syntax colors from highlight.js
                 if let highlighted {
-                    tv.textStorage?.replaceCharacters(in: fullRange, with: highlighted)
-                    // Override font uniformly
-                    let newLength = (tv.textStorage?.length ?? ns.length)
-                    let newRange = NSRange(location: 0, length: newLength)
-                    tv.textStorage?.addAttribute(.font, value: userFont, range: newRange)
-                    if kern != 0 {
-                        tv.textStorage?.addAttribute(.kern, value: kern, range: newRange)
+                    highlighted.enumerateAttribute(.foregroundColor, in: NSRange(location: 0, length: highlighted.length)) { value, range, _ in
+                        if let color = value as? NSColor, range.location + range.length <= fullRange.length {
+                            tv.textStorage?.addAttribute(.foregroundColor, value: color, range: range)
+                        }
                     }
-                } else {
-                    var attrs: [NSAttributedString.Key: Any] = [
-                        .font: userFont,
-                        .foregroundColor: currentTheme.foreground,
-                    ]
-                    if kern != 0 { attrs[.kern] = kern }
-                    tv.textStorage?.setAttributes(attrs, range: fullRange)
                 }
 
-                // Apply bullet dash highlighting on top
                 self.applyListMarkers(tv: tv, text: textSnapshot, theme: currentTheme)
                 self.applyLinkHighlighting(tv: tv, text: textSnapshot, theme: currentTheme)
                 self.applyHighlightMarkers(tv: tv, text: textSnapshot, theme: currentTheme)
 
                 tv.textStorage?.endEditing()
                 self.applyWrapIndent(to: tv, font: userFont)
-
-                let safeLocation = min(sel.location, ns.length)
-                let safeLength = min(sel.length, ns.length - safeLocation)
-                tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
 
                 self.lastHighlightedText = textSnapshot
                 self.lastLanguage = self.language
@@ -185,7 +178,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
     private func applyPlainText(tv: EditorTextView, text: String, font: NSFont, theme: EditorTheme) {
         let ns = text as NSString
         let fullRange = NSRange(location: 0, length: ns.length)
-        let sel = tv.selectedRange()
 
         let kern = SettingsStore.shared.letterSpacing
         tv.textStorage?.beginEditing()
@@ -202,10 +194,6 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
 
         tv.textStorage?.endEditing()
         applyWrapIndent(to: tv, font: font)
-
-        let safeLocation = min(sel.location, ns.length)
-        let safeLength = min(sel.length, ns.length - safeLocation)
-        tv.setSelectedRange(NSRange(location: safeLocation, length: safeLength))
 
         lastHighlightedText = text
         lastLanguage = language
@@ -332,6 +320,14 @@ class SyntaxHighlightCoordinator: NSObject, NSTextViewDelegate {
         let lineSpacingMultiplier = settings.lineSpacing
         let naturalLineHeight = ceil(font.ascender - font.descender + font.leading)
         let extraLineSpacing = (lineSpacingMultiplier - 1.0) * naturalLineHeight
+
+        // Set default paragraph style so newly typed lines inherit correct spacing
+        let defaultPara = NSMutableParagraphStyle()
+        if extraLineSpacing > 0 { defaultPara.lineSpacing = extraLineSpacing }
+        textView.defaultParagraphStyle = defaultPara
+        var typingAttrs = textView.typingAttributes
+        typingAttrs[.paragraphStyle] = defaultPara
+        textView.typingAttributes = typingAttrs
 
         storage.beginEditing()
         var pos = 0
