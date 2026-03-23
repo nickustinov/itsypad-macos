@@ -5,6 +5,7 @@ final class FileBrowserContainerView: NSView {
     private let folderLabel = NSTextField(labelWithString: "")
     private let outlineViewController = FileBrowserOutlineView()
     private let emptyStateButton = NSButton()
+    private let emptyStateHint = NSTextField(labelWithString: "")
 
     var onFileSelected: ((URL) -> Void)? {
         get { outlineViewController.onFileSelected }
@@ -25,6 +26,7 @@ final class FileBrowserContainerView: NSView {
 
     private func setup() {
         wantsLayer = true
+        registerForDraggedTypes([.fileURL])
 
         NotificationCenter.default.addObserver(self, selector: #selector(applyTheme), name: .settingsChanged, object: nil)
         applyTheme()
@@ -68,11 +70,19 @@ final class FileBrowserContainerView: NSView {
         emptyStateButton.isHidden = true
         addSubview(emptyStateButton)
 
+        emptyStateHint.translatesAutoresizingMaskIntoConstraints = false
+        emptyStateHint.stringValue = "⇧⌘O or drag a folder"
+        emptyStateHint.font = .systemFont(ofSize: 11)
+        emptyStateHint.textColor = .tertiaryLabelColor
+        emptyStateHint.alignment = .center
+        emptyStateHint.isHidden = true
+        addSubview(emptyStateHint)
+
         NSLayoutConstraint.activate([
             headerView.topAnchor.constraint(equalTo: topAnchor),
             headerView.leadingAnchor.constraint(equalTo: leadingAnchor),
             headerView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            headerView.heightAnchor.constraint(equalToConstant: 28),
+            headerView.heightAnchor.constraint(equalToConstant: 36),
 
             folderLabel.leadingAnchor.constraint(equalTo: headerView.leadingAnchor, constant: 8),
             folderLabel.centerYAnchor.constraint(equalTo: headerView.centerYAnchor),
@@ -94,7 +104,9 @@ final class FileBrowserContainerView: NSView {
             outlineContainer.bottomAnchor.constraint(equalTo: bottomAnchor),
 
             emptyStateButton.centerXAnchor.constraint(equalTo: centerXAnchor),
-            emptyStateButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            emptyStateButton.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -10),
+            emptyStateHint.centerXAnchor.constraint(equalTo: centerXAnchor),
+            emptyStateHint.topAnchor.constraint(equalTo: emptyStateButton.bottomAnchor, constant: 6),
         ])
 
         updateState()
@@ -108,8 +120,9 @@ final class FileBrowserContainerView: NSView {
     private func updateState() {
         let hasFolder = FileTreeStore.shared.rootURL != nil
         emptyStateButton.isHidden = hasFolder
+        emptyStateHint.isHidden = hasFolder
         headerView.isHidden = !hasFolder
-        folderLabel.stringValue = FileTreeStore.shared.rootURL?.lastPathComponent.uppercased() ?? ""
+        folderLabel.stringValue = FileTreeStore.shared.rootURL?.lastPathComponent ?? ""
     }
 
     @objc private func applyTheme() {
@@ -124,5 +137,29 @@ final class FileBrowserContainerView: NSView {
 
     @objc private func closeFolderAction() {
         FileTreeStore.shared.closeFolder()
+    }
+
+    // MARK: - Drag and drop
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        guard folderURLFrom(sender) != nil else { return [] }
+        return .copy
+    }
+
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        guard let url = folderURLFrom(sender) else { return false }
+        FileTreeStore.shared.setRootFolder(url)
+        return true
+    }
+
+    private func folderURLFrom(_ sender: any NSDraggingInfo) -> URL? {
+        guard let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true
+        ]) as? [URL] else { return nil }
+        var isDir: ObjCBool = false
+        guard let url = urls.first,
+              FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir),
+              isDir.boolValue else { return nil }
+        return url
     }
 }

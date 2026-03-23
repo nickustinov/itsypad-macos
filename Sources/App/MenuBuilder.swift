@@ -202,7 +202,8 @@ class MenuBuilder {
         sidebarItem.target = target
         menu.addItem(sidebarItem)
 
-        let openFolderItem = NSMenuItem(title: String(localized: "menu.view.open_folder_in_sidebar", defaultValue: "Open folder in sidebar..."), action: #selector(AppDelegate.openFolderInSidebar), keyEquivalent: "")
+        let openFolderItem = NSMenuItem(title: String(localized: "menu.view.open_folder_in_sidebar", defaultValue: "Open folder in sidebar..."), action: #selector(AppDelegate.openFolderInSidebar), keyEquivalent: "O")
+        openFolderItem.keyEquivalentModifierMask = [.command, .shift]
         openFolderItem.image = NSImage(systemSymbolName: "folder.badge.plus", accessibilityDescription: nil)
         openFolderItem.target = target
         menu.addItem(openFolderItem)
