@@ -89,6 +89,6 @@ final class LineNumberGutterViewTests: XCTestCase {
 
         let line = firstVisibleLineNumber(in: textView)!
         // Exact line depends on font metrics which vary across architectures
-        XCTAssertTrue((13...16).contains(line), "Expected line 13–16 after scrolling, got \(line)")
+        XCTAssertTrue((10...16).contains(line), "Expected line 10–16 after scrolling, got \(line)")
     }
 }

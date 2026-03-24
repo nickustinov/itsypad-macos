@@ -133,6 +133,7 @@ enum EditorStateFactory {
             ofSize: settings.editorFont.pointSize * 0.85,
             weight: .regular
         )
+        gutter.textFont = settings.editorFont
         gutter.needsDisplay = true
     }
 }
