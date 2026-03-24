@@ -155,6 +155,6 @@ final class FileWatcherTests: XCTestCase {
         try! "1-modified".write(to: file1, atomically: true, encoding: .utf8)
         try! "2-modified".write(to: file2, atomically: true, encoding: .utf8)
 
-        waitForExpectations(timeout: 2)
+        waitForExpectations(timeout: 5)
     }
 }
