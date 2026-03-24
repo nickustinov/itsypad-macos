@@ -35,8 +35,12 @@ final class EditorTextView: NSTextView {
             lineRect.origin.y += textContainerOrigin.y
         } else {
             let lineRange = ns.lineRange(for: NSRange(location: location, length: 0))
-            let glyphIndex = layoutManager.glyphIndexForCharacter(at: lineRange.location)
-            lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+            let lineGlyphRange = layoutManager.glyphRange(forCharacterRange: lineRange, actualCharacterRange: nil)
+            lineRect = .null
+            layoutManager.enumerateLineFragments(forGlyphRange: lineGlyphRange) { fragRect, _, _, _, _ in
+                lineRect = lineRect.union(fragRect)
+            }
+            guard !lineRect.isNull else { return }
             lineRect.origin.y += textContainerOrigin.y
         }
 
