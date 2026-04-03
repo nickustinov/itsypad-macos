@@ -217,6 +217,8 @@ class ClipboardStore {
             case .text:
                 return entry.text?.localizedCaseInsensitiveContains(query) ?? false
             case .image:
+                // Image entries do not currently store OCR text or filename metadata.
+                // The only searchable token for them is the generic "image" label.
                 return "image".localizedCaseInsensitiveContains(query)
             }
         }

@@ -122,6 +122,16 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertTrue(results.contains(where: { $0.kind == .image }))
     }
 
+    func testSearchNonImageQueryDoesNotMatchImageEntriesWithoutMetadata() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "diagram notes"),
+            ClipboardEntry(kind: .image, imageFileName: "diagram.png"),
+        ]
+        let results = store.search(query: "diagram", imagesOnly: false)
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.kind, .text)
+    }
+
     func testSearchImagesOnlyPreservesEntryOrder() {
         let newestImage = ClipboardEntry(kind: .image, imageFileName: "newest.png")
         let middleText = ClipboardEntry(kind: .text, text: "middle")
