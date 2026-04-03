@@ -209,9 +209,10 @@ class ClipboardStore {
         NotificationCenter.default.post(name: Self.didChangeNotification, object: nil)
     }
 
-    func search(query: String) -> [ClipboardEntry] {
-        guard !query.isEmpty else { return entries }
-        return entries.filter { entry in
+    func search(query: String, imagesOnly: Bool = false) -> [ClipboardEntry] {
+        let sourceEntries = imagesOnly ? entries.filter { $0.kind == .image } : entries
+        guard !query.isEmpty else { return sourceEntries }
+        return sourceEntries.filter { entry in
             switch entry.kind {
             case .text:
                 return entry.text?.localizedCaseInsensitiveContains(query) ?? false

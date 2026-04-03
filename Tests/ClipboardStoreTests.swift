@@ -70,6 +70,76 @@ final class ClipboardStoreTests: XCTestCase {
         XCTAssertEqual(results.first?.kind, .image)
     }
 
+    func testSearchImagesOnlyEmptyQueryReturnsOnlyImages() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "hello"),
+            ClipboardEntry(kind: .image, imageFileName: "test.png"),
+            ClipboardEntry(kind: .image, imageFileName: "test-2.png"),
+        ]
+        let results = store.search(query: "", imagesOnly: true)
+        XCTAssertEqual(results.count, 2)
+        XCTAssertTrue(results.allSatisfy { $0.kind == .image })
+    }
+
+    func testSearchImagesOnlyComposesWithQuery() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "image in text"),
+            ClipboardEntry(kind: .image, imageFileName: "shot.png"),
+            ClipboardEntry(kind: .image, imageFileName: "diagram.png"),
+        ]
+        let results = store.search(query: "image", imagesOnly: true)
+        XCTAssertEqual(results.count, 2)
+        XCTAssertTrue(results.allSatisfy { $0.kind == .image })
+    }
+
+    func testSearchImagesOnlyIgnoresMatchingTextEntries() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "image notes"),
+            ClipboardEntry(kind: .image, imageFileName: "shot.png"),
+        ]
+        let results = store.search(query: "image", imagesOnly: true)
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.kind, .image)
+    }
+
+    func testSearchImagesOnlyReturnsEmptyWhenThereAreNoImages() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "hello"),
+            ClipboardEntry(kind: .text, text: "world"),
+        ]
+        let results = store.search(query: "", imagesOnly: true)
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    func testSearchWithoutImagesOnlyStillReturnsMixedResults() {
+        store.entries = [
+            ClipboardEntry(kind: .text, text: "image notes"),
+            ClipboardEntry(kind: .image, imageFileName: "shot.png"),
+        ]
+        let results = store.search(query: "image", imagesOnly: false)
+        XCTAssertEqual(results.count, 2)
+        XCTAssertTrue(results.contains(where: { $0.kind == .text }))
+        XCTAssertTrue(results.contains(where: { $0.kind == .image }))
+    }
+
+    func testSearchImagesOnlyPreservesEntryOrder() {
+        let newestImage = ClipboardEntry(kind: .image, imageFileName: "newest.png")
+        let middleText = ClipboardEntry(kind: .text, text: "middle")
+        let oldestImage = ClipboardEntry(kind: .image, imageFileName: "oldest.png")
+        store.entries = [newestImage, middleText, oldestImage]
+        let results = store.search(query: "", imagesOnly: true)
+        XCTAssertEqual(results, [newestImage, oldestImage])
+    }
+
+    func testSearchImagesOnlyNonImageQueryReturnsNoMatches() {
+        store.entries = [
+            ClipboardEntry(kind: .image, imageFileName: "shot.png"),
+            ClipboardEntry(kind: .image, imageFileName: "diagram.png"),
+        ]
+        let results = store.search(query: "diagram", imagesOnly: true)
+        XCTAssertTrue(results.isEmpty)
+    }
+
     // MARK: - deleteEntry
 
     func testDeleteEntry() {

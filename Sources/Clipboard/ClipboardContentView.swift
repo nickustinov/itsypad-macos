@@ -10,6 +10,7 @@ private let sectionInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 1
 class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout,
     NSSearchFieldDelegate, ClipboardCollectionViewKeyDelegate {
     private let searchField = NSSearchField()
+    private let imagesFilterButton = NSButton()
     private let clearAllButton = NSButton()
     private let scrollView = NSScrollView()
     private let collectionView = ClipboardCollectionView()
@@ -24,6 +25,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     private var selectedIndex: Int?
     private var shortcutMonitor: Any?
     private var windowKeyObserver: Any?
+    private var isImagesFilterEnabled = false
 
     var themeBackground: NSColor = .windowBackgroundColor {
         didSet { applyTheme() }
@@ -62,6 +64,17 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         clearAllButton.target = self
         clearAllButton.action = #selector(clearAllClicked)
 
+        // Images-only toggle
+        imagesFilterButton.translatesAutoresizingMaskIntoConstraints = false
+        imagesFilterButton.title = String(localized: "clipboard.filter_images", defaultValue: "Images")
+        imagesFilterButton.image = NSImage(systemSymbolName: "photo", accessibilityDescription: nil)
+        imagesFilterButton.imagePosition = .imageLeading
+        imagesFilterButton.setButtonType(.toggle)
+        imagesFilterButton.bezelStyle = .accessoryBarAction
+        imagesFilterButton.font = NSFont.systemFont(ofSize: 11)
+        imagesFilterButton.target = self
+        imagesFilterButton.action = #selector(imagesFilterChanged)
+
         // Flow layout
         let layout = NSCollectionViewFlowLayout()
         layout.minimumInteritemSpacing = tileSpacing
@@ -91,6 +104,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         emptyLabel.isHidden = true
 
         addSubview(searchField)
+        addSubview(imagesFilterButton)
         addSubview(clearAllButton)
         addSubview(scrollView)
         addSubview(emptyLabel)
@@ -98,8 +112,11 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         NSLayoutConstraint.activate([
             searchField.topAnchor.constraint(equalTo: topAnchor, constant: 8),
             searchField.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
-            searchField.trailingAnchor.constraint(equalTo: clearAllButton.leadingAnchor, constant: -8),
+            searchField.trailingAnchor.constraint(equalTo: imagesFilterButton.leadingAnchor, constant: -8),
             searchField.heightAnchor.constraint(equalToConstant: 32),
+
+            imagesFilterButton.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
+            imagesFilterButton.trailingAnchor.constraint(equalTo: clearAllButton.leadingAnchor, constant: -8),
 
             clearAllButton.centerYAnchor.constraint(equalTo: searchField.centerYAnchor),
             clearAllButton.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -12),
@@ -204,6 +221,11 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
         reloadEntries()
     }
 
+    @objc private func imagesFilterChanged() {
+        isImagesFilterEnabled = imagesFilterButton.state == .on
+        reloadEntries()
+    }
+
     @objc private func clearAllClicked() {
         guard !ClipboardStore.shared.entries.isEmpty else { return }
         let alert = NSAlert()
@@ -219,12 +241,18 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     func reloadEntries() {
         let query = searchField.stringValue
         currentSearchQuery = query
-        filteredEntries = ClipboardStore.shared.search(query: query)
+        filteredEntries = ClipboardStore.shared.search(query: query, imagesOnly: isImagesFilterEnabled)
         selectedIndex = nil
 
         let isEmpty = filteredEntries.isEmpty
         emptyLabel.isHidden = !isEmpty
-        emptyLabel.stringValue = query.isEmpty ? String(localized: "clipboard.empty", defaultValue: "Clipboard history is empty") : String(localized: "clipboard.no_matches", defaultValue: "No matches")
+        if query.isEmpty {
+            emptyLabel.stringValue = isImagesFilterEnabled
+                ? String(localized: "clipboard.empty_images", defaultValue: "No images")
+                : String(localized: "clipboard.empty", defaultValue: "Clipboard history is empty")
+        } else {
+            emptyLabel.stringValue = String(localized: "clipboard.no_matches", defaultValue: "No matches")
+        }
 
         collectionView.reloadData()
     }
@@ -533,6 +561,7 @@ class ClipboardContentView: NSView, NSCollectionViewDataSource, NSCollectionView
     private func applyTheme() {
         layer?.backgroundColor = themeBackground.cgColor
         searchField.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
+        imagesFilterButton.appearance = NSAppearance(named: isDark ? .darkAqua : .aqua)
         reloadEntries()
     }
 }
