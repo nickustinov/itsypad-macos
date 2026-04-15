@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.15.0
+
+Features:
+- Filter clipboard history to images only (#89)
+- Switch tabs with Cmd+Shift+] and Cmd+Shift+[ (Ctrl+Tab / Ctrl+Shift+Tab still work) (#97)
+
+Fixes:
+- Markdown tables now trigger markdown auto-detect, enabling the preview button (#96)
+
 ## 1.14.0
 
 Fixes:

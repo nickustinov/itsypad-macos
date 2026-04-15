@@ -102,6 +102,22 @@ final class LanguageDetectorTests: XCTestCase {
         XCTAssertEqual(result.lang, "markdown")
     }
 
+    func testTableDetectedAsMarkdown() {
+        let table = """
+        | Ingredient | 4:1 | 3:1 | 2:1 |
+        | :--- | :--- | :--- | :--- |
+        | A | 25.6 | 24.0 | 21.3 |
+        | B | 6.4 | 8.0 | 10.7 |
+        """
+        let result = detector.detect(text: table, name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "markdown")
+    }
+
+    func testPipedPlainTextNotDetectedAsMarkdownTable() {
+        let result = detector.detect(text: "a | b | c\nd | e | f", name: nil, fileURL: nil)
+        XCTAssertEqual(result.lang, "plain")
+    }
+
     func testPlainTextNotDetectedAsMarkdown() {
         let result = detector.detect(text: "just some normal text", name: nil, fileURL: nil)
         XCTAssertEqual(result.lang, "plain")

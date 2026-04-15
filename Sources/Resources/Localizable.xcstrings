@@ -1701,6 +1701,28 @@
         }
       }
     },
+    "clipboard.empty_images" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "No images"
+          }
+        }
+      }
+    },
+    "clipboard.filter_images" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Images"
+          }
+        }
+      }
+    },
     "clipboard.no_matches" : {
       "extractionState" : "extracted_with_value",
       "localizations" : {

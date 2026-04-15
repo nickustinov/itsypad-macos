@@ -251,15 +251,15 @@ class MenuBuilder {
 
         menu.addItem(.separator())
 
-        let nextTabItem = NSMenuItem(title: String(localized: "menu.view.next_tab", defaultValue: "Next tab"), action: #selector(AppDelegate.nextTabAction), keyEquivalent: "\t")
+        let nextTabItem = NSMenuItem(title: String(localized: "menu.view.next_tab", defaultValue: "Next tab"), action: #selector(AppDelegate.nextTabAction), keyEquivalent: "]")
         nextTabItem.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
-        nextTabItem.keyEquivalentModifierMask = [.control]
+        nextTabItem.keyEquivalentModifierMask = [.command, .shift]
         nextTabItem.target = target
         menu.addItem(nextTabItem)
 
-        let prevTabItem = NSMenuItem(title: String(localized: "menu.view.previous_tab", defaultValue: "Previous tab"), action: #selector(AppDelegate.previousTabAction), keyEquivalent: "\t")
+        let prevTabItem = NSMenuItem(title: String(localized: "menu.view.previous_tab", defaultValue: "Previous tab"), action: #selector(AppDelegate.previousTabAction), keyEquivalent: "[")
         prevTabItem.image = NSImage(systemSymbolName: "chevron.left", accessibilityDescription: nil)
-        prevTabItem.keyEquivalentModifierMask = [.control, .shift]
+        prevTabItem.keyEquivalentModifierMask = [.command, .shift]
         prevTabItem.target = target
         menu.addItem(prevTabItem)
 

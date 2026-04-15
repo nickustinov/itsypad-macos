@@ -73,6 +73,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var markdownObserver: Any?
     private var showMarkdownPreview = false
     private var pendingFileURLs: [URL] = []
+    private var tabSwitchMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -82,6 +83,8 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
         // Register hotkey
         HotkeyManager.shared.register()
+
+        installTabSwitchMonitor()
 
         // Start clipboard monitoring if enabled
         if SettingsStore.shared.clipboardEnabled {
@@ -613,6 +616,22 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc func previousTabAction() {
         editorCoordinator?.selectPreviousTab()
+    }
+
+    private func installTabSwitchMonitor() {
+        tabSwitchMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self,
+                  event.keyCode == 48, // Tab
+                  event.modifierFlags.contains(.control),
+                  let window = event.window,
+                  window === self.editorWindow else { return event }
+            if event.modifierFlags.contains(.shift) {
+                self.editorCoordinator?.selectPreviousTab()
+            } else {
+                self.editorCoordinator?.selectNextTab()
+            }
+            return nil
+        }
     }
 
     @objc func selectTabByNumber(_ sender: NSMenuItem) {

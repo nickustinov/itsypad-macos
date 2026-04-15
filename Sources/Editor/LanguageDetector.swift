@@ -141,6 +141,7 @@ struct LanguageDetector {
             "\\[[^\\]]+\\]\\([^)]+\\)",     // [link](url)
             "==[^=]+==" ,                   // ==highlight==
             "(?:^|\\n)> ",                  // > blockquote
+            "(?:^|\\n)[ \\t]*\\|?[ \\t]*:?-{3,}:?[ \\t]*(?:\\|[ \\t]*:?-{3,}:?[ \\t]*)+\\|?", // | --- | --- | table separator
         ]
         return patterns.compactMap { try? NSRegularExpression(pattern: $0) }
     }()
