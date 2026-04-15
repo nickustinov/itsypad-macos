@@ -8,6 +8,7 @@ Features:
 
 Fixes:
 - Markdown tables now trigger markdown auto-detect, enabling the preview button (#96)
+- Don't prompt to save an empty unsaved scratch tab on close (#94)
 
 ## 1.14.0
 

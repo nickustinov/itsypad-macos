@@ -175,7 +175,8 @@ class TabStore: ObservableObject {
         // Batch mutations into a single array setter to fire @Published once
         var tab = tabs[index]
         tab.content = content
-        tab.isDirty = true
+        // Scratch tab emptied back to its initial state has no real changes to preserve.
+        tab.isDirty = !(tab.fileURL == nil && content.isEmpty)
         tab.lastModified = Date()
 
         // Auto-name from first line when no file

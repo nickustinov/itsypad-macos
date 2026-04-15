@@ -112,6 +112,15 @@ final class TabStoreTests: XCTestCase {
         XCTAssertTrue(store.tabs.first!.isDirty)
     }
 
+    func testEmptyingScratchTabClearsDirty() {
+        let tabID = store.tabs.first!.id
+        XCTAssertNil(store.tabs.first?.fileURL)
+        store.updateContent(id: tabID, content: "typed")
+        XCTAssertTrue(store.tabs.first!.isDirty)
+        store.updateContent(id: tabID, content: "")
+        XCTAssertFalse(store.tabs.first!.isDirty)
+    }
+
     func testUpdateContentEmptyLineUsesUntitled() {
         let tabID = store.tabs.first!.id
         store.updateContent(id: tabID, content: "   \nsomething")

@@ -690,6 +690,8 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
 
     func confirmCloseTab(_ tab: TabData) -> Bool {
         guard tab.isDirty else { return true }
+        // Unsaved scratch tab whose content is empty — no real changes to preserve.
+        if tab.fileURL == nil && tab.content.isEmpty { return true }
 
         let alert = NSAlert()
         alert.messageText = String(localized: "alert.save_changes.title", defaultValue: "Do you want to save changes to \"\(tab.name)\"?")
