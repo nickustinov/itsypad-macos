@@ -9,6 +9,8 @@ Features:
 Fixes:
 - Markdown tables now trigger markdown auto-detect, enabling the preview button (#96)
 - Don't prompt to save an empty unsaved scratch tab on close (#94)
+- Auto-close brackets no longer inserts a closing bracket when typing before existing text (#90)
+- Respect user-defined macOS Text Replacements in the editor (#90, #98)
 
 ## 1.14.0
 

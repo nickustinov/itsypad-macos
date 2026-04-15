@@ -72,6 +72,9 @@ enum EditorStateFactory {
         textView.isAutomaticTextCompletionEnabled = false
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
+        // Honour user-defined Text Replacements (System Settings ▸ Keyboard)
+        // without enabling the dash/quote substitutions that mangle code.
+        textView.isAutomaticTextReplacementEnabled = true
         textView.isAutomaticDataDetectionEnabled = false
         textView.isAutomaticLinkDetectionEnabled = false
         textView.isGrammarCheckingEnabled = false

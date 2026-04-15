@@ -297,9 +297,11 @@ final class EditorTextView: NSTextView {
             return
         }
 
-        // Auto-close bracket pairs
+        // Auto-close bracket pairs — only when inserting at end of line or before
+        // whitespace/punctuation, so typing "(" in front of existing text doesn't
+        // inject an unwanted ")".
         let pairs: [String: String] = ["(": ")", "[": "]", "{": "}"]
-        if let closing = pairs[s] {
+        if let closing = pairs[s], shouldAutoClosePair(at: selectedRange()) {
             let sel = selectedRange()
             super.insertText(s + closing, replacementRange: replacementRange)
             setSelectedRange(NSRange(location: sel.location + 1, length: 0))
@@ -307,6 +309,15 @@ final class EditorTextView: NSTextView {
         }
 
         super.insertText(insertString, replacementRange: replacementRange)
+    }
+
+    private func shouldAutoClosePair(at sel: NSRange) -> Bool {
+        if sel.length > 0 { return false }
+        let ns = string as NSString
+        if sel.location >= ns.length { return true }
+        let next = ns.character(at: sel.location)
+        guard let scalar = Unicode.Scalar(next) else { return true }
+        return !CharacterSet.alphanumerics.contains(scalar) && scalar != "_"
     }
 
     override func deleteBackward(_ sender: Any?) {
