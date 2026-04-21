@@ -251,6 +251,17 @@ class MenuBuilder {
 
         menu.addItem(.separator())
 
+        let searchOpenNotesItem = NSMenuItem(
+            title: String(localized: "menu.view.search_notes", defaultValue: "Search open notes..."),
+            action: #selector(AppDelegate.showOpenNotesSearchAction),
+            keyEquivalent: ""
+        )
+        searchOpenNotesItem.image = NSImage(systemSymbolName: "doc.text.magnifyingglass", accessibilityDescription: nil)
+        searchOpenNotesItem.target = target
+        menu.addItem(searchOpenNotesItem)
+
+        menu.addItem(.separator())
+
         let nextTabItem = NSMenuItem(title: String(localized: "menu.view.next_tab", defaultValue: "Next tab"), action: #selector(AppDelegate.nextTabAction), keyEquivalent: "]")
         nextTabItem.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
         nextTabItem.keyEquivalentModifierMask = [.command, .shift]

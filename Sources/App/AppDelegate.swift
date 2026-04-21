@@ -74,6 +74,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var showMarkdownPreview = false
     private var pendingFileURLs: [URL] = []
     private var tabSwitchMonitor: Any?
+    private var openNotesSearchWindow: OpenNotesSearchWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupStatusItem()
@@ -588,6 +589,36 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
 
     @objc func saveFileAsAction() {
         editorCoordinator?.saveFileAs()
+    }
+
+    @objc func showOpenNotesSearchAction() {
+        guard let window = editorWindow,
+              let coordinator = editorCoordinator else { return }
+
+        if let existing = openNotesSearchWindow {
+            existing.window?.makeKeyAndOrderFront(nil)
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        openNotesSearchWindow = OpenNotesSearchWindowController(
+            tabs: coordinator.openTabsForSearch(),
+            onSelect: { [weak self] tabID in
+                self?.editorCoordinator?.selectTab(for: tabID)
+                self?.openNotesSearchWindow?.close()
+            },
+            onClose: { [weak self] in
+                self?.openNotesSearchWindow = nil
+            }
+        )
+        openNotesSearchWindow?.showWindow(nil)
+        if let searchWindow = openNotesSearchWindow?.window {
+            searchWindow.makeKeyAndOrderFront(nil)
+            searchWindow.center()
+            searchWindow.level = .floating
+            window.addChildWindow(searchWindow, ordered: .above)
+            searchWindow.makeFirstResponder(searchWindow.contentView)
+        }
     }
 
     @objc func findAction(_ sender: NSMenuItem) {

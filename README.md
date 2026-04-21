@@ -109,6 +109,7 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⌘G | Find next |
 | ⇧⌘G | Find previous |
 | ⌘E | Use selection for find |
+| — | Open search of all open notes |
 | ⌘D | Duplicate line |
 | ⌘Return | Toggle checkbox |
 | ⇧⌘L | Toggle checklist |
