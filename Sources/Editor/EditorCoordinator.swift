@@ -231,6 +231,17 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         return state.textView
     }
 
+    @MainActor
+    func selectTab(for tabID: UUID) {
+        guard let bonsplitID = tabIDMap[tabID], bonsplitID != clipboardTabID else { return }
+        controller.selectTab(bonsplitID)
+    }
+
+    @MainActor
+    func openTabsForSearch() -> [TabData] {
+        tabStore.tabs
+    }
+
     // MARK: - Markdown preview
 
     static let markdownStateChanged = Notification.Name("EditorCoordinatorMarkdownStateChanged")
