@@ -58,7 +58,7 @@ Itsypad supports markdown-compatible lists and checklists directly in the editor
 
 Type a list prefix and start writing. Press **Enter** to auto-continue with the next item. Press **Enter** on an empty item to exit list mode. Use **Tab** / **Shift+Tab** to indent and outdent list items.
 
-For checklists, press **⇧⌘L** to convert any line(s) to a checklist, or type `- [ ] ` manually. Toggle checkboxes with **⌘Return** or by clicking directly on the `[ ]` / `[x]` brackets. Checked items appear with ~~strikethrough~~ and dimmed text.
+For checklists, press **⌥⌘L** to convert any line(s) to a checklist, or type `- [ ] ` manually. Toggle checkboxes with **⌘Return** or by clicking directly on the `[ ]` / `[x]` brackets. Checked items appear with ~~strikethrough~~ and dimmed text.
 
 Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines align to the content start, not the bullet.
 
@@ -109,9 +109,11 @@ Or download the latest DMG from [GitHub releases](https://github.com/nickustinov
 | ⌘G | Find next |
 | ⇧⌘G | Find previous |
 | ⌘E | Use selection for find |
-| ⌘D | Duplicate line |
+| ⌘D | Multi-cursor select word |
 | ⌘Return | Toggle checkbox |
-| ⇧⌘L | Toggle checklist |
+| ⇧⌘D | Duplicate line |
+| ⇧⌘L | Split selection into line cursors |
+| ⌥⌘L | Toggle checklist |
 | ⌥⌘↑ | Move line up |
 | ⌥⌘↓ | Move line down |
 | ⌘1–9 | Switch to tab by position |

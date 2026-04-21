@@ -13,7 +13,9 @@ struct EditorTheme {
         switch appearance {
         case "light": return light
         case "dark": return dark
-        default: return NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        default:
+            guard let app = NSApp else { return light }
+            return app.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
         }
     }
 

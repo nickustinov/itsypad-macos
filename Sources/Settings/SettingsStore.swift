@@ -195,6 +195,10 @@ class SettingsStore: ObservableObject {
     @Published var icloudSync: Bool = false
     @Published var g2SyncEnabled: Bool = false
 
+    private var isRunningTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
     func setG2Sync(_ enabled: Bool) {
         g2SyncEnabled = enabled
         defaults.set(enabled, forKey: "g2SyncEnabled")
@@ -208,9 +212,15 @@ class SettingsStore: ObservableObject {
     }
 
     func setICloudSync(_ enabled: Bool) {
+        let previousValue = icloudSync
         icloudSync = enabled
         defaults.set(enabled, forKey: "icloudSync")
         defaults.synchronize()
+        guard !isRunningTests, previousValue != enabled else {
+            NotificationCenter.default.post(name: .settingsChanged, object: nil)
+            return
+        }
+
         if enabled {
             CloudSyncEngine.shared.start()
         } else {

@@ -63,6 +63,12 @@ final class EditorTextView: NSTextView {
     var onTextChange: ((String) -> Void)?
     var isActiveTab: Bool = true
 
+    private var activeSelectionRanges: [NSRange] {
+        let nsLength = (string as NSString).length
+        let ranges = selectedRanges.compactMap { $0.rangeValue }
+        return normalizeRanges(ranges, textLength: nsLength)
+    }
+
     private var listsAllowed: Bool {
         guard let coordinator = delegate as? SyntaxHighlightCoordinator else { return true }
         let lang = coordinator.language
@@ -77,6 +83,17 @@ final class EditorTextView: NSTextView {
 
         // Check if click lands on a checkbox region
         if listsAllowed, SettingsStore.shared.checklistsEnabled, handleCheckboxClick(event: event) { return }
+
+        // Cmd + click adds additional cursor positions
+        if event.modifierFlags.contains(.command) {
+            let point = convert(event.locationInWindow, from: nil)
+            let charIndex = characterIndexForInsertion(at: point)
+            let safeIndex = min(max(0, charIndex), (string as NSString).length)
+            let addition = NSRange(location: safeIndex, length: 0)
+            let combined = activeSelectionRanges + [addition]
+            setSelectionRanges(combined)
+            return
+        }
 
         super.mouseDown(with: event)
     }
@@ -220,6 +237,12 @@ final class EditorTextView: NSTextView {
             return
         }
 
+        let activeRanges = activeSelectionRanges
+        if activeRanges.count > 1 {
+            applyEdit(to: activeRanges, replacement: s)
+            return
+        }
+
         // Auto-indent on newline (list-aware)
         if s == "\n" {
             let ns = (string as NSString)
@@ -321,7 +344,13 @@ final class EditorTextView: NSTextView {
     }
 
     override func deleteBackward(_ sender: Any?) {
-        let sel = selectedRange()
+        let activeRanges = activeSelectionRanges
+        guard activeRanges.count == 1 else {
+            applyMultiCursorDelete(activeRanges)
+            return
+        }
+
+        let sel = activeRanges[0]
         guard sel.length == 0, sel.location > 0 else {
             super.deleteBackward(sender)
             return
@@ -488,8 +517,16 @@ final class EditorTextView: NSTextView {
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let key = event.charactersIgnoringModifiers ?? ""
 
-        // Cmd+D — duplicate line
+        // Cmd+D — select/add next word match
         if mods == .command, key == "d" {
+            guard handleWordSelectOrAddNext() else {
+                return
+            }
+            return
+        }
+
+        // Cmd+Shift+D — duplicate line
+        if mods == [.command, .shift], key.lowercased() == "d" {
             duplicateLine()
             return
         }
@@ -500,8 +537,14 @@ final class EditorTextView: NSTextView {
             return
         }
 
-        // Cmd+Shift+L — toggle checklist
-        if mods == [.command, .shift], key.lowercased() == "l", listsAllowed, SettingsStore.shared.checklistsEnabled {
+        // Cmd+Shift+L — split selection into line cursors
+        if mods == [.command, .shift], key.lowercased() == "l" {
+            splitSelectionIntoLineCursors()
+            return
+        }
+
+        // Cmd+Option+L — toggle checklist
+        if mods == [.command, .option], key.lowercased() == "l", listsAllowed, SettingsStore.shared.checklistsEnabled {
             toggleChecklist()
             return
         }
@@ -518,7 +561,208 @@ final class EditorTextView: NSTextView {
             return
         }
 
+        // Option+Shift+Up — add cursor above
+        if mods == [.option, .shift], event.keyCode == 126 {
+            addCursorToAdjacentLine(.up)
+            return
+        }
+
+        // Option+Shift+Down — add cursor below
+        if mods == [.option, .shift], event.keyCode == 125 {
+            addCursorToAdjacentLine(.down)
+            return
+        }
+
         super.keyDown(with: event)
+    }
+
+    private func handleWordSelectOrAddNext() -> Bool {
+        let ns = string as NSString
+        let text = ns as String
+        let ranges = activeSelectionRanges
+        guard let last = ranges.last else { return false }
+
+        if last.length == 0 {
+            guard let wordRange = MultiCursorHelpers.wordRange(at: last.location, in: text) else {
+                return false
+            }
+            setSelectionRanges([wordRange])
+            return true
+        }
+
+        guard let wordAtCursor = MultiCursorHelpers.wordRange(at: last.location, in: text),
+              NSEqualRanges(last, wordAtCursor) else {
+            return false
+        }
+
+        let searchFrom = last.location + last.length
+        let word = ns.substring(with: last)
+        guard let nextMatch = MultiCursorHelpers.nextWholeWordMatch(of: word, after: searchFrom, in: text) else {
+            return false
+        }
+
+        if activeSelectionRanges.contains(where: { NSEqualRanges($0, nextMatch) }) {
+            return false
+        }
+
+        setSelectionRanges(activeSelectionRanges + [nextMatch])
+        return true
+    }
+
+    private func splitSelectionIntoLineCursors() {
+        let ns = string as NSString
+        let cursors = MultiCursorHelpers.splitSelectionIntoLineCursors(
+            selectedRanges: activeSelectionRanges,
+            in: ns as String
+        )
+        guard !cursors.isEmpty else { return }
+        setSelectionRanges(cursors)
+    }
+
+    private func addCursorToAdjacentLine(_ direction: MoveDirection) {
+        let ns = string as NSString
+        let added = MultiCursorHelpers.addCursorToAdjacentLine(
+            from: activeSelectionRanges,
+            direction: direction,
+            in: ns as String
+        )
+        guard !added.isEmpty else { return }
+        setSelectionRanges(activeSelectionRanges + added)
+    }
+
+    private func applyMultiCursorDelete(_ ranges: [NSRange]) {
+        guard ranges.count > 1 else {
+            return
+        }
+
+        let ns = string as NSString
+        let deletionRanges = ranges.compactMap { deletionRangeForBackwardDelete($0, in: ns) }
+        guard !deletionRanges.isEmpty else {
+            super.deleteBackward(nil)
+            return
+        }
+
+        applyEdit(to: deletionRanges, replacement: "")
+    }
+
+    private func deletionRangeForBackwardDelete(_ range: NSRange, in ns: NSString) -> NSRange? {
+        if range.length > 0 {
+            return range
+        }
+
+        guard range.location > 0 else { return nil }
+
+        let lineRange = ns.lineRange(for: NSRange(location: range.location, length: 0))
+        let columnOffset = range.location - lineRange.location
+        let lineText = ns.substring(with: lineRange)
+        let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
+
+        if listsAllowed, let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind), columnOffset == match.contentStart {
+            return NSRange(location: lineRange.location, length: match.contentStart)
+        }
+
+        let store = SettingsStore.shared
+        let textBeforeCursor = ns.substring(with: NSRange(location: lineRange.location, length: columnOffset))
+        if !store.indentUsingSpaces {
+            return NSRange(location: range.location - 1, length: 1)
+        }
+
+        guard !textBeforeCursor.isEmpty, textBeforeCursor.allSatisfy({ $0 == " " }) else {
+            return NSRange(location: range.location - 1, length: 1)
+        }
+
+        let width = store.tabWidth
+        let toDelete = ((columnOffset - 1) % width) + 1
+        return NSRange(location: range.location - toDelete, length: toDelete)
+    }
+
+    private func normalizeRanges(_ ranges: [NSRange], textLength: Int) -> [NSRange] {
+        guard textLength > 0 else { return [] }
+
+        let normalized = ranges.compactMap { range -> NSRange? in
+            let clampedLocation = min(max(range.location, 0), textLength)
+            let clampedLength = max(0, min(range.length, textLength - clampedLocation))
+            return NSRange(location: clampedLocation, length: clampedLength)
+        }.sorted { a, b in
+            if a.location != b.location { return a.location < b.location }
+            return a.length > b.length
+        }
+
+        var merged: [NSRange] = []
+        for range in normalized {
+            if merged.isEmpty {
+                merged.append(range)
+                continue
+            }
+
+            let last = merged[merged.count - 1]
+            if range.location <= last.location + last.length {
+                let mergedEnd = max(last.location + last.length, range.location + range.length)
+                merged[merged.count - 1] = NSRange(location: last.location, length: mergedEnd - last.location)
+            } else {
+                merged.append(range)
+            }
+        }
+        return merged
+    }
+
+    private func applyEdit(to ranges: [NSRange], replacement: String) {
+        let textLength = (string as NSString).length
+        let normalizedRanges = normalizeRanges(ranges, textLength: textLength)
+        guard !normalizedRanges.isEmpty else {
+            return
+        }
+
+        for range in normalizedRanges where !shouldChangeText(in: range, replacementString: replacement) {
+            return
+        }
+
+        guard let storage = textStorage else { return }
+        let insertionLength = (replacement as NSString).length
+
+        for range in normalizedRanges.reversed() {
+            storage.replaceCharacters(in: range, with: replacement)
+        }
+        didChangeText()
+        setSelectionRanges(normalizedRanges.map { range in
+            NSRange(location: range.location + insertionLength, length: 0)
+        })
+    }
+
+    private func applyEdit(to ranges: [NSRange], using block: (NSRange) -> String) {
+        let textLength = (string as NSString).length
+        let normalizedRanges = normalizeRanges(ranges, textLength: textLength)
+        guard !normalizedRanges.isEmpty else {
+            return
+        }
+
+        let replacements = normalizedRanges.map { range in
+            (range: range, replacement: block(range))
+        }
+
+        for pair in replacements where !shouldChangeText(in: pair.range, replacementString: pair.replacement) {
+            return
+        }
+
+        guard let storage = textStorage else { return }
+
+        for pair in replacements.sorted(by: { $0.range.location > $1.range.location }) {
+            storage.replaceCharacters(in: pair.range, with: pair.replacement)
+        }
+        didChangeText()
+
+        setSelectionRanges(replacements.map { pair in
+            NSRange(location: pair.range.location + (pair.replacement as NSString).length, length: 0)
+        })
+    }
+
+    private func setSelectionRanges(_ ranges: [NSRange]) {
+        let normalized = normalizeRanges(ranges, textLength: (string as NSString).length)
+        setSelectedRanges(
+            normalized.map { NSValue(range: $0) },
+            affinity: .downstream,
+            stillSelecting: false
+        )
     }
 
     // MARK: - List helpers
@@ -619,7 +863,7 @@ final class EditorTextView: NSTextView {
         }
     }
 
-    // MARK: - Duplicate line (Cmd+D)
+    // MARK: - Duplicate line (Cmd+Shift+D)
 
     private func duplicateLine() {
         let ns = string as NSString
