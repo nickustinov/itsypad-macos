@@ -171,7 +171,7 @@ class MenuBuilder {
 
         let toggleChecklistItem = NSMenuItem(title: String(localized: "menu.edit.toggle_checklist", defaultValue: "Toggle checklist"), action: #selector(AppDelegate.toggleChecklistAction), keyEquivalent: "l")
         toggleChecklistItem.image = NSImage(systemSymbolName: "checklist", accessibilityDescription: nil)
-        toggleChecklistItem.keyEquivalentModifierMask = [.command, .shift]
+        toggleChecklistItem.keyEquivalentModifierMask = [.command, .option]
         toggleChecklistItem.target = target
         menu.addItem(toggleChecklistItem)
 
