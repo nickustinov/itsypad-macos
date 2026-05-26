@@ -620,7 +620,7 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         })
 
         let isPlainText = tabData.language == "plain" && tabData.languageLocked
-        items.append(TabContextMenuItem(title: String(localized: "context_menu.plain_text", defaultValue: "Plain text"), isChecked: isPlainText) { [weak self] in
+        items.append(TabContextMenuItem(title: String(localized: "context_menu.plain_text", defaultValue: "Force plain text"), isChecked: isPlainText) { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else { return }
                 if isPlainText {
@@ -659,43 +659,55 @@ final class EditorCoordinator: BonsplitDelegate, @unchecked Sendable {
         return items
     }
 
-    /// Appends a non-interactive statistics section (format, counts, reading time, size).
+    /// Appends a non-interactive statistics section. Prose tabs (plain text, markdown) show
+    /// word/sentence/paragraph counts and reading time; code tabs show only line and character
+    /// counts, since prose metrics are meaningless for source.
     private func appendStats(for tab: TabData, to items: inout [TabContextMenuItem]) {
         let stats = TabStats.compute(content: tab.content)
+        let isProse = tab.language == "plain" || tab.language == "markdown"
 
         items.append(.separator)
         items.append(.info(
             String(localized: "tab.stats.format", defaultValue: "Format: \(TabStats.displayName(forLanguage: tab.language))"),
             icon: "doc.text"
         ))
-        items.append(.info(
-            String(localized: "tab.stats.words", defaultValue: "Words: \(stats.words.formatted())"),
-            icon: "textformat"
-        ))
-        items.append(.info(
-            String(localized: "tab.stats.characters_with_spaces", defaultValue: "Characters with spaces: \(stats.charactersWithSpaces.formatted())"),
-            icon: "character"
-        ))
-        items.append(.info(
-            String(localized: "tab.stats.characters_without_spaces", defaultValue: "Characters without spaces: \(stats.charactersWithoutSpaces.formatted())"),
-            icon: "character.textbox"
-        ))
-        items.append(.info(
-            String(localized: "tab.stats.sentences", defaultValue: "Sentences: \(stats.sentences.formatted())"),
-            icon: "text.quote"
-        ))
-        items.append(.info(
-            String(localized: "tab.stats.paragraphs", defaultValue: "Paragraphs: \(stats.paragraphs.formatted())"),
-            icon: "paragraphsign"
-        ))
-        items.append(.info(
-            String(localized: "tab.stats.lines", defaultValue: "Lines: \(stats.lines.formatted())"),
-            icon: "line.3.horizontal"
-        ))
-        items.append(.info(
-            String(localized: "tab.stats.reading_time", defaultValue: "Reading time: \(stats.readingTimeText)"),
-            icon: "clock"
-        ))
+
+        if isProse {
+            items.append(.info(
+                String(localized: "tab.stats.words", defaultValue: "Words: \(stats.words.formatted())"),
+                icon: "textformat"
+            ))
+            items.append(.info(
+                String(localized: "tab.stats.characters_with_spaces", defaultValue: "Characters with spaces: \(stats.charactersWithSpaces.formatted())"),
+                icon: "character"
+            ))
+            items.append(.info(
+                String(localized: "tab.stats.characters_without_spaces", defaultValue: "Characters without spaces: \(stats.charactersWithoutSpaces.formatted())"),
+                icon: "character.textbox"
+            ))
+            items.append(.info(
+                String(localized: "tab.stats.sentences", defaultValue: "Sentences: \(stats.sentences.formatted())"),
+                icon: "text.quote"
+            ))
+            items.append(.info(
+                String(localized: "tab.stats.paragraphs", defaultValue: "Paragraphs: \(stats.paragraphs.formatted())"),
+                icon: "paragraphsign"
+            ))
+            items.append(.info(
+                String(localized: "tab.stats.reading_time", defaultValue: "Reading time: \(stats.readingTimeText)"),
+                icon: "clock"
+            ))
+        } else {
+            items.append(.info(
+                String(localized: "tab.stats.lines", defaultValue: "Lines: \(stats.lines.formatted())"),
+                icon: "line.3.horizontal"
+            ))
+            items.append(.info(
+                String(localized: "tab.stats.characters", defaultValue: "Characters: \(stats.charactersWithSpaces.formatted())"),
+                icon: "character"
+            ))
+        }
+
         if let fileURL = tab.fileURL,
            let size = try? fileURL.resourceValues(forKeys: [.fileSizeKey]).fileSize {
             let formattedSize = ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
