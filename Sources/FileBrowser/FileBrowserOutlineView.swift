@@ -192,6 +192,13 @@ final class FileBrowserOutlineView: NSViewController, NSOutlineViewDataSource, N
     }
 
     private static func isTextFile(_ url: URL) -> Bool {
+        // Files whose extension is one we support are always opened in Itsypad, regardless of
+        // which app the system has registered for that extension (e.g. a third-party markdown
+        // app claiming .md with a non-text UTI).
+        if LanguageDetector.shared.detectFromExtension(name: url.lastPathComponent) != nil {
+            return true
+        }
+        // Otherwise fall back to the system's content type — covers .txt, extensionless text, etc.
         guard let uti = try? url.resourceValues(forKeys: [.contentTypeKey]).contentType else {
             return false
         }
