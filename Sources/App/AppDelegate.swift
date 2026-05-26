@@ -69,7 +69,9 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
     private var settingsObserver: Any?
     private var appearanceObservation: NSKeyValueObservation?
     private var recentFilesMenu: NSMenu?
-    private var isPinned = false
+    private var isPinned = UserDefaults.standard.bool(forKey: "alwaysOnTop") {
+        didSet { UserDefaults.standard.set(isPinned, forKey: "alwaysOnTop") }
+    }
     private var markdownObserver: Any?
     private var showMarkdownPreview = false
     private var pendingFileURLs: [URL] = []
@@ -358,7 +360,7 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSMenuItemValidation, NSTool
         panel.titleVisibility = .hidden
         panel.tabbingMode = .disallowed
         panel.isFloatingPanel = false
-        panel.level = .normal
+        panel.level = isPinned ? .floating : .normal
         panel.collectionBehavior = [.fullScreenPrimary, .moveToActiveSpace]
         panel.minSize = NSSize(width: 320, height: 400)
         panel.contentView = splitVC.view
