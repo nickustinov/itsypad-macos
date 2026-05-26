@@ -190,6 +190,7 @@ struct TabBarView: View {
                 .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(TabBarColors.inactiveText)
                 .frame(width: TabBarMetrics.tabHeight, height: TabBarMetrics.tabHeight)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
