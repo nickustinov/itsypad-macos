@@ -85,6 +85,18 @@ Move lines up or down with **⌥⌘↑** / **⌥⌘↓**. Wrapped list lines ali
 - **Separate hotkey** — assign a dedicated global hotkey to show/hide
 - **iCloud sync** — text entries sync across devices alongside scratch tabs (up to 200 most recent)
 
+## Also on iPhone & iPad
+
+<img src="itsypad-ios-screenshot.png" alt="Itsypad for iPhone" width="260" align="right" />
+
+Itsypad is also on [iPhone and iPad](https://apps.apple.com/app/itsypad/id6758999332). Scratch tabs and clipboard history (text) sync across all your devices over iCloud.
+
+**Licensing in short:** the Mac app is free and open source (MIT) via Homebrew or GitHub. The App Store version is a single one-time purchase that runs on iPhone, iPad **and** Mac, and supports development – no subscription.
+
+[![Download on the App Store](https://developer.apple.com/app-store/marketing/guidelines/images/badge-download-on-the-app-store.svg)](https://apps.apple.com/app/itsypad/id6758999332)
+
+<br clear="right" />
+
 ## Install
 
 ```bash
