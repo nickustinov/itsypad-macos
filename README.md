@@ -100,7 +100,7 @@ Itsypad is also on [iPhone and iPad](https://apps.apple.com/app/itsypad/id675899
 ## Install
 
 ```bash
-brew install --cask itsypad
+brew install itsypad
 ```
 
 Or download the latest DMG from [GitHub releases](https://github.com/nickustinov/itsypad-macos/releases).
