@@ -489,6 +489,10 @@ extension CloudSyncEngine: CKSyncEngineDelegate {
     }
 
     private static let hasCloudKitEntitlement: Bool = {
-        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+        let environment = ProcessInfo.processInfo.environment
+        let isRunningTests = environment["XCTestConfigurationFilePath"] != nil
+            || environment["XCTestBundlePath"] != nil
+            || NSClassFromString("XCTestCase") != nil
+        return !isRunningTests
     }()
 }

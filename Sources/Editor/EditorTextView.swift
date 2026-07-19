@@ -11,6 +11,13 @@ final class EditorTextView: NSTextView {
     // MARK: - Current line highlight
 
     private var highlightView: NSView?
+    private var multiCursorCaretOverlay: MultiCursorCaretOverlayView?
+    private var multiCursorBlinkTimer: Timer?
+
+    deinit {
+        multiCursorBlinkTimer?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+    }
 
     func updateLineHighlight() {
         guard SettingsStore.shared.highlightCurrentLine else {
@@ -63,6 +70,12 @@ final class EditorTextView: NSTextView {
     var onTextChange: ((String) -> Void)?
     var isActiveTab: Bool = true
 
+    private var activeSelectionRanges: [NSRange] {
+        let nsLength = (string as NSString).length
+        let ranges = selectedRanges.compactMap { $0.rangeValue }
+        return normalizeRanges(ranges, textLength: nsLength)
+    }
+
     private var listsAllowed: Bool {
         guard let coordinator = delegate as? SyntaxHighlightCoordinator else { return true }
         let lang = coordinator.language
@@ -78,6 +91,15 @@ final class EditorTextView: NSTextView {
         // Check if click lands on a checkbox region
         if listsAllowed, SettingsStore.shared.checklistsEnabled, handleCheckboxClick(event: event) { return }
 
+        // Cmd + click adds an additional cursor position.
+        if event.modifierFlags.contains(.command) {
+            let point = convert(event.locationInWindow, from: nil)
+            let charIndex = characterIndexForInsertion(at: point)
+            let safeIndex = min(max(0, charIndex), (string as NSString).length)
+            setSelectionRanges(activeSelectionRanges + [NSRange(location: safeIndex, length: 0)])
+            return
+        }
+
         super.mouseDown(with: event)
     }
 
@@ -85,6 +107,48 @@ final class EditorTextView: NSTextView {
         super.viewDidMoveToWindow()
         registerForDraggedTypes([.fileURL])
         updateLinkTrackingArea()
+        registerMultiCursorObservers()
+        refreshMultiCursorCarets()
+    }
+
+    override func layout() {
+        super.layout()
+        refreshMultiCursorCarets()
+    }
+
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        refreshMultiCursorCarets()
+    }
+
+    private func registerMultiCursorObservers() {
+        NotificationCenter.default.removeObserver(self, name: NSTextView.didChangeSelectionNotification, object: self)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(selectionDidChange),
+            name: NSTextView.didChangeSelectionNotification,
+            object: self
+        )
+
+        if let clipView = enclosingScrollView?.contentView {
+            clipView.postsBoundsChangedNotifications = true
+            NotificationCenter.default.removeObserver(self, name: NSView.boundsDidChangeNotification, object: clipView)
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(clipViewBoundsDidChange),
+                name: NSView.boundsDidChangeNotification,
+                object: clipView
+            )
+        }
+    }
+
+    @objc private func selectionDidChange(_ notification: Notification) {
+        refreshMultiCursorCarets()
+        updateLineHighlight()
+    }
+
+    @objc private func clipViewBoundsDidChange(_ notification: Notification) {
+        refreshMultiCursorCarets()
     }
 
     // MARK: - Link hover cursor
@@ -191,6 +255,7 @@ final class EditorTextView: NSTextView {
 
     override func didChangeText() {
         super.didChangeText()
+        refreshMultiCursorCarets()
         if wrapsLines, let layoutManager, let textContainer {
             let t0 = CFAbsoluteTimeGetCurrent()
             // Only force layout for visible region — full-document ensureLayout is O(n) and blocks the main thread
@@ -217,6 +282,12 @@ final class EditorTextView: NSTextView {
     override func insertText(_ insertString: Any, replacementRange: NSRange) {
         guard let s = insertString as? String else {
             super.insertText(insertString, replacementRange: replacementRange)
+            return
+        }
+
+        let activeRanges = activeSelectionRanges
+        if activeRanges.count > 1 {
+            applyEdit(to: activeRanges, replacement: s)
             return
         }
 
@@ -321,7 +392,13 @@ final class EditorTextView: NSTextView {
     }
 
     override func deleteBackward(_ sender: Any?) {
-        let sel = selectedRange()
+        let activeRanges = activeSelectionRanges
+        guard activeRanges.count == 1 else {
+            applyMultiCursorDelete(activeRanges)
+            return
+        }
+
+        let sel = activeRanges[0]
         guard sel.length == 0, sel.location > 0 else {
             super.deleteBackward(sender)
             return
@@ -488,8 +565,22 @@ final class EditorTextView: NSTextView {
         let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let key = event.charactersIgnoringModifiers ?? ""
 
-        // Cmd+D — duplicate line
+        // Escape — collapse multi-cursor state to the primary cursor.
+        if mods.isEmpty, event.keyCode == 53, activeSelectionRanges.count > 1 {
+            collapseMultiCursorSelection()
+            return
+        }
+
+        // Cmd+D — select/add next word match
         if mods == .command, key == "d" {
+            guard handleWordSelectOrAddNext() else {
+                return
+            }
+            return
+        }
+
+        // Cmd+Option+D — duplicate line
+        if mods == [.command, .option], key.lowercased() == "d" {
             duplicateLine()
             return
         }
@@ -500,8 +591,14 @@ final class EditorTextView: NSTextView {
             return
         }
 
-        // Cmd+Shift+L — toggle checklist
-        if mods == [.command, .shift], key.lowercased() == "l", listsAllowed, SettingsStore.shared.checklistsEnabled {
+        // Cmd+Shift+L — split selection into line cursors
+        if mods == [.command, .shift], key.lowercased() == "l" {
+            splitSelectionIntoLineCursors()
+            return
+        }
+
+        // Cmd+Option+L — toggle checklist
+        if mods == [.command, .option], key.lowercased() == "l", listsAllowed, SettingsStore.shared.checklistsEnabled {
             toggleChecklist()
             return
         }
@@ -518,7 +615,279 @@ final class EditorTextView: NSTextView {
             return
         }
 
+        // Option+Shift+Up — add cursor above
+        if mods == [.option, .shift], event.keyCode == 126 {
+            addCursorToAdjacentLine(.up)
+            return
+        }
+
+        // Option+Shift+Down — add cursor below
+        if mods == [.option, .shift], event.keyCode == 125 {
+            addCursorToAdjacentLine(.down)
+            return
+        }
+
         super.keyDown(with: event)
+    }
+
+    private func handleWordSelectOrAddNext() -> Bool {
+        let ns = string as NSString
+        let text = ns as String
+        let ranges = activeSelectionRanges
+        guard let last = ranges.last else { return false }
+
+        if last.length == 0 {
+            guard let wordRange = MultiCursorHelpers.wordRange(at: last.location, in: text) else {
+                return false
+            }
+            setSelectionRanges([wordRange])
+            return true
+        }
+
+        guard let wordAtCursor = MultiCursorHelpers.wordRange(at: last.location, in: text),
+              NSEqualRanges(last, wordAtCursor) else {
+            return false
+        }
+
+        let searchFrom = last.location + last.length
+        let word = ns.substring(with: last)
+        guard let nextMatch = MultiCursorHelpers.nextWholeWordMatch(of: word, after: searchFrom, in: text) else {
+            return false
+        }
+
+        if activeSelectionRanges.contains(where: { NSEqualRanges($0, nextMatch) }) {
+            return false
+        }
+
+        setSelectionRanges(activeSelectionRanges + [nextMatch])
+        return true
+    }
+
+    private func splitSelectionIntoLineCursors() {
+        let cursors = MultiCursorHelpers.splitSelectionIntoLineCursors(
+            selectedRanges: activeSelectionRanges,
+            in: string
+        )
+        guard !cursors.isEmpty else { return }
+        setSelectionRanges(cursors)
+    }
+
+    private func addCursorToAdjacentLine(_ direction: MoveDirection) {
+        let added = MultiCursorHelpers.addCursorToAdjacentLine(
+            from: activeSelectionRanges,
+            direction: direction,
+            in: string
+        )
+        guard !added.isEmpty else { return }
+        setSelectionRanges(activeSelectionRanges + added)
+    }
+
+    private func collapseMultiCursorSelection() {
+        guard let last = activeSelectionRanges.last else { return }
+        setSelectionRanges([NSRange(location: last.location + last.length, length: 0)])
+    }
+
+    private func applyMultiCursorDelete(_ ranges: [NSRange]) {
+        guard ranges.count > 1 else { return }
+
+        let ns = string as NSString
+        let deletionRanges = ranges.compactMap { deletionRangeForBackwardDelete($0, in: ns) }
+        guard !deletionRanges.isEmpty else {
+            super.deleteBackward(nil)
+            return
+        }
+
+        applyEdit(to: deletionRanges, replacement: "")
+    }
+
+    private func deletionRangeForBackwardDelete(_ range: NSRange, in ns: NSString) -> NSRange? {
+        if range.length > 0 {
+            return range
+        }
+
+        guard range.location > 0 else { return nil }
+
+        let lineRange = ns.lineRange(for: NSRange(location: range.location, length: 0))
+        let columnOffset = range.location - lineRange.location
+        let lineText = ns.substring(with: lineRange)
+        let cleanLine = lineText.hasSuffix("\n") ? String(lineText.dropLast()) : lineText
+
+        if listsAllowed, let match = ListHelper.parseLine(cleanLine), ListHelper.isKindEnabled(match.kind), columnOffset == match.contentStart {
+            let indentLength = (match.indent as NSString).length
+            return NSRange(location: lineRange.location + indentLength, length: match.contentStart - indentLength)
+        }
+
+        let store = SettingsStore.shared
+        let textBeforeCursor = ns.substring(with: NSRange(location: lineRange.location, length: columnOffset))
+        if !store.indentUsingSpaces {
+            return NSRange(location: range.location - 1, length: 1)
+        }
+
+        guard !textBeforeCursor.isEmpty, textBeforeCursor.allSatisfy({ $0 == " " }) else {
+            return NSRange(location: range.location - 1, length: 1)
+        }
+
+        let width = store.tabWidth
+        let toDelete = ((columnOffset - 1) % width) + 1
+        return NSRange(location: range.location - toDelete, length: toDelete)
+    }
+
+    private func normalizeRanges(_ ranges: [NSRange], textLength: Int) -> [NSRange] {
+        let normalized = ranges.compactMap { range -> NSRange? in
+            let clampedLocation = min(max(range.location, 0), textLength)
+            let clampedLength = max(0, min(range.length, textLength - clampedLocation))
+            return NSRange(location: clampedLocation, length: clampedLength)
+        }.sorted { a, b in
+            if a.location != b.location { return a.location < b.location }
+            return a.length > b.length
+        }
+
+        var merged: [NSRange] = []
+        for range in normalized {
+            guard let last = merged.last else {
+                merged.append(range)
+                continue
+            }
+
+            if range.location <= last.location + last.length {
+                let mergedEnd = max(last.location + last.length, range.location + range.length)
+                merged[merged.count - 1] = NSRange(location: last.location, length: mergedEnd - last.location)
+            } else {
+                merged.append(range)
+            }
+        }
+        return merged
+    }
+
+    private func applyEdit(to ranges: [NSRange], replacement: String) {
+        let textLength = (string as NSString).length
+        let normalizedRanges = normalizeRanges(ranges, textLength: textLength)
+        guard !normalizedRanges.isEmpty else { return }
+
+        for range in normalizedRanges where !shouldChangeText(in: range, replacementString: replacement) {
+            return
+        }
+
+        guard let storage = textStorage else { return }
+        let replacements = normalizedRanges.map { range in
+            (range: range, replacement: replacement)
+        }
+
+        for pair in replacements.reversed() {
+            storage.replaceCharacters(in: pair.range, with: pair.replacement)
+        }
+        didChangeText()
+        setSelectionRanges(selectionRangesAfterApplying(replacements))
+    }
+
+    private func selectionRangesAfterApplying(_ replacements: [(range: NSRange, replacement: String)]) -> [NSRange] {
+        var delta = 0
+        return replacements.map { pair in
+            let replacementLength = (pair.replacement as NSString).length
+            let location = pair.range.location + delta + replacementLength
+            delta += replacementLength - pair.range.length
+            return NSRange(location: location, length: 0)
+        }
+    }
+
+    private func setSelectionRanges(_ ranges: [NSRange]) {
+        let normalized = normalizeRanges(ranges, textLength: (string as NSString).length)
+        setSelectedRanges(
+            normalized.map { NSValue(range: $0) },
+            affinity: .downstream,
+            stillSelecting: false
+        )
+        refreshMultiCursorCarets()
+        updateLineHighlight()
+    }
+
+    private func refreshMultiCursorCarets() {
+        let ranges = activeSelectionRanges
+        let emptyLocations = ranges.filter { $0.length == 0 }.map(\.location)
+        guard ranges.count > 1, !emptyLocations.isEmpty, window != nil else {
+            stopMultiCursorBlinking()
+            multiCursorCaretOverlay?.isHidden = true
+            return
+        }
+
+        let rects = emptyLocations.compactMap { caretRect(forCharacterIndex: $0) }
+        guard !rects.isEmpty else {
+            stopMultiCursorBlinking()
+            multiCursorCaretOverlay?.isHidden = true
+            return
+        }
+
+        let overlay = ensureMultiCursorCaretOverlay()
+        overlay.frame = bounds
+        overlay.caretColor = insertionPointColor
+        overlay.caretRects = rects
+        overlay.isHidden = false
+        startMultiCursorBlinking()
+    }
+
+    private func ensureMultiCursorCaretOverlay() -> MultiCursorCaretOverlayView {
+        if let overlay = multiCursorCaretOverlay {
+            return overlay
+        }
+
+        let overlay = MultiCursorCaretOverlayView(frame: bounds)
+        overlay.autoresizingMask = [.width, .height]
+        overlay.isHidden = true
+        addSubview(overlay, positioned: .above, relativeTo: nil)
+        multiCursorCaretOverlay = overlay
+        return overlay
+    }
+
+    private func caretRect(forCharacterIndex index: Int) -> NSRect? {
+        guard let layoutManager, let textContainer else { return nil }
+
+        let ns = string as NSString
+        let location = min(max(index, 0), ns.length)
+        layoutManager.ensureLayout(for: textContainer)
+
+        let lineHeight = layoutManager.defaultLineHeight(for: font ?? NSFont.systemFont(ofSize: NSFont.systemFontSize))
+        let origin = textContainerOrigin
+        let caretWidth = max(1, 2 / (window?.backingScaleFactor ?? 2))
+
+        if ns.length == 0 {
+            return NSRect(x: origin.x, y: origin.y, width: caretWidth, height: lineHeight)
+        }
+
+        if location == ns.length, ns.character(at: ns.length - 1) == 0x0A {
+            let extra = layoutManager.extraLineFragmentRect
+            guard extra.height > 0 else { return nil }
+            return NSRect(x: origin.x + extra.minX, y: origin.y + extra.minY, width: caretWidth, height: extra.height)
+        }
+
+        let glyphIndex = layoutManager.glyphIndexForCharacter(at: min(location, ns.length - 1))
+        let lineRect = layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: nil)
+        let glyphRect = layoutManager.boundingRect(forGlyphRange: NSRange(location: glyphIndex, length: 1), in: textContainer)
+        let x = location == ns.length ? glyphRect.maxX : glyphRect.minX
+
+        return NSRect(
+            x: origin.x + x,
+            y: origin.y + lineRect.minY,
+            width: caretWidth,
+            height: max(lineRect.height, lineHeight)
+        )
+    }
+
+    private func startMultiCursorBlinking() {
+        guard multiCursorBlinkTimer == nil else { return }
+        multiCursorCaretOverlay?.isCaretVisible = true
+
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
+            guard let overlay = self?.multiCursorCaretOverlay, !overlay.isHidden else { return }
+            overlay.isCaretVisible.toggle()
+        }
+        multiCursorBlinkTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopMultiCursorBlinking() {
+        multiCursorBlinkTimer?.invalidate()
+        multiCursorBlinkTimer = nil
+        multiCursorCaretOverlay?.isCaretVisible = true
     }
 
     // MARK: - List helpers
@@ -619,7 +988,7 @@ final class EditorTextView: NSTextView {
         }
     }
 
-    // MARK: - Duplicate line (Cmd+D)
+    // MARK: - Duplicate line (Cmd+Option+D)
 
     private func duplicateLine() {
         let ns = string as NSString
@@ -643,6 +1012,35 @@ final class EditorTextView: NSTextView {
             didChangeText()
             let newCursorPos = sel.location + insertion.count
             setSelectedRange(NSRange(location: newCursorPos, length: sel.length))
+        }
+    }
+}
+
+private final class MultiCursorCaretOverlayView: NSView {
+    var caretRects: [NSRect] = [] {
+        didSet { needsDisplay = true }
+    }
+
+    var caretColor: NSColor = .textColor {
+        didSet { needsDisplay = true }
+    }
+
+    var isCaretVisible: Bool = true {
+        didSet { needsDisplay = true }
+    }
+
+    override var isFlipped: Bool { true }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard isCaretVisible else { return }
+
+        caretColor.setFill()
+        for rect in caretRects where rect.intersects(dirtyRect) {
+            rect.integral.fill()
         }
     }
 }
