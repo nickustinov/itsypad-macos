@@ -8,12 +8,15 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     var onActivate: ((UUID, NSRange) -> Void)?
     /// Called when the user dismisses the overlay (Esc).
     var onClose: (() -> Void)?
+    var onOpenFile: ((URL) -> Void)?
     /// Supplies the tabs to search. Injected so the view stays decoupled from TabStore.
     var tabsProvider: () -> [GlobalSearch.Source] = { [] }
+    var folderRoot: URL?
 
     private enum Row {
         case header(GlobalSearchTabResult)
         case match(tabID: UUID, GlobalSearchMatch)
+        case file(URL, String)
     }
 
     private let searchField = NSSearchField()
@@ -23,6 +26,10 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
 
     private var rows: [Row] = []
     private var selectedRow: Int?
+    private var folderFiles: [URL] = []
+    private var folderLoading = false
+    private var folderError = false
+    private var folderLoadID = UUID()
 
     private static let headerRowID = NSUserInterfaceItemIdentifier("gsHeader")
     private static let matchRowID = NSUserInterfaceItemIdentifier("gsMatch")
@@ -112,6 +119,31 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     /// Resets the field and results, then focuses the search field. Called on present.
     func prepareForDisplay() {
         searchField.stringValue = ""
+        folderLoadID = UUID()
+        folderFiles = []
+        folderError = false
+        folderLoading = folderRoot != nil
+        searchField.placeholderString = folderRoot == nil
+            ? String(localized: "search.global.placeholder", defaultValue: "Search all tabs…")
+            : String(localized: "search.folder.placeholder", defaultValue: "Search folder files…")
+        if let root = folderRoot {
+            let loadID = folderLoadID
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                let result = Result { try FolderFileSearch.files(in: root) }
+                DispatchQueue.main.async {
+                    guard let self, self.folderLoadID == loadID else { return }
+                    self.folderLoading = false
+                    switch result {
+                    case .success(let files):
+                        self.folderFiles = files
+                    case .failure(let error):
+                        NSLog("[FolderSearch] Failed to search folder: %@", error.localizedDescription)
+                        self.folderError = true
+                    }
+                    self.reload()
+                }
+            }
+        }
         reload()
         DispatchQueue.main.async { [weak self] in
             guard let self, let window = self.window else { return }
@@ -125,16 +157,28 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
 
     private func reload() {
         let query = searchField.stringValue
-        let results = GlobalSearch.run(query: query, in: tabsProvider())
-
-        rows = results.flatMap { result -> [Row] in
-            [.header(result)] + result.matches.map { .match(tabID: result.tabID, $0) }
+        if let root = folderRoot {
+            rows = FolderFileSearch.matches(query: query, files: folderFiles, root: root)
+                .map { .file($0, FolderFileSearch.relativePath(of: $0, in: root)) }
+        } else {
+            let results = GlobalSearch.run(query: query, in: tabsProvider())
+            rows = results.flatMap { result -> [Row] in
+                [.header(result)] + result.matches.map { .match(tabID: result.tabID, $0) }
+            }
         }
 
         tableView.reloadData()
 
-        if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            emptyLabel.stringValue = String(localized: "search.global.hint", defaultValue: "Search across all open tabs")
+        if folderLoading {
+            emptyLabel.stringValue = String(localized: "search.folder.loading", defaultValue: "Loading files…")
+            emptyLabel.isHidden = false
+        } else if folderError {
+            emptyLabel.stringValue = String(localized: "search.folder.error", defaultValue: "Could not search this folder")
+            emptyLabel.isHidden = false
+        } else if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            emptyLabel.stringValue = folderRoot == nil
+                ? String(localized: "search.global.hint", defaultValue: "Search across all open tabs")
+                : String(localized: "search.folder.hint", defaultValue: "Search files in the open folder")
             emptyLabel.isHidden = false
         } else if rows.isEmpty {
             emptyLabel.stringValue = String(localized: "search.global.no_matches", defaultValue: "No matches")
@@ -149,14 +193,15 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     // MARK: - Selection
 
     private func firstSelectableRow() -> Int? {
-        rows.firstIndex { if case .match = $0 { return true } else { return false } }
+        rows.firstIndex { if case .header = $0 { return false } else { return true } }
     }
 
     private func nextSelectableRow(after row: Int?) -> Int? {
         let start = (row ?? -1) + 1
         guard start < rows.count else { return row }
         for i in start..<rows.count {
-            if case .match = rows[i] { return i }
+            if case .header = rows[i] { continue }
+            return i
         }
         return row
     }
@@ -164,7 +209,8 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     private func previousSelectableRow(before row: Int?) -> Int? {
         guard let row, row > 0 else { return row }
         for i in stride(from: row - 1, through: 0, by: -1) {
-            if case .match = rows[i] { return i }
+            if case .header = rows[i] { continue }
+            return i
         }
         return row
     }
@@ -180,8 +226,12 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     }
 
     private func activateRow(_ index: Int?) {
-        guard let index, index < rows.count, case .match(let tabID, let match) = rows[index] else { return }
-        onActivate?(tabID, match.range)
+        guard let index, index < rows.count else { return }
+        switch rows[index] {
+        case .match(let tabID, let match): onActivate?(tabID, match.range)
+        case .file(let url, _): onOpenFile?(url)
+        case .header: break
+        }
     }
 
     // MARK: - NSSearchFieldDelegate
@@ -210,7 +260,10 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     @objc private func tableClicked() {
         let clicked = tableView.clickedRow
         guard clicked >= 0, clicked < rows.count else { return }
-        if case .match = rows[clicked] {
+        switch rows[clicked] {
+        case .header:
+            break
+        case .match, .file:
             selectRow(clicked)
             activateRow(clicked)
         }
@@ -228,8 +281,8 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
     }
 
     func tableView(_ tableView: NSTableView, shouldSelectRow row: Int) -> Bool {
-        if case .match = rows[row] { return true }
-        return false
+        if case .header = rows[row] { return false }
+        return true
     }
 
     func tableView(_ tableView: NSTableView, rowViewForRow row: Int) -> NSTableRowView? {
@@ -253,6 +306,14 @@ final class GlobalSearchView: NSView, NSSearchFieldDelegate, NSTableViewDataSour
                 return v
             }()
             view.configure(match: match)
+            return view
+        case .file(_, let path):
+            let view = (tableView.makeView(withIdentifier: Self.matchRowID, owner: self) as? GlobalSearchMatchCell) ?? {
+                let v = GlobalSearchMatchCell()
+                v.identifier = Self.matchRowID
+                return v
+            }()
+            view.configure(path: path)
             return view
         }
     }
@@ -370,5 +431,9 @@ private final class GlobalSearchMatchCell: NSTableCellView {
             attributed.addAttribute(.font, value: NSFont.systemFont(ofSize: 12, weight: .bold), range: match.highlightRange)
         }
         label.attributedStringValue = attributed
+    }
+
+    func configure(path: String) {
+        label.stringValue = path
     }
 }
