@@ -136,6 +136,12 @@ class MenuBuilder {
         searchAllTabsItem.target = target
         findMenu.addItem(searchAllTabsItem)
 
+        let searchFolderItem = NSMenuItem(title: String(localized: "menu.edit.search_folder_files", defaultValue: "Search folder files…"), action: #selector(AppDelegate.folderSearchAction), keyEquivalent: "k")
+        searchFolderItem.image = NSImage(systemSymbolName: "folder", accessibilityDescription: nil)
+        searchFolderItem.keyEquivalentModifierMask = [.command, .shift]
+        searchFolderItem.target = target
+        findMenu.addItem(searchFolderItem)
+
         findMenu.addItem(.separator())
 
         let findItem = NSMenuItem(title: String(localized: "menu.edit.find_ellipsis", defaultValue: "Find..."), action: #selector(AppDelegate.findAction(_:)), keyEquivalent: "f")

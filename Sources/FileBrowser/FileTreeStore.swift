@@ -116,3 +116,49 @@ final class FileTreeStore {
         folderWatcher = nil
     }
 }
+
+enum FolderFileSearch {
+    static func files(in root: URL) throws -> [URL] {
+        var enumerationError: Error?
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: [.isDirectoryKey, .isSymbolicLinkKey],
+            options: [.skipsHiddenFiles],
+            errorHandler: { _, error in
+                enumerationError = error
+                return false
+            }
+        ) else {
+            throw CocoaError(.fileReadUnknown)
+        }
+
+        var files: [URL] = []
+        for case let url as URL in enumerator {
+            let values = try url.resourceValues(forKeys: [.isDirectoryKey, .isSymbolicLinkKey])
+            if !FileNode.shouldInclude(url.lastPathComponent, isHidden: false) || values.isSymbolicLink == true {
+                enumerator.skipDescendants()
+                continue
+            }
+            if values.isDirectory != true {
+                files.append(url)
+            }
+        }
+        if let enumerationError { throw enumerationError }
+        return files
+    }
+
+    static func matches(query: String, files: [URL], root: URL) -> [URL] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+        return files.filter { relativePath(of: $0, in: root).localizedCaseInsensitiveContains(query) }
+            .sorted { relativePath(of: $0, in: root).localizedStandardCompare(relativePath(of: $1, in: root)) == .orderedAscending }
+    }
+
+    static func relativePath(of url: URL, in root: URL) -> String {
+        let rootPath = root.standardizedFileURL.path
+        let path = url.standardizedFileURL.path
+        let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
+        return path.hasPrefix(prefix) ? String(path.dropFirst(prefix.count)) : url.lastPathComponent
+    }
+}
+

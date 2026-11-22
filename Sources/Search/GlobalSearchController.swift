@@ -12,6 +12,7 @@ final class GlobalSearchController {
     var tabsProvider: () -> [GlobalSearch.Source] = { [] }
     /// Reveals a chosen match in the editor (tab id + range in that tab's content).
     var onReveal: ((UUID, NSRange) -> Void)?
+    var onOpenFile: ((URL) -> Void)?
 
     private let contentView = GlobalSearchView()
     private var panel: GlobalSearchPanel?
@@ -67,6 +68,15 @@ final class GlobalSearchController {
         }
     }
 
+    func toggleFolderSearch(over parent: NSWindow, root: URL) {
+        if isShown {
+            dismiss()
+            return
+        }
+        contentView.folderRoot = root
+        present(over: parent)
+    }
+
     func dismiss(viaResign: Bool = false) {
         guard isShown, let panel else { return }
         isShown = false
@@ -109,6 +119,10 @@ final class GlobalSearchController {
             self?.onReveal?(tabID, range)
         }
         contentView.onClose = { [weak self] in self?.dismiss() }
+        contentView.onOpenFile = { [weak self] url in
+            self?.dismiss()
+            self?.onOpenFile?(url)
+        }
         contentView.tabsProvider = { [weak self] in self?.tabsProvider() ?? [] }
 
         container.addSubview(contentView)
